@@ -148,7 +148,8 @@ export const LUNGE = {
 /**
  * Charging: the sword held out, walking at 3/4 speed with the facing locked (forward, backward and sideways use the
  * same frames). The walk cycle is 28 ticks; standing shows the first frame. Frame f + 1 is f with a glowing sword,
- * which the game never shows here (its full-charge flash must be a palette effect; TODO(measure)).
+ * which the game shows only on the GBA screens (main.dol 0x80274CB8: once full, every other 2 ticks); the TV shows the
+ * charge with particle effects and a glint instead (apps/battle charge.ts).
  */
 export const CHARGE = {
   stand: { right: 67, left: 75, down: 83, up: 97 } as PerDir<number>,

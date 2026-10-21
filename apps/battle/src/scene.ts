@@ -51,7 +51,7 @@ import {
   fighterHeight,
   fighterVisible,
   HURTBOX,
-  linkDisplayFrame,
+  linkFrame as linkActionFrame,
   screenAt,
   SHADOW,
   shadowShown,
@@ -479,7 +479,8 @@ export class ArenaView {
   linkFrame(game: GameState, i: number): number {
     const b = game.battle, p = game.players[i], f = b?.fighters[i];
     if (!p || !f) return -1;
-    let frame = fighterFrame(p, f, (q) => linkDisplayFrame(q, game.tick));
+    // (The TV keeps the normal blade through a full charge: its glow is the charge effects, charge.ts.)
+    let frame = fighterFrame(p, f, linkActionFrame);
     if (b) {
       // As the game shows them (timeline.ts): a knocked-out Link lies where he fell for the rest of the round, the
       // winner raises his sword, and nobody shows in the intro until his portal bursts.

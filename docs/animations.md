@@ -107,15 +107,18 @@ invincibility blink. Per-facing blocks are right, left, down, up as usual.
   with the stick pushed: 610–633, 31 ticks, 4 px/tick for 10). Movement and facing are locked; presses are ignored.
 - **Charge** (button held through the attack): `CHARGE.stand` / `CHARGE.walk` (the normal-sword frames, the same
   for forward, backward and sideways), 1.125 px/tick, 28-tick cycle. A release after 56 held ticks (counting the press)
-  spins. The glowing-sword frames (+1) aren't used by the game here; `linkDisplayFrame` flashes them for renderers as a
-  stand-in for the game's palette flash.
+  spins. On the TV the blade keeps its normal frame (traced: 83 all through) and there is no palette flash: the charge
+  shows as effects (main.dol, checked in Dolphin's RAM and frames; `docs/formats/jpa.md` "A charging sword"): a
+  sparkle sliding along the blade, then on the full charge a burst and a glow at the tip and a glint sprite
+  (enemy_both2 683–686), drawn by Shadow Battle (`apps/battle/src/charge.ts`). The glowing-sword frames (+1) are the
+  GBA screens' (every other 2 ticks once full); `linkDisplayFrame` still flashes them for the other apps as a stand-in.
 - **Spin**: `SPIN.frames[facing]` in play order (wind-up, one clockwise turn of 143–150, end pose), 26 ticks.
 - **Sword hitbox:** `SWORD_BOXES[frame]` = the opaque pixels of the palette-10 parts, relative to the anchor. It's active
   during swings, stabs, lunges and spins (`swordHitbox`). Regenerate with `node tools/render/src/swordboxes.ts`; a real-data
   test checks it. This is derived from the graphics. The game's real hitbox is in the code and still needs measuring.
 - **Shadow Battle** (`packages/sim/src/combat.ts`, `fighterFrame`): a hit plays `knockback` for the facing (167–182:
   white flash, two airborne poses for 4 ticks each, then the landing pose until he lands: measured), a pit plays
-  `fallInPit` (183–188, 6 ticks each) and defeat plays `death` (189–196, 8 ticks each), after which the Link is hidden.
+  `fallInPit` (183–188, 6 ticks each) and defeat plays `death` (189–196, 8 ticks each), after which Shadow Battle draws him lying on 195 (`scene.ts` `DEAD_FRAME`).
   Invincibility hides the sprite (the blank frame 289) while the counter is ≤ 55 and (counter mod 4) ≥ 2, as measured.
   The `hurt` poses (949–952) aren't used yet. The fall and death timings are placeholders.
 - **Battle moves** (`packages/sim/src/moveframes.ts`, `fighterFrame` → `moveFrame`): `LIFT`, `EMPTY_LIFT`, `CARRY` (with the
@@ -125,7 +128,7 @@ invincibility blink. Per-facing blocks are right, left, down, up as usual.
   2 ticks each) and riding Epona (`RIDE`: the 838–853 gallop, 4 ticks each).
 
 ## Still to measure (`TODO(measure)`)
-- The full-charge flash (a palette effect), the charge count after a lunge, a diagonal stick for the lunge, the held
+- The charge count after a lunge, a diagonal stick for the lunge, the held
   sword hitting walls (`swordTink`, seen but not modelled), the game's real sword hitboxes, and the battle timings.
 
 Open questions for Dolphin: what triggers the other sword sets (197–218, 562–593, 634–649); whether the held sword

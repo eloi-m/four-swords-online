@@ -1,6 +1,6 @@
 // Shadow Battle mechanics in headless Chrome (apps/battle): lifting, carrying and throwing a Link, lifting a bush,
 // rolling, a Tower of Flames bomb lifted, thrown and going off, the fire bars above the clouds, an arrow, the
-// boomerang's afterimages, the hammer and the Fire Rod, the item orbs, the castle's soldiers and Vaati at time-out; the side rooms; the Tower of Winds in side view (a ledge, a
+// boomerang's afterimages, a charging sword's sparkles and burst, the hammer and the Fire Rod, the item orbs, the castle's soldiers and Vaati at time-out; the side rooms; the Tower of Winds in side view (a ledge, a
 // ladder, a gate into its gallery, the giant-bomb Shadow Link) and the bombchus. Links are placed by writing their positions into the
 // live state (window.fso.game) and driven with P1's keys (WASD, J sword, K action, L item); the game loop is stepped by
 // hand, so every run sees the same ticks. Screenshots go to out/e2e-mechanics/. Expects the dev server:
@@ -80,6 +80,7 @@ try {
   await fireBars(page);
   await panels(page);
   await arrow(page);
+  await swordCharge(page);
   await hammerAndFireRod(page);
   await boomerang(page);
   await boomerangAfterimages(page);
@@ -446,6 +447,36 @@ async function arrow(page: Page): Promise<void> {
   if (!/^\["kk_\w+\.bti","kk_bow_01\.bti"\]$/.test(special)) problems.push(`hud: ${special}, expected the slingshot and the bow`);
   if (badges !== "[false,true]") problems.push(`hud: L2 badges ${badges}, expected P2's only`);
   await shot(page, "mech-hud-items-2");
+}
+
+// The Field: P1 holds the sword facing down: the sparkle along the blade (JPA 623), then at the full charge (the
+// counter's 48) the burst at its tip (203, 204), the blade's glow (626) and the glint (enemy_both2 683…); let go, he spins.
+async function swordCharge(page: Page): Promise<void> {
+  await match(page, 0);
+  await place(page, 0, 200, 184, "down");
+  await place(page, 1, 300, 184, "left");
+  const count = async () => ((await game(page)).players[0]! as Player & { actionTick: number }).actionTick;
+  const ids = () => page.evaluate(() => (window as unknown as Win).fso.view.particles.liveIds());
+  const glints = () => page.evaluate(() => (window as unknown as Win).fso.view.entities.drawn.glint ?? 0);
+  await key(page, "KeyJ", "keydown");
+  for (let t = 0; t < 60 && ((await game(page)).players[0]!.action !== "charge" || (await count()) < 30); t++) await tick(page, 1);
+  const charging = await ids();
+  await shot(page, "mech-charge");
+  for (let t = 0; t < 40 && (await count()) < 50; t++) await tick(page, 1);
+  const full = await ids(), glint = await glints();
+  await shot(page, "mech-charge-full");
+  await tick(page, 20);
+  const later = await glints();
+  await shot(page, "mech-charge-glow");
+  await key(page, "KeyJ", "keyup");
+  await tick(page, 3);
+  const g = await game(page);
+  console.log(`charge: charging ${charging.join(",")}; full ${full.join(",")}, glint ${glint} then ${later}; let go: ${g.players[0]!.action}`);
+  if (!charging.includes(623)) problems.push("charge: no sparkle (623) while charging");
+  const missing = [203, 204, 626].filter((id) => !full.includes(id));
+  if (missing.length) problems.push(`charge: effects ${missing.join(", ")} missing once full`);
+  if (glint !== 1 || later !== 0) problems.push(`charge: the glint drawn ${glint} then ${later} times, expected 1 then 0`);
+  if (g.players[0]!.action !== "spin") problems.push(`charge: ${g.players[0]!.action} on letting go, expected spin`);
 }
 
 // The Field: P1's hammer flattens P2 in front of him (drawn half height), then his Fire Rod's fireball (JPA 411, 412)

@@ -179,8 +179,9 @@ export const CHARGE_FLASH_TICKS = 4;
 
 /**
  * linkFrame for display: once fully charged, alternates with the glowing-sword frames every CHARGE_FLASH_TICKS. A stand-in
- * for renderers only: the game keeps the normal frame (traced: 83 all through a charge facing down) and shows the charge
- * with effects instead (frame dumps: sparkles at the sword's tip while charging, a burst of light once it's full).
+ * for renderers without the charge's effects: on the TV the game keeps the normal frame (traced: 83 all through a charge
+ * facing down) and shows the charge with effects (Shadow Battle draws them: apps/battle charge.ts); the glowing frames
+ * are the GBA screens' (main.dol 0x80274CB8).
  */
 export function linkDisplayFrame(p: PlayerState, tick: number): number {
   const frame = linkFrame(p);

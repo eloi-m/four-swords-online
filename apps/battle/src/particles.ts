@@ -2,8 +2,9 @@
 // the sim's state alone: the fire pit's jets, the fire bars' fireballs, the eternal flames, a lit bomb's fuse, the
 // explosions, a cut or broken bush, a broken pot or orb, the Tower of Winds' gates, its Shadow Link's coming and his
 // giant bomb (its landing, fuse and blast); the Links' dust (knocked back, rolling, landing), a burning Link, the
-// marks over a Link whose rank by life changes, and the Tower of Flames' embers; the hammer's pound and charge, the
-// Fire Rod's fireballs and stream, a Link it set alight. Each effect is keyed by its entity
+// marks over a Link whose rank by life changes, and the Tower of Flames' embers; a charging sword's sparkle, burst
+// and glow (charge.ts), the hammer's pound and charge, the Fire Rod's fireballs and stream, a Link it set alight.
+// Each effect is keyed by its entity
 // and the tick it started (derived from the entity's own counters where it keeps them; a few remembered from frame
 // to frame here, and dropped again when a rollback undoes them), so the netcode can rewind the state under it
 // (packages/render jpa/effects.ts); nothing here writes to the state. Placement is the game's (createEffect, @fso/formats
@@ -43,6 +44,7 @@ import {
   type GameState,
 } from "@fso/sim";
 import * as THREE from "three";
+import { CHARGE_FULL, chargeCount, sparkleAt, SWORD_CHARGE } from "./charge.ts";
 import { HUD_H, HUD_W } from "./hud.ts";
 import { INTRO, ROUND_END } from "./timeline.ts";
 
@@ -267,6 +269,9 @@ export class BattleParticles {
     return (this.effects?.renderer.distorting ?? false) || (this.screen?.renderer.distorting ?? false);
   }
 
+  /** The effects listed in the last frame (for tests). */
+  listed: readonly JpaEffectSpec[] = [];
+
   /** The effect ids of the live emitters, queued effects aside (for tests). */
   liveIds(): number[] {
     return this.effects?.liveIds() ?? [];
@@ -336,6 +341,7 @@ export class BattleParticles {
     }
     this.lastTick = game.tick;
     fx.sync(game.tick, specs);
+    this.listed = specs;
     const haze = this.embers && b ? fsaParticlePlacement(BATTLE_PARTICLES.screenHaze, 0, 0, 0) : null;
     this.screen?.sync(game.tick, haze ? [{ key: "screen haze", start: this.roundStart, placement: haze }] : []);
   }
@@ -460,6 +466,7 @@ export class BattleParticles {
         push(`burn:${i}:${burning}:body`, burning, { ...at(burn.body[k]!, 0, sub), rotation }, from.x, from.y, 0);
       }
       this.items(game, i, out);
+      this.swordCharge(game, i, out);
       // Dust: trailing him knocked back (from the spot he left the ground) or rolling; where he lands.
       const dust = BATTLE_PARTICLES.dust;
       if (f.mode === "hurt" && m.knock && m.knock.start === start) {
@@ -521,6 +528,28 @@ export class BattleParticles {
       push(`burnrun:${i}:${from}:${p.facing}:flame`, from, at(burn.flame[k]!, 0, p.facing === "down" ? -1 : 0), x, y, z);
       push(`burnrun:${i}:${from}:${p.facing}:body`, from, at(burn.body[k]!, 0, p.facing === "down" ? -1 : 0), x, y + burn.bodyDy[p.facing], z);
     }
+  }
+
+  /** The sword's charge on Link i (charge.ts): the sparkle along the blade, then the burst and the glow at its tip. */
+  private swordCharge(game: GameState, i: number, out: JpaEffectSpec[]): void {
+    const p = game.players[i]!, f = game.battle!.fighters[i]!, c = chargeCount(p, f), tick = game.tick;
+    if (c <= 0) return;
+    const x = p.x / SUBPX, y = p.y / SUBPX, z = f.z / SUBPX, fx = SWORD_CHARGE;
+    const push = (key: string, start: number, e: FsaActorParticle & { lift?: boolean }, px: number, py: number, pz: number) => {
+      const placement = place(e, px, py, pz);
+      if (placement) out.push({ key, start, placement });
+    };
+    const start = tick - (c - 1);
+    if (c < CHARGE_FULL) {
+      const [dx, dy] = sparkleAt(p.facing, c);
+      push(`charge:${i}:${start}`, start, at(fx.sparkle, 0, 1), x + dx, y + dy, z);
+      return;
+    }
+    // (The exit stops them all: unlisted, their particles play out.)
+    const full = tick - (c - CHARGE_FULL), [tx, ty, tz] = fx.tip[p.facing], [gx, gy] = fx.glowAt[p.facing];
+    for (const id of fx.burst) push(`charged:${i}:${full}:${id}`, full, at(id, 0, -1), x + tx, y + ty, z + tz);
+    const glow = fx.glow[f.swordLevel >= 2 ? 2 : 1][p.facing === "right" || p.facing === "left" ? "side" : "upright"];
+    push(`charged:${i}:${full}:glow`, full, at(glow, 0, -1, false), x + gx, y + gy, z);
   }
 
   /** Updates what's remembered per Link (see `links`) from this frame's state. */

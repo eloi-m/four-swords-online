@@ -122,7 +122,10 @@ sprite's own offset. A quick seed is lobbed: 1.044, 1.988, 2.831, 3.575 … up t
 
 **The charge** (`10 idle; 100 p1:B`, frame dumps): the sprite stays 83 all through (no glow frame); the sword's tip
 sparkles while charging and a burst of light marks the full charge (effects, not traced further). actions.ts
-`linkDisplayFrame` keeps its glow-frame stand-in for renderers.
+`linkDisplayFrame` keeps its glow-frame stand-in for renderers. Traced since (`10 idle; 90 p1:B; 30 idle`, field-2p,
+`--link 3f8:10` and RAM dumps): the counter +0x403 is 1 on state 8's first frame (20), 48 on frame 67, then stays at
+49; the live emitters match main.dol's reading (`docs/formats/jpa.md` "A charging sword"). Applied: Shadow Battle
+draws them (apps/battle `charge.ts`) and drops the glow-frame stand-in.
 
 **Epona against a wall** (the carrot as before; P2 walked to The Field's east edge at (432, 280) first): trampled on
 155 and shoved to the wall (440.55) on 157, he stayed there, jostled ±0.3 px while she slid round him (her y 280 →

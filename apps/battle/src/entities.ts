@@ -55,6 +55,7 @@ import {
   type GameState,
 } from "@fso/sim";
 import * as THREE from "three";
+import { CHARGE_FULL, chargeCount, glintFrame, SWORD_CHARGE } from "./charge.ts";
 import { actorShadowOpacity, growAboutAnchor, heightScale, LINK_SHADOW, linkShadow, NO_SHADOW_GROUND, ShadowSprite } from "./shadows.ts";
 
 /** Arena actor types the sim animates: scene.ts doesn't draw them as static sprites. */
@@ -151,6 +152,8 @@ export const B2 = {
   cannon: 332, // CNON (+ its aim: 0 here)
   // BMTY (draw 0x80325754): 140 + its step, toggling every 4 ticks of its fuse; under 100 left, 143, 142, 141, 140.
   bombchu: [140, 141, 142, 143],
+  /** A full sword charge's glint (PEFF kind 2: charge.ts). */
+  chargeGlint: [683, 684, 685, 686],
 } as const;
 /** SLR1 kind 2 (Hyrule Castle's soldiers) draws palette 2 (and 8) as palette 4. */
 const SOLDIER_PALETTES: Readonly<Record<number, number>> = { 2: 4, 8: 4 };
@@ -449,12 +452,25 @@ export class EntityView {
         if (this.used > before || this.quadsShown() > quads) this.drawn[e.kind] = (this.drawn[e.kind] ?? 0) + 1;
       }
       this.patchTiles(b);
+      this.drawGlints(game);
       for (const id of this.roulettes.keys()) if (!b.entities.some((e) => e.id === id && e.hp >= 0 && e.phase !== "rest")) this.roulettes.delete(id);
     } else this.roulettes.clear();
     this.drawAfterimages(game.tick);
     for (let i = this.used; i < this.pool.length; i++) this.pool[i]!.visible = false;
     for (let i = this.shadowsUsed; i < this.shadowPool.length; i++) this.shadowPool[i]!.visible = false;
     for (let i = this.silhouettesUsed; i < this.silhouettePool.length; i++) this.silhouettePool[i]!.visible = false;
+  }
+
+  /** The glint at the tip of a sword whose charge just filled (charge.ts), following the Link. */
+  private drawGlints(game: GameState): void {
+    game.battle!.fighters.forEach((f, i) => {
+      const p = game.players[i], c = p ? chargeCount(p, f) : 0;
+      const frame = c >= CHARGE_FULL ? glintFrame(c - CHARGE_FULL) : -1;
+      if (!p || frame < 0) return;
+      const [dx, dy, dz] = SWORD_CHARGE.tip[p.facing], x = p.x / SUBPX + dx, y = p.y / SUBPX + dy;
+      this.sprite(frame, x, y - f.z / SUBPX - dz, y);
+      this.drawn.glint = (this.drawn.glint ?? 0) + 1;
+    });
   }
 
   /**

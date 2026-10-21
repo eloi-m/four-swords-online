@@ -42,7 +42,7 @@ Index of the docs: [README.md](README.md).
   hand, like game.ts). `node tools/e2e/src/battle-mechanics.ts [url]` lifts, carries and throws a Link and a
   bush, rolls, throws a Tower of Flames bomb, lifts a pot off a switch and stands on it (the fire pit's jets), walks
   into the fire pit's lava (the burning jump out, the landing's dust, the rank mark, the embers: JPA ids), lights a
-  Dark World crystal with a bomb, shoots an arrow, flattens a Link with the hammer and sets him alight with the Fire
+  Dark World crystal with a bomb, shoots an arrow, charges the sword (the sparkle, the full charge's burst, glow and glint), flattens a Link with the hammer and sets him alight with the Fire
   Rod (his half height, the fireball's and the burning run's JPA ids), falls off an Above the Clouds panel of another color, and checks the
   fire bars, orbs, soldiers (the castle's GEN3 bow soldiers and captain drawn) and Vaati's bomb, and visits side rooms: The Field's house (its inset, the HUD's disc, its
   crystal's bomb rain on the TV, the exit mark), the Tower of Flames' north room (its switch lights the eternal

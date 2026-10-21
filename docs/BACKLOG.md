@@ -110,7 +110,8 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
     the traces: `docs/measurements/battle-combat.md` "Bombs, the eternal flames and the soldiers, traced");
   - the soldiers: state 1's turn-back when blocked, an alerted soldier's chase at once (+0x280), the rule after a chase
     (`SOLDIER_KEEP_SIGHT` 128), their facing at the start;
-  - smaller: the dead Link lying on 195 (the sim hides him); the charge's sparkles and full-charge burst (effects).
+  - smaller: the Four Sword's longer charge (main.dol: its counter runs on to 168 for another spin, with the effects
+    619–622 by player; `docs/formats/jpa.md` "A charging sword"), not modelled.
 - **What to watch:** `docs/measurements/battle-constants.md` "Battle constants from main.dol" lists, per item, the code or table the
   value was read from statically, how sure that reading is, and the RAM field or actor offset to trace.
 

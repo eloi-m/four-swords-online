@@ -6,6 +6,7 @@ import {
   arenaSpawns,
   BIG_BOMB,
   buildArenaWorld,
+  Button,
   COUNTDOWN_TICKS,
   createBattle,
   explode,
@@ -18,6 +19,7 @@ import {
   type World,
 } from "@fso/sim";
 import { describe, expect, it } from "vitest";
+import { CHARGE_FULL, SWORD_CHARGE } from "./charge.ts";
 import { BATTLE_PARTICLES, BattleParticles, embersAt, lifeRanks } from "./particles.ts";
 
 const root = new URL("../../../extracted/", import.meta.url);
@@ -232,5 +234,44 @@ describe.skipIf(!present)("real disc: battle particles", () => {
     expect(fx.stats.emitters).toBe(gates.length * 2 + 1 + 2); // its fuse: 57, 58
     while (bomb()) step(r, fx, 1);
     expect(fx.stats.emitters).toBe(gates.length * 2 + 6); // the blast: 51-56 (the fuse's went with the bomb)
+  });
+  it("charges a sword: the sparkle along the blade, then the burst and the glow at its tip (as in Dolphin's RAM)", () => {
+    const fx = new BattleParticles(data);
+    const r = round(1);
+    step(r, fx, COUNTDOWN_TICKS + 5);
+    const p = r.game.players[0]!, f = r.game.battle!.fighters[0]!;
+    p.facing = "down";
+    const hold = (buttons: number) => {
+      r.game = stepGame(r.game, [buttons, 0], r.world);
+      fx.update(r.game);
+    };
+    const listed = (prefix: string) => fx.listed.filter((s) => s.key.startsWith(prefix)).map((s) => [s.placement.id, ...s.placement.translation]);
+    // The stab, then the charge: its counter is the sim's actionTick (Dolphin: 1 on state 8's first frame).
+    while (r.game.players[0]!.action !== "charge") hold(Button.Sword);
+    const q = () => r.game.players[0]!;
+    expect(q().actionTick).toBe(1);
+    const x = q().x / SUBPX, y = q().y / SUBPX;
+    expect(listed("charge:0:")).toEqual([[SWORD_CHARGE.sparkle, x + 4, y + 2 + 128, 128]]);
+    while (q().actionTick < CHARGE_FULL - 1) hold(Button.Sword);
+    // RAM, frame 66 (counter 47, Link at (712, 664) facing down): 623 at (716, 807, 128).
+    expect(listed("charge:0:")).toEqual([[623, x + 4, y + 15 + 128, 128]]);
+    expect(listed("charged:")).toEqual([]);
+    hold(Button.Sword);
+    // Counter 48 (frame 67 on): 203, 204 at (716, 1450, 770), 626 at (716, 545, -128); 623 stops and plays out.
+    expect(listed("charge:0:")).toEqual([]);
+    expect(listed("charged:0:")).toEqual([
+      [203, x + 4, y + 18 + 768, 770],
+      [204, x + 4, y + 18 + 768, 770],
+      [626, x + 4, y + 9 - 128, -128],
+    ]);
+    expect(fx.liveIds()).toEqual(expect.arrayContaining([623, 203, 204, 626]));
+    // With the Four Sword the glow is 627; let go, it spins and they all stop.
+    f.swordLevel = 2;
+    hold(Button.Sword);
+    expect(listed("charged:0:").map(([id]) => id)).toEqual([203, 204, 627]);
+    hold(0);
+    hold(0);
+    expect(q().action).toBe("spin");
+    expect(listed("charged:")).toEqual([]);
   });
 });
