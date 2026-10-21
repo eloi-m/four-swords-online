@@ -336,7 +336,11 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   splits, `docs/netcode.md` "Disconnects": only a majority cuts, a tie goes to the lobby's first claim, the smaller or
   losing side drops out and its pages rejoin by themselves (at most once a minute, else a "connection lost" screen);
   a cut player rejoins by himself too; `arbiter.test.ts`, `netmatch.test.ts`, e2e `split` and `partition`.) Left: two
-  arbiters in a row deciding differently is only detected (why: netcode.md).
+  arbiters in a row deciding differently is only detected (why: netcode.md). **Bug:** when a 2–2 split's losing half
+  is P1 and P2, their pages don't get back in: "rejoin: no snapshot came" on both, and C and D keep them cut (e2e
+  `battle-online.ts` `split`: it failed every time the lobby's claim went to P3 and P4's half, 2 runs in 7, before and
+  after 2026-10-21's changes, and passed every time it went to P1 and P2's). A sponsor among P3/P4 doesn't answer, or P1's snapshot request goes nowhere.
+  Rarer: a winner logs a loser's cut as "reported" rather than "timeout" (the check's timing).
 - **Done 2026-10-12:** all three leftovers implemented and verified (unit
   tests; e2e the whole of `battle-online.ts`, `mobile.ts` and `free-play.ts`; one `free-play.ts` run showed a
   "WebSocket is already in CLOSING or CLOSED state" console error from a frozen page, not reproduced, likely Vite's
