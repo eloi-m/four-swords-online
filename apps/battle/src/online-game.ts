@@ -220,6 +220,17 @@ export function freeSpots(state: GameState, players: readonly number[], away: re
 }
 
 /**
+ * What the host's free-play restart keeps of the running match (free play, or a battle started from it; `players`:
+ * member ids by player index): its players `away` (the lobby's `keep`: their places, out until they rejoin), and where
+ * free play's Links stand (`at`). A battle's arena isn't free play's map: after one, everyone gets a free spawn, the
+ * players away too.
+ */
+export function freeRestart(mode: MatchMode | undefined, state: GameState, players: readonly number[], away: readonly number[]): { keep: number[]; at: FreeSpot[] } {
+  const keep = players.filter((id) => away.includes(id));
+  return { keep, at: mode === "free" ? freeSpots(state, players, keep) : [] };
+}
+
+/**
  * The input a player who left gets from then on (the session's `disconnectedInput`): a bit above the sim's buttons
  * (Button uses bits 0-6), so the step below can tell a departed player from one standing still.
  */

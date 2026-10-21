@@ -36,7 +36,7 @@ import { startTicker } from "@fso/web";
 import { LobbyUi, memberName } from "./lobby-ui.ts";
 import { isTouch } from "./mobile.ts";
 import { NetStats } from "./netstats.ts";
-import { AUTO_DELAY, battleGame, cleanConfig, cpuSlots, DEFAULT_CONFIG, delayOptions, freeSpots, initialBattle, initialFree, parseConfig, PLAYER_LEFT, type MatchConfig } from "./online-game.ts";
+import { AUTO_DELAY, battleGame, cleanConfig, cpuSlots, DEFAULT_CONFIG, delayOptions, freeRestart, initialBattle, initialFree, parseConfig, PLAYER_LEFT, type MatchConfig } from "./online-game.ts";
 
 const NAME_KEY = "fso.battle.online.name";
 const SERVER_KEY = "fso.battle.online.server";
@@ -459,18 +459,17 @@ export class Online {
   }
 
   /**
-   * Host: free play for everyone in the room, the Links of the free play running now where they stand, its players away
-   * kept in their places (out until they rejoin; the lobby's `keep`).
+   * Host: free play for everyone in the room, the Links of the free play running now where they stand, the running
+   * match's players away (free play's, or its battle's) kept in their places (out until they rejoin; the lobby's `keep`).
    */
   private startFree(): void {
     const lobby = this.lobby, room = lobby?.room;
     if (!room?.free || room.host !== lobby!.you) return;
-    const run = this.current, free = run?.config.mode === "free";
-    const keep = free ? run.start.players.filter((id) => room.away?.includes(id)) : [];
+    const run = this.current;
+    const { keep, at } = run ? freeRestart(run.config.mode, run.net.state, run.start.players, room.away ?? []) : { keep: [], at: [] };
     const key = [...slotted(room), ...keep].sort((a, b) => a - b).join();
     if (key === this.requested) return;
     this.requested = key;
-    const at = free ? freeSpots(run.net.state, run.start.players, keep) : [];
     lobby!.start({ ...DEFAULT_CONFIG, delay: this.battleConfig.delay, mode: "free", at } satisfies MatchConfig, keep);
   }
 

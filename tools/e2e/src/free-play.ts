@@ -13,6 +13,9 @@
 //   3. Alice presses Battle mode: a Shadow Battle for the five on The Field (2 hearts, 1 win). Gus opens the page
 //      mid-battle and watches it. Alice's bot knocks the others out, every page shows "P1 wins", and free play comes
 //      back by itself a few seconds later, with Gus in it. Bob's page is frozen mid-battle: he rejoins the battle.
+//      Finn's page goes away mid-battle (its lobby connection drops, then it's frozen) and stays away past the battle:
+//      the free play after it keeps him P5 (out), Gus P6; Finn's page comes back: he's P5 of that free play, with his
+//      name, his Link in, no restart, hashes identical from his snapshot on.
 //   4. Alice closes her tab: Eve (the next member: Bob and Cara rejoined after her) becomes the host and gets the
 //      button; free play goes on without a restart, Alice's Link out (her place kept for the lobby's 2 min).
 //   5. A phone (emulated) alone: the name prompt upright, Play by a tap, then free play in landscape with the host's
@@ -58,8 +61,9 @@ const signal = await startSignalServer({ port: SIGNAL_PORT });
 const vite = await createServer({
   configFile: resolve(import.meta.dirname, "../../../apps/battle/vite.config.ts"),
   root: resolve(import.meta.dirname, "../../../apps/battle"),
-  // (No HMR: its client reloads a page whose socket drops, which a frozen page's does.)
-  server: { port: VITE_PORT, strictPort: true, hmr: false },
+  // (No HMR: its client reloads a page whose socket drops, which a frozen page's does. No console forwarding, which
+  // some environments turn on by default: it sends a frozen page's warnings down that closed socket, a console error.)
+  server: { port: VITE_PORT, strictPort: true, hmr: false, forwardConsole: false },
   logLevel: "warn",
 });
 await vite.listen();
@@ -441,9 +445,19 @@ async function battle(pages: Page[]): Promise<void> {
   const bob = pages[1]!;
   const bobFirst = await frozenRejoins("Bob frozen mid-battle", bob, [...pages, g].filter((p) => p !== g), "battle");
   await setScript(bob, TURN_AWAY);
-  const all = [...pages, g];
+  // Finn's page goes away mid-battle (its lobby connection drops, then it's frozen: a locked phone) until after it.
+  const finn = pages[4]!;
+  const finnWas = await status(finn);
+  await finn.evaluate(() => void ((window as unknown as Win & { frozenNet?: unknown }).frozenNet = (window as unknown as Win).fso.online!.current!.net));
+  const finnCdp = await finn.createCDPSession();
+  await finn.evaluate(() => (window as unknown as { fso: { online: { lobby: { close(): void } } } }).fso.online.lobby.close());
+  await finnCdp.send("Page.setWebLifecycleState", { state: "frozen" });
+  const awayAt = Date.now();
+  await a!.waitForFunction((id) => ((window as unknown as { fso: { online: { lobby: { room: { away?: number[] } } } } }).fso.online.lobby.room.away ?? []).includes(id), { timeout: 10_000, polling: 50 }, finnWas.you).catch(() => problems.push("Finn's place isn't kept mid-battle (room.away)"));
+  console.log(`  Finn (P${finnWas.local + 1}, member ${finnWas.you}) away mid-battle`);
+  const all = [...pages, g], live = all.filter((p) => p !== finn);
   for (;;) {
-    const st = await Promise.all(all.map(status));
+    const st = await Promise.all(live.map(status));
     if (st.every((s) => s.results)) break;
     if (Date.now() - t0 > 150_000) {
       problems.push(`battle: no results after 150 s (${st.map((s) => `${s.phase} ${s.results}`).join(", ")})`);
@@ -452,25 +466,45 @@ async function battle(pages: Page[]): Promise<void> {
     await sleep(250);
   }
   const shownAt = Date.now();
-  const st = await Promise.all(all.map(status));
+  const st = await Promise.all(live.map(status));
   for (const s of st) check(/P1 WINS!/.test(s.results ?? "") && !s.rematch && /Back to free play/.test(s.resultsNote), `battle results on member ${s.you}: ${s.results}, rematch ${s.rematch}, "${s.resultsNote}"`);
   for (const s of st) check(s.desyncs === 0, `battle: desync on member ${s.you}`);
   console.log(`  results after ${Math.round((shownAt - t0) / 1000)} s: "${st[0]!.results}" (note "${st[0]!.resultsNote}")`);
-  await compareFinals("battle, 4 players and a spectator", all.filter((p) => p !== bob));
-  await compareFinals("battle, everyone from Bob's snapshot", all, bobFirst);
+  await compareFinals("battle, 3 players and a spectator", live.filter((p) => p !== bob));
+  await compareFinals("battle, everyone left from Bob's snapshot", live, bobFirst);
   await shot(a!, "battle-results-A.png");
   await shot(g, "battle-results-Gus.png");
   for (const p of pages) await setScript(p, `(frame, g) => 0`);
-  await waitFree(all, 6, 20_000).catch(() => problems.push("free play didn't come back after the battle"));
-  console.log(`  free play back ${((Date.now() - shownAt) / 1000).toFixed(1)} s after the results, with Gus in (P${(await status(g)).local + 1})`);
+  await waitFree(live, 6, 20_000).catch(() => problems.push("free play didn't come back after the battle"));
+  const [back, sg2] = await Promise.all([status(a!), status(g)]);
+  console.log(`  free play back ${((Date.now() - shownAt) / 1000).toFixed(1)} s after the results, players ${JSON.stringify(back.players)} (Finn ${finnWas.you} away), Gus P${sg2.local + 1}`);
   check(Date.now() - shownAt < 12_000, `free play came back ${Date.now() - shownAt} ms after the results`);
+  check(back.players[4] === finnWas.you && sg2.local === 5 && back.at.length === 0, `the free play after the battle with Finn away: ${JSON.stringify(back.players)}, Gus P${sg2.local + 1}, places ${JSON.stringify(back.at)}`);
   await a!.bringToFront(); // (a background tab draws nothing, so its sound cues wait)
   await sleep(1000);
   const tunes = await music(a!);
   console.log(`  Alice's music since: ${tunes.bgm.slice(1).join(", ")}`);
   check(tunes.bgm.at(-1) === tunes.field && tunes.bgm.includes("JA_BGM_RESULT"), `the music after the battle: ${JSON.stringify(tunes)}`);
-  await compareFinals("free play after the battle, 6 players", all);
+  await compareFinals("free play after the battle, Finn away", live);
   await shot(g, "free-play-after-Gus.png");
+  // Finn's page comes back: into that free play as himself (P5, his name), no restart for the others.
+  await finnCdp.send("Page.setWebLifecycleState", { state: "active" });
+  await finnCdp.detach();
+  const finnBack = await finn
+    .waitForFunction((m) => { const w = window as unknown as Win & { frozenNet?: unknown }, run = w.fso.online?.current; return !!run && run.net !== w.frozenNet && run.net.match === m && run.local === 4 && !!run.net.session; }, { timeout: 30_000, polling: 100 }, back.match)
+    .then(() => true, () => false);
+  const sf = await status(finn);
+  console.log(`  Finn back ${((Date.now() - awayAt) / 1000).toFixed(1)} s after going away: P${sf.local + 1} of match ${sf.match}, banner "${sf.banner}"`);
+  check(finnBack && sf.mode === "free", `Finn isn't back as P5 of match ${back.match} (match ${sf.match}, P${sf.local + 1}, "${sf.banner}")`);
+  await walk(finn, 1, 20);
+  await sleep(2500);
+  const finnLink = await a!.evaluate(() => { const run = (window as unknown as Win).fso.online!.current!; return { match: run.net.match, mode: run.net.state.battle.fighters[4]!.mode, tags: [...document.querySelectorAll(".nametag .tag-body")].map((t) => t.textContent ?? "") }; });
+  console.log(`  Finn's Link on Alice's page: ${finnLink.mode}, tags ${finnLink.tags.join(" | ")}`);
+  check(finnLink.match === back.match && finnLink.mode !== "dead" && finnLink.tags.some((t) => /^P5Finn/.test(t)), `Finn after his return: ${JSON.stringify(finnLink)}`);
+  const matches = (await Promise.all(all.map(status))).map((s) => s.match);
+  check(matches.every((m) => m === back.match), `Finn's return restarted free play (${back.match} → ${matches.join(", ")})`);
+  const finnFirst = await finn.evaluate(() => Math.min(...(window as unknown as Win).fso.online!.finals.keys()));
+  await compareFinals("free play after the battle, everyone from Finn's snapshot", all, finnFirst);
 
   // The host leaves: the room's next member hosts (Eve: Bob and Cara came back in after her, under new member ids),
   // and free play goes on without a restart: a closed tab (or a reload) keeps its place a while, Alice's Link is out.

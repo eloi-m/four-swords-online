@@ -63,7 +63,8 @@ Index of the docs: [README.md](README.md).
   `node tools/e2e/src/free-play.ts` (own Vite on 5242, lobby on 5243; `E2E_PORT`/`E2E_SIGNAL_PORT`): free play
   with players joining and leaving (restarts with everyone where they stood, the host's Battle mode button, P5's
   yellow tunic), the host's battle for five with a latecomer watching, its results, free play back after them, the
-  host leaving; a page frozen past the cut in free play and one mid-battle, each back in its slot by itself
+  host leaving; a page frozen past the cut in free play and one mid-battle, each back in its slot by itself, and
+  one away (lobby connection dropped) from mid-battle until after the free play that follows, back in it as itself
   (identical hashes from its snapshot on; screenshots in `out/e2e-free/`).
   `node tools/e2e/src/battle-cpu.ts` (own Vite on 5198, `E2E_PORT`): 1 human vs 3 CPUs picked in the
   menu, to the results; the `#cpu=` deep link; a phone-sized page; the phone menu as "Vs. Computer" opens it

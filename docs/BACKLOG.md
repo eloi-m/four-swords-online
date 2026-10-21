@@ -311,8 +311,10 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   `mobile.ts`, `free-play.ts`.) (Done 2026-10-11: a free room's player whose lobby connection dropped is *away*
   (`RoomInfo.away`, kept 2 min by the lobby): no restart, and the host's restarts keep his place (`start` with `keep`,
   absent from frame 0), so he comes back as himself, same P number and name, his Link in where it stood; a `leave`
-  restarts at once; `ONLINE_VERSION` 27; `rejoin.test.ts` "absent", `server.test.ts`, e2e `free-play.ts` Dan.) Left:
-  a battle started from free play doesn't keep players away.
+  restarts at once; `ONLINE_VERSION` 27; `rejoin.test.ts` "absent", `server.test.ts`, e2e `free-play.ts` Dan.) (Done
+  2026-10-21: a player who drops out of a battle started from free play is away there too, and the free play after it
+  keeps his place, so he comes back as himself; `server.test.ts`, `netmatch.test.ts`, `online-game.test.ts`, e2e
+  `free-play.ts` Finn.) Left: a player already away when the host starts a battle isn't kept through it.
 - **Input delay** adapts to the network (done 2026-10-05: `adaptiveDelay`, the rooms' Auto; target refined
   2026-10-11, `docs/netcode.md` "The adaptive delay's target"): `ceil((RTT/2 + RTT deviation)/16.7 − tick lead + 0.25)`
   with hysteresis going down (`adapt.ts`), so 4.2 frames of steady latency settles at 5 (or 4/6 by tick phase) with

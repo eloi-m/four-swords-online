@@ -493,10 +493,15 @@ free room is one of two kinds (`MatchConfig.mode`, `ONLINE_VERSION` 7):
   hearts and stars). Players who come in meanwhile watch it (a player feeds them, as spectators); nobody restarts it.
   Eight seconds after its results (from final states, as usual), the host starts free play again for everyone in the
   room; a new host, or a battle left with fewer than two of its players, restarts free play at once. A player of the
-  battle who drops out rejoins it with his key (his Link in from the next round).
+  battle who drops out rejoins it with his key (his Link in from the next round). One whose lobby connection dropped
+  is away there too (`FREE_AWAY_MS`): the free play after the battle keeps his place (`keep`, absent from frame 0, on a
+  free spawn like everyone: the arena isn't free play's map), so a page back within the 2 min rejoins that free play
+  as P-same, with its name, and nobody restarts. A player already away when the host starts a battle isn't in it: the
+  battle doesn't keep his place, and he comes back after it as a newcomer (a restart).
 
-A page frozen past the disconnect (a locked phone) rejoins its slot as above; once the match it dropped out of is over
-or restarted, its key no longer counts and it comes in as a newcomer (a restart). Leave (the Esc
+A page frozen past the disconnect (a locked phone) rejoins its slot as above, also once the match it dropped out of
+was restarted (free play, or the free play after its battle: his place kept); away past the lobby's 2 min, its key no
+longer counts and it comes in as a newcomer (a restart). Leave (the Esc
 menu, the results) goes where the site's home link goes (the local menu when the battle app runs on its own).
 
 Deep links (after `#`): `online`, `create`, `join=WORD` (`&spectate`), `free`, `name=`, `server=ws(s)://…`, `autostart=N`,
@@ -581,7 +586,8 @@ itself (`E2E_ONLY=rejoin` runs just those).
 `free-play.ts` checks free play the same way: players joining one by one (the host's Battle mode button, the others
 told who has it), a join and a leave restarting free play with the others where they stood (P5 in the yellow tunic,
 no HUD corners, the name tags up), the host's battle for five with a latecomer watching it, "P1 wins" everywhere,
-free play back 8 s later with the latecomer in, and the host leaving (the next member hosts).
+free play back 8 s later with the latecomer in and a player who went away mid-battle kept in his place (back as
+himself, no restart), and the host leaving (the next member hosts).
 
 ## Hosting
 
@@ -652,7 +658,8 @@ the relay (the "auto" transport picks per peer; the stats overlay shows the rout
   when two players lose each other (the higher one goes). Splits are refereed by the lobby (only one game survives).
   Two arbiters in a row deciding the same cut or rejoin differently (the first gone within a round trip of deciding) is
   detected, not repaired (why: Disconnects).
-- **Free play**: a battle started from free play doesn't keep the players away (they come back as newcomers after it).
+- **Free play**: a player away (his lobby connection dropped) when the host starts a battle isn't in it, and comes back
+  as a newcomer after it; one who drops out during the battle keeps his place.
 - **Signaling server**: origin allowlist, connection/room caps and rate limits exist (see the lobby section), but no
   accounts or auth (anyone with a room code can join or watch), no persistence (a restart drops every room), one
   process only (no sharding), and no TURN (the relay stands in, over TCP).

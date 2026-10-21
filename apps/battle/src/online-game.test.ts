@@ -12,6 +12,7 @@ import {
   cleanConfig,
   cpuSlots,
   DEFAULT_CONFIG,
+  freeRestart,
   freeSpots,
   initialBattle,
   initialFree,
@@ -115,6 +116,25 @@ describe("free rooms", () => {
     expect([back.mode, back.hearts]).toEqual(["active", DEFAULT_CONFIG.hearts * 4]);
     expect({ x: state.players[1]!.x, y: state.players[1]!.y }).toEqual(at);
     expect(freeSpots(state, [1, 2, 3]).map((s) => s[0])).toEqual([1, 2, 3]);
+  });
+
+  it("the host's restart keeps the running match's players away: from free play where they stood, from a battle on free spawns", () => {
+    const world = openArena();
+    const game = battleGame(world);
+    // Free play: member 2 is away (his Link out): kept, at his place, with 1 and 3 at theirs; 4 is no player of it.
+    const free = initialFree(world, FREE, [1, 2, 3], 7);
+    for (let f = 0; f < 30; f++) game.step(free, [Button.Right, PLAYER_LEFT, Button.Down]);
+    const restart = freeRestart("free", free, [1, 2, 3], [2, 4]);
+    expect(restart.keep).toEqual([2]);
+    expect(restart.at).toEqual(freeSpots(free, [1, 2, 3], [2]));
+    expect(restart.at.map((s) => s[0])).toEqual([1, 2, 3]);
+    expect(freeRestart("free", free, [1, 2, 3], [])).toEqual({ keep: [], at: freeSpots(free, [1, 2, 3]) });
+    expect(freeRestart("free", free, [1, 2, 3], []).at.map((s) => s[0])).toEqual([1, 3]);
+    // The battle started from it: member 2 dropped mid-battle; the free play after it keeps him, everyone on free spawns.
+    const spawns = [0, 1, 2].map((i) => ({ x: 120 + 100 * i, y: 150, facing: "down" as const }));
+    const battle = initialBattle(spawns, { ...DEFAULT_CONFIG, mode: "battle" }, 3, 1);
+    for (let f = 0; f < 30; f++) game.step(battle, [0, PLAYER_LEFT, 0]);
+    expect(freeRestart("battle", battle, [1, 2, 3], [2])).toEqual({ keep: [2], at: [] });
   });
 
   it("a free room's battle takes up to 8 Links, the arena's 4 starts and 4 more beyond them; a room's own stays at 4", () => {

@@ -2,7 +2,7 @@
 // browser: see tools/e2e/src/netplay.ts), an impaired network, and a spectator joining mid-match.
 import { LobbyClient, startNetMatch, type NetMatch, type StartInfo } from "@fso/net";
 import { createToy, scriptedInput, toyGame, type ToyState } from "@fso/net/testing";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, onTestFinished } from "vitest";
 import { startSignalServer, type SignalServer } from "./server.ts";
 
 let server: SignalServer;
@@ -13,8 +13,8 @@ afterAll(async () => {
   await server.close();
 });
 
-const connect = async () => {
-  const l = await LobbyClient.connect(`ws://127.0.0.1:${server.port}`);
+const connect = async (port = server.port) => {
+  const l = await LobbyClient.connect(`ws://127.0.0.1:${port}`);
   lobbies.push(l);
   return l;
 };
@@ -351,6 +351,85 @@ describe("startNetMatch", () => {
     for (let f = 0; f <= END; f++) for (const i of [1, 2]) expect(finals[i]![f], `peer ${i} frame ${f}`).toBe(finals[0]![f]);
     for (const m of [...matches, late!]) m.close();
   }, 15_000);
+
+  it("a free room's player who drops out of a match comes back into the next one, restarted while he was away, in his slot", async () => {
+    // (A lobby of its own: the free room of an earlier test is still open, and would take these players.)
+    const lobby = await startSignalServer({ port: 0, host: "127.0.0.1" });
+    onTestFinished(() => lobby.close());
+    const lobbies = [await connect(lobby.port), await connect(lobby.port), await connect(lobby.port)];
+    const room = await lobbies[0]!.free({ name: "A" });
+    for (const l of lobbies.slice(1)) await l.free();
+    const input = scriptedInput(23), LEFT = 0x8000;
+    const finals: Map<number, number>[] = [new Map(), new Map(), new Map()];
+    const events: string[][] = [[], [], []];
+    const current: (NetMatch<ToyState> | null)[] = [null, null, null];
+    const starts: StartInfo[] = [];
+    let resumedAt = -1;
+    const play = (i: number, lobby: LobbyClient, start: StartInfo) => {
+      current[i]?.close({ quiet: true });
+      finals[i]!.clear();
+      starts[i] = start;
+      current[i] = startNetMatch(lobby, start, {
+        game: toyGame,
+        state: createToy(3),
+        mode: "relay",
+        disconnectedInput: LEFT,
+        impairment: { latency: 30, jitter: 20, loss: 0.05 },
+        onFinal: (f, s) => finals[i]!.set(f, toyGame.hash(s)),
+        onEvent: (e) => events[i]!.push(`${start.match}:${e.type}${"player" in e ? ` P${e.player + 1}` : ""}`),
+        onResume: (ok, frame) => {
+          expect(ok).toBe(true);
+          resumedAt = frame;
+        },
+      });
+    };
+    lobbies.forEach((l, i) => l.on("start", (start) => play(i, l, start)));
+    const run = (until: () => boolean) =>
+      new Promise<void>((resolve, reject) => {
+        const timer = setInterval(() => {
+          try {
+            for (const m of current) {
+              if (!m) continue;
+              m.pump();
+              const f = (m.session?.frame ?? 0) + (m.session?.inputDelay ?? 0);
+              m.tick(input(m.localPlayer, f) & 0x7fff);
+            }
+            if (until()) (clearInterval(timer), resolve());
+          } catch (e) {
+            clearInterval(timer);
+            reject(e);
+          }
+        }, 1000 / 60);
+        setTimeout(() => (clearInterval(timer), reject(new Error(`stuck (${JSON.stringify(events)})`))), 10_000);
+      });
+    // Match 1 (a battle started from free play); P2's lobby connection drops in it.
+    lobbies[0]!.start({ mode: "battle" });
+    await run(() => current.every((m) => m?.match === 1 && m.session!.finalizedFrame >= 60));
+    const [bId, key] = [lobbies[1]!.you, lobbies[1]!.key];
+    current[1]!.close({ quiet: true });
+    current[1] = null;
+    lobbies[1]!.close();
+    await run(() => lobbies[0]!.room!.away?.includes(bId) === true && events[0]!.includes("1:disconnected P2"));
+    // Its results over, the host restarts free play keeping him: P2, absent from frame 0, nobody waiting for him.
+    lobbies[0]!.start({ mode: "free" }, [bId]);
+    await run(() => [0, 2].every((i) => current[i]?.match === 2 && current[i]!.session!.finalizedFrame >= 60));
+    expect(starts[0]!.players).toEqual([lobbies[0]!.you, bId, lobbies[2]!.you]);
+    // He comes back with his key: into match 2 as P2, from a snapshot.
+    const back = await connect(lobby.port);
+    const resumed = started(back);
+    await back.join(room.code, { rejoin: key });
+    const info = await resumed;
+    expect(info).toMatchObject({ resume: true, match: 2 });
+    play(1, back, info);
+    expect([current[1]!.localPlayer, current[1]!.resuming]).toEqual([1, true]);
+    await run(() => resumedAt >= 0 && current.every((m) => m?.session && m.session.finalizedFrame >= resumedAt + 120));
+    const last = Math.min(...current.map((m) => m!.session!.finalizedFrame));
+    for (let f = resumedAt; f <= last; f++) for (const i of [1, 2]) expect(finals[i]!.get(f), `peer ${i} frame ${f}`).toBe(finals[0]!.get(f));
+    for (const i of [0, 2]) expect(events[i]).toContain("2:rejoined P2");
+    expect(current[0]!.session!.inputLog(1).slice(-60).every((v) => v !== LEFT)).toBe(true); // his own inputs again
+    for (const m of current) expect(m!.session!.stats.desyncs).toBe(0);
+    for (const m of current) m!.close();
+  }, 30_000);
 
   it("plays a rematch in the same room: the first match's late packets and byes don't reach the second", async () => {
     const lobbies = [await connect(), await connect()];

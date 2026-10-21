@@ -413,6 +413,38 @@ describe("free rooms", () => {
     }
   });
 
+  it("keeps the place of a player away from a battle started from free play through the free play after it", async () => {
+    const [a, b, c] = [await freeClient(), await freeClient(), await freeClient()];
+    const room = await a.free({ name: "A" });
+    await b.free({ name: "B" });
+    await c.free({ name: "C" });
+    const starts = (xs: LobbyClient[]) => Promise.all(xs.map((x) => next<StartInfo>((fn) => x.on("start", fn))));
+    let all = starts([a, b, c]);
+    a.start({ mode: "free" });
+    await all;
+    all = starts([a, b, c]);
+    a.start({ mode: "battle" });
+    const battle = (await all)[0]!;
+    expect(battle.players).toEqual([a.you, b.you, c.you]);
+    // B's connection drops mid-battle: his place is kept.
+    const bId = b.you, key = b.key;
+    const away = nextRoom(a, (r) => r.away?.includes(bId) === true);
+    b.close();
+    expect((await away).away).toEqual([bId]);
+    // The battle over, the host restarts free play keeping him: still P2 (absent), still his key.
+    const restart = starts([a, c]);
+    a.start({ mode: "free" }, [bId]);
+    const free = (await restart)[0]!;
+    expect(free.players).toEqual([a.you, bId, c.you]);
+    expect(free.room.away).toEqual([bId]);
+    const back = await freeClient();
+    const resumed = next<StartInfo>((fn) => back.on("start", fn));
+    await back.join(room.code, { rejoin: key, name: "B" });
+    expect(await resumed).toMatchObject({ resume: true, match: free.match, players: [a.you, back.you, c.you] });
+    expect(back.room!.members.find((m) => m.id === back.you)!.name).toBe("B");
+    expect(back.room!.away).toBeUndefined();
+  });
+
   it("hands the host role to the next member when the host leaves", async () => {
     const [a, b, c] = [await freeClient(), await freeClient(), await freeClient()];
     await a.free();
