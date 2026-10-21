@@ -212,7 +212,8 @@ at the frames of the block the code draws from; for ZASL, ZSLH and KEPO the pick
   | WARP, PONT, GENE, GEN3, SWEV, TINB, GFBS, FOCS, BFIN, LTEV, … (33 types) | nothing | matched (no draw reachable); BBSL only appears at time-out |
 
 - Drawn as JPA particles, not sprites (see "JPA particles"): FLME, BLZ2 on the TV, FBMR's FBOB fireballs, PRTC, TRCH,
-  BARI (Hyrule Castle's barrier, below).
+  BARI (Hyrule Castle's barrier, below), a whirlpool's WARP (style 0x0E: no draw of its own, its init makes 1363 and
+  1262).
 - **Hyrule Castle's simulated actors** (read 2026-10-11 with `tools/dol`; apps/game draws them from the sim's state:
   `enemies.ts` EnemyView, `view.ts` renderRocks and barriers):
   - **confirmed** `PLSW` (draw 0x8028A39C): enemy_both2 327 + +0x23C on the TV (0x802F86CC) and the GBA, at its home

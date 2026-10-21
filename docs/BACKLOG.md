@@ -524,6 +524,12 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
       wants the box), the two-Link rock not the wide formation, the side view's pot lift after a thrown Link bounces
       off a pot (`castle-gap-throw / x -1 px`), the pot lift by room 58's switch from 1.4 px left of the route's stop.
   11. The Cave's kind-0 south doors (rooms 4, 6, 11) forced open look shut (b): whether they ever open in play. S.
+  12. **Done (2026-10-21):** Lake Hylia room 6's whirlpool (`WARP` (416, 224), style 0x0E) is drawn: WARP's init
+      (0x80228B60) makes JPA 1363 (a blue swirl, a screen distortion) and 1262 (sparkles) at its middle (424, 232), as
+      RAM and a Dolphin frame show (docs/formats/jpa.md); Tingle's Tower's room 3 and room 7 ones too (the same code,
+      not seen in Dolphin). The grey spiral over room 6's waterfall foam was PRTC's ripple 1362, which kind 0 doesn't
+      make (392-394 only: RAM): gone, also from room 58's waterfall. `looks.ts` screenshots room 6's whirlpool on the
+      route. Left: room 3's area 2 whirlpool (on a GBA screen the game spawns sprite actors for effects: not read).
   The traps are done (`traps.ts`, drawn): the Cave's room 1 fireball traps (`FBGE` ×5, traced in Dolphin: the shots,
   the hit, the key knocked out of the Link's hands, now any hit's) and the blade traps (`TRAP`, Tingle's Tower room 2
   ×2, Hyrule Castle room 9 area 2 ×2: read from main.dol, untraced, no savestate reaches them); the routes go round

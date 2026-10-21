@@ -225,7 +225,9 @@ about 6 px/frame in state 3); the C stick is scripted as `c-up`… (`script.ts`)
   sinking 0.3 px/frame with no input (eased in), the stick moves him 1 px/frame on top of the sink (down 1.3, up 0.7,
   sideways 1.0 while sinking 0.3; diagonals 0.707 − 0.3). At the surface (y 92 in area 5's column) left onto the ladder
   tile (0x61) he stands (state 0), then climbs it like walking (state 2, up-walk frames, 1.5 px/frame); its top warp
-  (style 0x19) took him into area 6 like a door.
+  (style 0x19) took him into area 6 like a door. Its look (2026-10-21, `room5-river.sav`, swum right into room 6, `--tele` to (344, 192),
+  frame 240): a blue swirl with sparkles over it at (424, 232), JPA 1363 and 1262 in RAM (docs/formats/jpa.md); nothing
+  marks the waterfall's foot but its foam (PRTC's 392-394; no 1362).
 
 ## Adventure: formations against walls
 Traced 2026-10-10 from `ref/save-adv-lake-room3.sav` (a copy of `ref/dolphin-user-adventure2` as the user folder, GDB

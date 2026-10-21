@@ -116,10 +116,10 @@ export class AdventureView {
   private readonly effects: StageEffects;
   private readonly gbaTiles: TilemapTextures;
   private readonly filter: THREE.Texture | null;
-  // The particle effects the stage's actors keep up (the waterfalls' spray, torches; docs/formats/jpa.md "JPA particles"):
+  // The particle effects the stage's actors keep up (the waterfalls' spray, torches, whirlpools; docs/formats/jpa.md "JPA particles"):
   // those of the leader's room and its neighbours, over the Links (z 2) and under the top layers (z 3).
   readonly particles: JpaEffects | null;
-  /** Their screen distortions (a torch's haze, a waterfall's ripple), drawn from a copy of the frame. */
+  /** Their screen distortions (a torch's haze, a whirlpool's swirl), drawn from a copy of the frame. */
   private readonly distortion = new DistortionPass();
   private readonly stageEffects: ReturnType<typeof stageParticles>;
   private nearRoom = -1;
@@ -412,6 +412,7 @@ export class AdventureView {
       this.near = this.stageEffects.filter((e) => rooms.has(e.room));
     }
     const specs = this.near.filter((e) => e.actor !== "TRCH" || this.torchFlame(game, e)).map((e) => e.spec);
+    this.drawnWhirlpools = this.near.filter((e) => e.room === room && e.actor === "WARP" && e.spec.placement.id === 1363).length;
     this.particles.sync(game.tick, [...specs, ...this.burningArrows(game), ...this.barriers(game), ...this.minorShadows(game), ...this.traps(game)]);
   }
 
@@ -462,6 +463,9 @@ export class AdventureView {
 
   /** The traps' effects synced in the last frame (for tests). */
   drawnTrapEffects = 0;
+
+  /** The whirlpools (WARP style 0x0E: their swirl 1363) of the leader's room synced in the last frame (for tests). */
+  drawnWhirlpools = 0;
 
   /** The minor Shadow Link's effects synced in the last frame (for tests). */
   drawnMinorShadowEffects = 0;

@@ -1,6 +1,7 @@
 // World 1's looks on screen in apps/game, played by the scripted routes (window.fso.route) in headless Chrome:
 // Lake Hylia's open doors with the game's open tiles (doorlook.ts: room 2's cave door, room 3's house door, read back
-// from the base layer's drawn tiles), its grey stone carried (enemy_both2 41, STON's), and Hyrule Castle room 1's
+// from the base layer's drawn tiles), its grey stone carried (enemy_both2 41, STON's), room 6's whirlpool (its JPA
+// effects, 1363 and 1262), and Hyrule Castle room 1's
 // area 6: a Link held overhead, the thrown Link in flight, the bridge laid by switch 19 (its PNPC row's tile 0x3FC); on
 // along its route, the things the sim simulates that apps/game drew nothing for before: room 3's pull handle (PLSW)
 // pulled, room 9's four-Link handle (PSWB) pulled, the escort Zoras (FAZR) met and following, room 57's barrier (BARI's
@@ -61,6 +62,8 @@ interface Seen {
   blades: number[];
   fireballs: number;
   trapEffects: number;
+  /** The whirlpools of the leader's room synced (their swirl 1363). */
+  whirlpools: number;
 }
 
 const browser = await puppeteer.launch({
@@ -124,6 +127,7 @@ async function stepUntil(page: Page, until: string, ms: number, frames: number, 
           blades: a.enemies.filter((e: any) => e.type === "TRAP").map((e: any) => e.shot),
           fireballs: a.enemies.filter((e: any) => e.type === "OKTM" && e.kind === 5).length,
           trapEffects: v.drawnTrapEffects,
+          whirlpools: v.drawnWhirlpools,
         };
       };
       const test = new Function("s", `return ${until};`) as (s: Seen) => boolean;
@@ -181,6 +185,10 @@ try {
   // (Once it's opened, it opens over 17 ticks and the Links go in; seen again as they come back out.)
   const house = await check(page, "house-door", "s.room === 3 && s.area === 0 && s.opened.includes(3 * 4096 + 5)", 1000 / 60, 40000, houseDoor);
   if (house) expectTiles("house-door", await check(page, "house-door-open", `s.room === 3 && s.area === 0 && s.window === 0 && s.tick >= ${house.tick + 60}`, 1000 / 60, 20000, houseDoor), [0x3b0, 0x3b1]);
+  // Room 6's whirlpool (WARP (416, 224), style 0x0E: its swirl 1363 and sparkles 1262 at (424, 232)) as the route swims
+  // to it from the waterfall's pool, the leader 100 px off it at most.
+  const pool = await check(page, "whirlpool", "s.room === 6 && s.area === 0 && Math.hypot(s.x - 424, s.y - 232) < 100", 1000 / 60, 60000);
+  if (pool && pool.whirlpools !== 1) problems.push(`whirlpool: ${pool.whirlpools} whirlpools synced, not 1`);
 
   // Hyrule Castle room 1's area 6.
   await open(page, "stage=boss013&players=4&mute&route");

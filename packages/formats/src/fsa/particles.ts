@@ -170,20 +170,52 @@ export function fsaFireballParticles(angle: number, speed: number): FsaActorPart
 }
 
 /**
- * The effects an actor keeps up while it rests, as the viewer shows a stage (the battle drives the moving ones from
- * its simulation): PRTC kind 0's waterfall spray (392–397, layer 1), a lit TRCH torch (189) or BLZ2 eternal flame
- * (844 and 845, queued), FLME's resting flames (kinds 4 and 5: 62, 59 under the actor, 60 and 61 over it; the jets:
- * fsaJetParticle), FBMR's fireballs where its arm starts (fsaFireballParticles), SVGT's glow at a side-view gate (1095
- * and 1096, layer -1: its init 0x803524D0, nothing else). With them the screen-distortion effects (drawn from a copy
- * of the frame: JpaRenderer.distortion): the waterfall's ripple 1362 (layer 1), the torch's haze 1354 and the eternal
- * flame's 1357 (queued, layer 1).
+ * PRTC's effects by its kind (params & 0xFF; its init 0x802E111C, a jump table at 0x804A9B40): kind 0, a waterfall's
+ * foot, makes 392, 393 and 394 (confirmed in RAM: Lake Hylia room 6's, at its spot, layer 1); kind 2 the ripple 1362
+ * (a screen distortion). 169 and 136 go on layer −1, the rest on layer 1 (kind 9's on layer 0 when 0x802DEBA0 says so:
+ * not read).
  */
-export function fsaActorParticles(actor: string, params: number): FsaActorParticle[] {
+const PRTC_EFFECTS: readonly (readonly number[])[] = [[392, 393, 394], [395, 396, 397], [1362], [382], [383], [384], [110], [169, 170], [111], [389, 390, 391], [136, 137]];
+
+/** WARP's style (params & 0x7F) whose init (0x80228B60) makes the whirlpool's effects: 1363 and 1262. */
+const WARP_WHIRLPOOL = 0x0e;
+
+/**
+ * The effects an actor keeps up while it rests, as the viewer shows a stage (the battle drives the moving ones from
+ * its simulation): PRTC's (PRTC_EFFECTS: a waterfall's foot is kind 0's spray 392–394, layer 1), a lit TRCH torch
+ * (189) or BLZ2 eternal flame (844 and 845, queued), FLME's resting flames (kinds 4 and 5: 62, 59 under the actor, 60
+ * and 61 over it; the jets: fsaJetParticle), FBMR's fireballs where its arm starts (fsaFireballParticles), SVGT's glow
+ * at a side-view gate (1095 and 1096, layer -1: its init 0x803524D0, nothing else), a whirlpool (WARP style 0x0E):
+ * its swirl 1363 (layer 0, sublayer −1) and sparkles 1262 at its middle. With them the screen-distortion effects
+ * (drawn from a copy of the frame: JpaRenderer.distortion): the whirlpool's swirl 1363, PRTC kind 2's ripple 1362, the
+ * torch's haze 1354 and the eternal flame's 1357 (queued, layer 1). `pixel` is the actor's spot in its room (WARP's
+ * middle depends on it; a multiple of 8 when left out).
+ */
+export function fsaActorParticles(actor: string, params: number, pixel?: { x: number; y: number }): FsaActorParticle[] {
   const at = (id: number, layer = 0, sublayer = 0, scale = 1): FsaActorParticle => ({ id, dx: 0, dy: 0, layer, sublayer, scale });
   switch (actor) {
-    case "PRTC":
-      // (1362: the ripple, a screen distortion.)
-      return (params & 0xff) === 0 ? [392, 393, 394, 395, 396, 397, 1362].map((id) => at(id, 1)) : [];
+    case "PRTC": {
+      // Params bits 20-23 set: none at init (its update 0x802E0AB8 makes the same later: not modelled). Bits 11 / 10 /
+      // 9 / 8 move them a room right / left / down / up (+0x244, +0x248).
+      if ((params >>> 20) & 0xf) return [];
+      const dx = (params & 0x800 ? 512 : 0) - (params & 0x400 ? 512 : 0), dy = (params & 0x200 ? 384 : 0) - (params & 0x100 ? 384 : 0);
+      return (PRTC_EFFECTS[params & 0xff] ?? []).map((id) => ({ ...at(id, id === 169 || id === 136 ? -1 : 1), dx, dy }));
+    }
+    case "WARP": {
+      // The init moves a WARP to the next multiple of 8 on each axis (x + 8 − x mod 8: its box's middle; not for
+      // params bit 7 or styles 11, 30-32), then for style 0x0E makes 1363 (layer 0, sublayer −1, lift) and 1262 (layer
+      // 0, lift), scale 1, at that spot (confirmed in RAM: Lake Hylia room 6's (416, 224) has them at (424, 232), 1363
+      // 128 px up and back; a Dolphin frame shows the blue swirl and the sparkles there). Style 37 makes them too, 1363
+      // on layer −1 (no WARP has it in World 1). Only the destructor deletes them: they stay while the room is loaded.
+      const style = params & 0x7f;
+      if (style !== WARP_WHIRLPOOL && style !== 37) return [];
+      const middle = (v: number) => 8 - (Math.trunc(v) % 8);
+      const dx = middle(pixel?.x ?? 0), dy = middle(pixel?.y ?? 0);
+      return [
+        { ...at(1363, style === 37 ? -1 : 0, -1), dx, dy },
+        { ...at(1262), dx, dy },
+      ];
+    }
     case "TRCH":
       // (1354: the heat haze over the flame, a screen distortion; its layer read as the flame's.)
       return [at(189), at(1354)];

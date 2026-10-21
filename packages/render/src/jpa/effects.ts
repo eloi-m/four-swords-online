@@ -14,7 +14,8 @@ const TURN = (Math.PI * 2) / 0x10000;
 
 /**
  * The effects a stage's actors keep up while they rest (fsaActorParticles: waterfall spray, torches, eternal flames,
- * fire-pit flames, fire bars), in stage pixels (room cell × 512 / 384 + the actor's spot), keyed by room and actor.
+ * fire-pit flames, fire bars, whirlpools), in stage pixels (room cell × 512 / 384 + the actor's spot), keyed by room
+ * and actor.
  */
 export function stageParticles(stage: Stage): { room: number; actor: string; spec: JpaEffectSpec }[] {
   const out: { room: number; actor: string; spec: JpaEffectSpec }[] = [];
@@ -24,7 +25,7 @@ export function stageParticles(stage: Stage): { room: number; actor: string; spe
       stage.actors(room).forEach((actor, k) => {
         if (actor.sublayer !== 0) return;
         const px = actorPixel(actor), x = cx * 512 + px.x, y = cy * 384 + px.y;
-        fsaActorParticles(actor.id, actor.params).forEach((p, n) => {
+        fsaActorParticles(actor.id, actor.params, px).forEach((p, n) => {
           const placement = fsaParticlePlacement(p.id, x + p.dx, y + p.dy, 0, { layer: p.layer, sublayer: p.sublayer, scale: p.scale });
           if (!placement) return;
           if (p.rotation) placement.rotation = p.rotation;

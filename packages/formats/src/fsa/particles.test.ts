@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FSA_QUEUED_PARTICLES, fsaJetParticle, fsaLayerOffset, fsaMoveParticle, fsaParticleGroup, fsaParticlePlacement } from "./particles.ts";
+import { FSA_QUEUED_PARTICLES, fsaActorParticles, fsaJetParticle, fsaLayerOffset, fsaMoveParticle, fsaParticleGroup, fsaParticlePlacement } from "./particles.ts";
 
 describe("FSA particle placement (createEffect 0x8013CC50)", () => {
   it("maps effect ids to createEffect's draw groups", () => {
@@ -44,5 +44,21 @@ describe("FSA particle placement (createEffect 0x8013CC50)", () => {
     expect([placed.id, ...placed.translation, ...placed.dynamicsScale.map((v) => Math.round(v * 1000) / 1000), ...jet.rotation!]).toEqual([430, 771, 1728, 1152, 1, 0.707, 0.707, 0, 0xc000, 0x8000]);
     const p = fsaParticlePlacement(102, 0, 0, 0)!;
     expect(fsaMoveParticle(p, 3, 4, 8).translation).toEqual([3, 900, 904]);
+  });
+
+  it("places the whirlpool's and the waterfall foot's effects as they are in RAM (Lake Hylia room 6)", () => {
+    // Room 6 at stage cell (3, 2): its WARP (416, 224), style 0x0E, has 1262 at (1960, 1000, 0) and 1363 at
+    // (1960, 872, −128); its PRTC (320, 112), kind 0, has 392-394 only, at (1856, 1904, 1024).
+    const placed = (actor: string, params: number, x: number, y: number) =>
+      fsaActorParticles(actor, params, { x, y }).map((p) => [p.id, ...fsaParticlePlacement(p.id, 1536 + x + p.dx, 768 + y + p.dy, 0, p)!.translation]);
+    expect(placed("WARP", 0x05220e0e, 416, 224)).toEqual([
+      [1363, 1960, 872, -128],
+      [1262, 1960, 1000, 0],
+    ]);
+    expect(placed("PRTC", 0, 320, 112)).toEqual([392, 393, 394].map((id) => [id, 1856, 1904, 1024]));
+    // Kind 2 is the ripple; a door's WARP makes nothing; a PRTC with params bits 20-23 makes nothing at init.
+    expect(fsaActorParticles("PRTC", 2).map((p) => p.id)).toEqual([1362]);
+    expect(fsaActorParticles("WARP", 0x02171019, { x: 392, y: 96 })).toEqual([]);
+    expect(fsaActorParticles("PRTC", 0x80110003)).toEqual([]);
   });
 });
