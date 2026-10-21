@@ -8,7 +8,7 @@ differ. Confidence: **confirmed** = read directly from RAM, reproduced across ru
 
 ## Index (the notes are split by area; section names are unchanged)
 - [measurements/walking-and-sword.md](measurements/walking-and-sword.md): "Method", "Walking", "Collision", "Room changes", "Sword", "Sim constants".
-- [measurements/battle-combat.md](measurements/battle-combat.md): "Lifting, throwing, rolling, damage and items", "What the Shadow Battle sim uses", "Battle measurements: combat", "Items, levels and the Four Sword", "The Pegasus Boots", "The Magic Hammer and the Fire Rod".
+- [measurements/battle-combat.md](measurements/battle-combat.md): "Lifting, throwing, rolling, damage and items", "What the Shadow Battle sim uses", "Battle measurements: combat", "Items, levels and the Four Sword", "The Pegasus Boots", "The Magic Hammer and the Fire Rod, traced".
 - [measurements/battle-constants.md](measurements/battle-constants.md): "Battle constants from main.dol", "Audit after the float-op disassembler fix".
 - [measurements/battle-arenas.md](measurements/battle-arenas.md): "Battle mode in Dolphin", "Battle measurements: arenas, orbs and camera".
 - [measurements/screens.md](measurements/screens.md): "Renderer checks by RAM pokes", "J2D screens in Dolphin", "The title screen's sky in Dolphin", "Shadow Battle's round screens in Dolphin", "The Links' intro, the round's end and the HUD in Dolphin", "The pause screen in Dolphin", "The message window and the HUD's disc in Dolphin".

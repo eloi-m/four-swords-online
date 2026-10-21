@@ -43,7 +43,7 @@ describe("the Magic Hammer", () => {
     expect(fighter(game, 1).squash).toBe(100);
   });
 
-  it("held 48 ticks it charges: the big hammer, 4 life, and a ground impact that flips thud switches and makes Links hop", () => {
+  it("held 48 ticks it charges: the big hammer, 4 life, and a ground impact that makes Links hop, not thud switches", () => {
     const world = arena();
     const dosn: ArenaProps = { actors: [{ id: "DOSN", x: 160, y: 100, params: 4 << 27 }], bushes: [] };
     const game = start(world, [{ x: 100, y: 100, facing: "down" }, { x: 100, y: 112, facing: "up" }, { x: 140, y: 100, facing: "up" }], dosn);
@@ -56,8 +56,9 @@ describe("the Magic Hammer", () => {
     expect(fighter(game, 1).hearts).toBe(12 - HAMMER.damageCharged);
     expect(fighter(game, 1).flat).toBe(HAMMER.flatTicksCharged);
     run(game, world, HAMMER.impact - HAMMER.pound);
-    expect(switchOn(game.battle!, 4)).toBe(true); // the DOSN 60 px off
+    expect(switchOn(game.battle!, 4)).toBe(false); // the DOSN 60 px off (traced: the boots' crash sets it, the pound not)
     expect(fighter(game, 2).move).toBe("jolt"); // 40 px off
+    expect(fighter(game, 1).move).toBe("none"); // flattened: no hop (traced)
     until(game, world, () => fighter(game, 0).move === "none", HAMMER.endCharged);
   });
 

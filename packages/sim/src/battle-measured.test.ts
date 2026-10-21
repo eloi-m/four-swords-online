@@ -28,8 +28,8 @@ interface Case {
 const fixture = JSON.parse(readFileSync(new URL("./dolphin-battle-traces.json", import.meta.url), "utf8")) as { cases: Case[] };
 
 const FACINGS: readonly Facing[] = ["right", "left", "down", "up"];
-/** Link +0xC10 → the sim's item (docs/measurements.md: 3 boomerang, 4 bow, 8 bombs, 10 slingshot). */
-const ITEMS: Readonly<Record<number, ItemKind>> = { 1: "boots", 3: "boomerang", 4: "bow", 8: "bomb", 10: "slingshot" };
+/** Link +0xC10 → the sim's item (docs/measurements.md: 1 boots, 3 boomerang, 4 bow, 5 hammer, 6 Fire Rod, 8 bombs, 10 slingshot). */
+const ITEMS: Readonly<Record<number, ItemKind>> = { 1: "boots", 3: "boomerang", 4: "bow", 5: "hammer", 6: "fireRod", 8: "bomb", 10: "slingshot" };
 /** The blank frame the game draws while a Link blinks. */
 const BLANK = 289;
 const STATE_WALK = 2;
@@ -139,6 +139,14 @@ const EXPECT: Readonly<Record<string, { pos?: number; sprites?: number; players?
   // The blocked Link and the dasher pushed apart every tick of the contact, then the dasher carried off by his push once
   // the dash is over: the pushes' rounding over 40 ticks.
   bootsBlock: { pos: 0.09 },
+  // The Fire Rod and the Magic Hammer (docs/measurements/battle-combat.md "The Magic Hammer and the Fire Rod, traced"):
+  // the tick a pushed Link is set alight the game still shows his walk frame, the sim his pose before it; the tick a
+  // burning Link is hurt by his own BLZE the game still shows his run; walking into a wall through the stream and while
+  // flattened, the game's Link jitters (by 0.375 px) or stops half a pixel further (walls back him off in half pixels).
+  fireSteer: { sprites: 1 },
+  fireTree: { sprites: 1 },
+  fireStream: { pos: 0.26 },
+  hammerTap: { pos: 0.51 },
 };
 
 describe.skipIf(!existsSync(boss500))("sim vs Dolphin Shadow Battle traces", () => {

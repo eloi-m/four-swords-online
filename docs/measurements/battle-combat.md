@@ -464,11 +464,89 @@ the rules in `boots.test.ts`; applied in `packages/sim/src/boots.ts`.
     is the seed's stun: the dizzy effect 1381 and `PEFF`, +0x458 = 0, **90 ticks** (120 playing alone), then 60
     invincible on its exit. In battle, then, a jolted Link lands dizzy for 90 ticks (`combat.ts` STUN_TICKS).
 
-## The Magic Hammer and the Fire Rod (read from main.dol)
-Read statically 2026-10-11 (`tools/dol`; nothing traced in Dolphin yet: every value is TODO(measure) in the sim);
-applied in `packages/sim/src/hammer.ts`, `firerod.ts`, `itemframes.ts` (`ONLINE_VERSION` 25). Both appear only in
-Hyrule Castle's side rooms (generator mask 0x97E2), items 5 and 6 (`LSTI` draws `enemy_both2` 69 and 70; the HUD's
-icons k = 6, 7). The Link's state tables: entry 0x804A7628, update 0x804A74E0 (by state number).
+## The Magic Hammer and the Fire Rod, traced
+Read statically 2026-10-11 (`tools/dol`, below), traced 2026-10-21 in Dolphin from the round states (the battle user
+folder, traces in a local scratch space, not committed): the item poked into a Link's +0xC10 on frame 12 (`--write
+12:81175e2c:0000000600000001`: P1's Fire Rod, level 1; `…0005…` the hammer; P2's Link is 0x81176AE8, so its +0xC10 is
+0x811776F8, in every arena), the Links moved there too when needed (+8, world px), `--link c10:c` for the fixture,
+`--link 3f8:8` (the pose counters), `--link b98:4` (the hammer's flags), `--link c8c:4 --link c9c:4` (the flattened
+height and timer), `--link c08:4` (the magic meter); `actor-trace.ts --ids FIRE,BLZE` for the flames, and `trace.ts
+--break <pc>` (each time the CPU gets there: frame, lr, r3–r10, callers) on the BLZE spawn sites. Applied in
+`packages/sim/src/firerod.ts`, `hammer.ts`, `itemframes.ts`, `boots.ts` (`ONLINE_VERSION` 28); 11 cases replayed by
+the sim in `dolphin-battle-traces.json` (fireSteer, fireStream, fireStreamOut, fireWater, fireTree, fireStreamWall,
+hammerTap, hammerJolt, hammerJoltL2, hammerCharged, hammerTurn), the rules in `firerod.test.ts`, `hammer.test.ts`.
+
+**A burning Link** (state 80; `field-2p`, P1's fireball setting P2 alight, P2 steered with the D-pad):
+- The hit tick: 2 life, 2 invincibility ticks, he still shows his pose (and state) of before; his facing turns away
+  from the fire by its quarter. From the next tick the hop (3.0 up, 0.25 a tick down: z 2.75, 5.25 … 23 ticks on the
+  spot), on the run frames 885 + 8 × direction + a frame every 2 ticks (885 on the first, then 886 ×2 …).
+- **The stick steers him**, at once and at full speed: the tick a direction is pressed he faces it (and still moves
+  the old way that tick), from the next he runs 2 px/tick that way; a diagonal keeps the facing it holds, else turns
+  sideways (down-right from left: right), as walking turns. Let go, he runs on the way he faces.
+- **The run lasts 300 ticks** from landing (+0x408), walls only stopping him (he stays pushing against one, still
+  burning); he's standing (state 0) the tick after. **Shallow water** (tile type 0x39) under his middle ends it at once:
+  he stood on the lake's first tile (x 416), state 0 from that tick.
+- **He runs into pits**, as walking does: running left off Above the Clouds' island (x 64) he was put 8 px in and ran
+  on burning 4 more ticks (56, 54, 52, 52), fell (state 30, 183…188, 58 ticks), and was back on the edge (72, 312;
+  state 31, then 0) with 2 life less and 180 invincibility. (That fall isn't the sim's pit: it jumps him out of the
+  hole the Tower of Flames' way. Not applied; a pit question, not the fire's.)
+- **He sets alight the Links his flame meets**: the FIRE kind 6 that follows him is where he stood at the end of the
+  last tick, with his ±7 px body box; a Link 13.5 px across and 13.3 down from it was set alight (14.05 across: not),
+  turned away from the flame, not from him.
+- **His flame against a wall bursts into a `BLZE`** (FIRE vtable +0x24 0x802BAE78: kind 6 → BLZE params owner |
+  direction << 4): turning up beside the beehive tree's trunk, his flame's box met the trunk's tile; the BLZE at the
+  flame (352, 278) hurt him the same tick: 2 life, 60 invincibility, the 0.75 px/tick knockback with the 4.0 hop (hit
+  type 7), which ended the run. Head on into a wall (the house, at y 183) his walk stops him with the box only touching
+  it: no burst.
+
+**The Fire Rod** (`field-2p`):
+- The pose: 13 ticks after the press tick (+0x3FA 0…12): facing right 395 ×2, 396, 397, 398 ×6, 399, 400 ×2; the
+  fireball on the 12th (counter 11). (The adventure's 12 frames facing down missed the last one.)
+- **The fireball**: appears 8 px ahead and moves on that same tick; its speed starts at 0 and eases 0.3 of the way to
+  2.0 before each move (0.6, 1.02, 1.314, 1.52 …, 2.0 within 0.001 after 20 ticks). Its ±6 px box met P2's ±7 body
+  with its middle 12.7 px from his (14.7: not yet). On a Link: 2 life, gone. Through a bush (The Field's 0x70 at (160, 272)) it flies on and the
+  bush burns: a `BLZE` on the bush's middle (+0x54, 0x802BABEC, from the tile sweep). **On a wall it bursts**, a `BLZE`
+  on the tile beyond (its position on the 16 px grid + (−8, 8) flying left: (120, 280) when it met the cliff at x 128;
+  0x802BAE78's table: right (24, 8), down (8, 16), up (8, −8)).
+- **The stream** (A held through counter 11): the pose holds on 11 with the rod held out (466 + the charge walk's
+  index right, 470 left, 474 / 481 down / up, 7 frames), the magic −1 a tick from that tick (0x180 → 0x17F) and full
+  again the tick after letting go; walking at 1.125 px/tick on the charge's cycle (4, 2, 4, 4 ticks a frame), the
+  facing kept. Its flame (FIRE at the box's middle, x + 36 facing right) trails the Link by a tick: P2 was set alight
+  when the box from where P1 stood a tick before reached him (305.75 ≥ 305). Let go: the release tick and the next on
+  400, then standing, and **no fireball** while the stream's flame was out. The magic ran out after 384 stream ticks:
+  one more tick held on counter 11 (406, the stream off), then 2 more, then standing.
+- **The stream against a wall**: its flame bursts at once into a `BLZE` at its middle (114, 280 for a Link at 150
+  facing left) and stays out **60 ticks** (Link +0xB8C = 60, 0x8025A6D0; the next burst 61 ticks later); let go in
+  that gap, a fireball comes out.
+- **`BLZE`**: 30 ticks (+0x254 30 → 1), its attack (0x802BC9F8: 0x801F2B7C(BLZE, atcp 2, no one skipped, hit type 7))
+  while +0x240 = 1, its first 24; its box ±6 px (+0x60, init 0x802BD25C). It hurt its own maker.
+
+**The Magic Hammer** (`field-2p`):
+- **The pose**: the press tick, then held: 293 (index 2), 292 ×2 … and the charge +0x3FC counts each held tick: the
+  48th shows the big hammer (363, +0xB9B = 1). The stick turns him while he holds it (up 312, left 298, down-right
+  from left: right), as walking turns. Let go: 292 ×2, 293 ×2, 296 ×8, 297 ×5, then standing (18 ticks with the held
+  one); +0xB99 (the pound's box) on the counter's 5 and 6. Charged: 364, 365, 368, 369, 368, 369, 368, 369, 368 ×2,
+  369 ×2, 368 ×2, 369 ×5, 370 ×11, standing; the impact (+0xB9A) on the counter's 18 and 19. As main.dol has them.
+- **The pound** (P2 at (226, 282), P1 at (200, 280) facing right): P2 hit on the counter's 5: 2 life (charged 4), 60
+  invincibility, no knockback, +0xC9C = 300 (charged 600); state 0 on the hit tick, state 64 the next 11 ticks (his
+  height +0xC8C 1.0, then 0.95 … 0.5), his standing frame; then flat, walking at 1.5 px/tick on his walk frames; the
+  timer hits 0 300 ticks after the hit and the height grows back 0.05 a tick (1.0 ten ticks later).
+- **The charged pound's impact**: P2 45 px away hopped (state 63: the 4.0 hop, 33 ticks, his standing pose) from the
+  tick after the counter's 18, then dizzy (state 12) 90 ticks, then 60 invincible; with a level-2 hammer 70 px away
+  too. The pound's own victim (flattened, invincible) didn't hop. The west tree's bees (60 px) woke on the counter's
+  18 and stung P1 125 ticks later. **No `DOSN` switch**: the switch word (0x81255ED4) stayed 0, where a boots crash at
+  the same spot set its bit 1 (rechecked). Why wasn't found: no breakpoint in 0x80296A84 (a reader of 0x8026FCE0)
+  was reached.
+- **Pots and orbs**: a pound centred on the Tower of Flames' pot (232, 168) and on The Field's orb (250, 238) left
+  both as they were.
+
+Not traced: fire on pots, orbs and soldiers; the stream on bushes (applied as the fireball); a burning Link's flame on
+bushes (kind 6 skips 0x802BABEC: treated as a wall); the stream's flame lingering 2 ticks after the button is up
+(FIRE at x + 36 on the release tick and the next); the flattened Link's Action button (read: 0x80261480 does nothing).
+
+### Read from main.dol (2026-10-11; the traces above confirm or correct it)
+Both appear only in Hyrule Castle's side rooms (generator mask 0x97E2), items 5 and 6 (`LSTI` draws `enemy_both2` 69
+and 70; the HUD's icons k = 6, 7). The Link's state tables: entry 0x804A7628, update 0x804A74E0 (by state number).
 - **The hammer** (state 60, update 0x8025B3F0, state-exit 0x8025B368 clears +0xB99/+0xB9A/+0xB9B). While the item
   button stays held from the start (+0x3FA = 0), +0x3FC counts up (0x8027EB04 runs: read as turning with the stick)
   and at **48** (25 when the player manager's +0x6C is set: only HAYA does that, not in any battle arena) the hammer is
@@ -495,8 +573,8 @@ icons k = 6, 7). The Link's state tables: entry 0x804A7628, update 0x804A74E0 (b
   (table 0x8046B120, 16 px: pegs 0x76 → 0x77 and the like; none in the battle arenas, assumed).
 - **The Fire Rod** (state 68, entry 0x8025A9C0, update 0x8025A15C). Entry: +0xB84 = 1 if the magic meter (+0xC08,
   0x80241794) is above 0. +0xB84 drops when the button is up. +0x3FA from 0, +1 at the end of each tick: frames
-  (0x802677BC) 395 + 6 × direction + 0 (< 2), 1 (< 3), 2 (< 4), 3 (< 10), 4 (< 11), 5; on 12 the state ends (the
-  measured 407 ×2, 408, 409, 410 ×6, 411, 412 facing down). On +0x3FA = 11: with +0xB84 still set, the stream: a FIRE
+  (0x802677BC) 395 + 6 × direction + 0 (< 2), 1 (< 3), 2 (< 4), 3 (< 10), 4 (< 11), 5; on 13 the state ends (traced:
+  13 ticks, 5 shown twice). On +0x3FA = 11: with +0xB84 still set, the stream: a FIRE
   (params 0x1040 | facing << 4 | player: kind 1) given the box 36 × 12 px (x + 18…54, y − 6…6 right; x − 54…−18
   left; x − 2…10, y + 12…48 down; x − 10…2, y − 56…−20 up), the Link walking at 1.125 (0x802808E8), magic −1 a tick
   (0x80247594; +0xC08 starts at 384 and is set back to full by 0x8027F16C whenever the button is up and none was used),
@@ -508,7 +586,7 @@ icons k = 6, 7). The Link's state tables: entry 0x804A7628, update 0x804A74E0 (b
   tick, at most 1.0 (0x801F71A4); box ±6 (±12 when +0x268 ≥ 2). No lifetime: a wall (0x801F2618 → vtable +0x58) bursts
   it (413). Damage: 0x801F2B7C(fire, its atcp **2** (`enemyparam.csv`; 0 alone), skipping the owner, type **22**); on a
   hit, gone (TV: +0x11C = 0). Its vtable +0x54 (0x802BABEC) lights a `BLZE` where it meets a burnable tile (which
-  tiles: not read). Effects 411, 412 8 px ahead, turned by table 0x8046D388.
+  tiles: not read). Effects 411, 412 8 px ahead, turned by table 0x8046D388. (Traced: it does leave a `BLZE` on a wall, above.)
 - **Set alight** (hit type 22, 0x802710C8): nothing on a Link already in state 80; in state 81 a 60-tick flag
   (+0x484/+0x480) instead; otherwise the damage, **+0x464 = 2**, state **80**, facing away from the source by its
   quarter. State 80 (entry 0x80281760, update 0x8028126C): velocity (table 0x8046BEA8) 2.0 along the facing and 3.0 up;
@@ -517,7 +595,3 @@ icons k = 6, 7). The Link's state tables: entry 0x804A7628, update 0x804A74E0 (b
   facing << 4 | player: kind 6) given his body box every tick (0x802BAA0C): it sets alight the other Links it meets.
   Effects 584/583/582/585 and 580/579/578/581 by facing (right, left, down, up), redone when he turns. TV frames
   (0x80267018): 885 + 8 × direction + +0x3F9 (+0x3F8 / 2, 16-tick cycle); the GBA screens 917 + 8 × direction.
-- Not traced: everything above. The sim's assumptions (TODO(measure)): 0x8027EB04 as turning with the stick, a
-  flattened Link's frame (standing) and walk (as usual), no fireball after a stream, the fireball's speeds from the
-  adventure's trace (docs/measurements/adventure-lake-hylia.md: 1.02 px/tick first), the stream's walk animation, no
-  water putting a burning Link out, the pound and fire on pots, orbs, bushes and soldiers.

@@ -67,7 +67,7 @@ in RAM by their vtable (`node tools/dol/src/cli.ts live <mem1> <IDs>`, vtables b
 | Shield block | 0x802336A8: attacker and victim both get a push of 2.0 px/frame apart (direction 0x80233BC4), no state change | 2.0 px/frame along the line, set again every frame the boxes meet, then the push decay | measured ("Battle measurements: combat") | `BLOCK_PUSH_SPEED`, `PUSH_DECAY`, `shieldBlocks` (by facing) | +0x35C/+0x360 of both, +0x1240 |
 | Shield vs spin | the spin's entry sets +0x458 = 1, so 0x80272224 gets its starting facing | blocked | measured ("Battle measurements: combat") | `SHIELD_BLOCKS_SPIN` true | a spin into a shield |
 | Friendly fire alone | +0x7F ≠ 0 → damage 0 | | certain | (battle only) | |
-| Other attack boxes | 0x80273518 (0 damage, type 11), 0x802573E0 (box +0x590…, while +0xB38 ≥ 0 and +0xB68 = 1: 4 / 2 = 2, type 1), 0x80273FB8 (2, type 27), 0x80256F44 (the hammer's pound, box +0x5B0 while +0xB99: 2, type 20; charged 4, type 21) | | *likely* (read: the hammer, battle-combat.md "The Magic Hammer and the Fire Rod"); *guess* for the others | hammer.ts `HAMMER`, `poundHits`; the others not modelled | which item or move sets +0xB68 |
+| Other attack boxes | 0x80273518 (0 damage, type 11), 0x802573E0 (box +0x590…, while +0xB38 ≥ 0 and +0xB68 = 1: 4 / 2 = 2, type 1), 0x80273FB8 (2, type 27), 0x80256F44 (the hammer's pound, box +0x5B0 while +0xB99: 2, type 20; charged 4, type 21) | | *confirmed* for the hammer (traced: battle-combat.md "The Magic Hammer and the Fire Rod, traced"); *guess* for the others | hammer.ts `HAMMER`, `poundHits`; the others not modelled | which item or move sets +0xB68 |
 
 **Thrown things and shots**
 

@@ -576,6 +576,8 @@ export class EntityView {
       case "flame":
         if (e.phase !== "active") return; // out until its switch lights it
         return this.sprite(cycle(B2.flame, 6), x, y + 4, depth);
+      case "blaze": // (BLZE: as a lit eternal flame)
+        return this.sprite(cycle(B2.flame, 6), x, y + 4, depth);
       case "jet": {
         // The game draws JPA particles; flame sprites along the part that's out (its size eases in and out).
         const length = Math.round((JET_LENGTH * jetSize(e)) / JET_SIZE_ONE);

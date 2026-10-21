@@ -118,17 +118,18 @@ function endBoots(f: Fighter): void {
   f.flyX = f.flyY = 0;
 }
 
-/** A Link's ground impact at his feet (a boots crash, a charged hammer's pound: hammer.ts): thud switches, bees, and
- *  the other Links within `joltReach` px of him hop and land dizzy (main.dol 0x8024BBB8: 50 px, twice that when the
- *  impact's Link holds a level-2 item). */
-export function impact(state: GameState, i: number, joltReach: number = BOOTS.joltReach): void {
+/** A Link's ground impact at his feet (a boots crash, a charged hammer's pound: hammer.ts): thud switches (the boots'
+ *  only: a charged pound 61 px from The Field's didn't set it, traced), bees, and the other Links within `joltReach` px
+ *  of him hop and land dizzy (main.dol 0x8024BBB8: 50 px, twice that when the impact's Link holds a level-2 item;
+ *  traced with the hammer: 45 px, and 70 px at level 2), but a flattened one (traced: the pound's own victim). */
+export function impact(state: GameState, i: number, joltReach: number = BOOTS.joltReach, thud = true): void {
   const b = state.battle!, p = state.players[i]!;
   const near = (x: number, y: number, reach: number) => (x - p.x) ** 2 + (y - p.y) ** 2 <= (reach * SUBPX) ** 2;
-  for (const prop of b.props.actors) if (prop.id === "DOSN" && near(prop.x * SUBPX, prop.y * SUBPX, BOOTS.impactReach)) setSwitch(b, ownSwitch(prop.params), true);
+  if (thud) for (const prop of b.props.actors) if (prop.id === "DOSN" && near(prop.x * SUBPX, prop.y * SUBPX, BOOTS.impactReach)) setSwitch(b, ownSwitch(prop.params), true);
   wakeBees(b, p.x, p.y, BEE_WAKE_DISTANCE);
   state.players.forEach((o, j) => {
     const fo = b.fighters[j]!;
-    if (j === i || fo.mode !== "active" || (fo.move !== "none" && fo.move !== "ready") || !onGround(fo) || !near(o.x, o.y, joltReach)) return;
+    if (j === i || fo.mode !== "active" || (fo.move !== "none" && fo.move !== "ready") || fo.flat > 0 || !onGround(fo) || !near(o.x, o.y, joltReach)) return;
     stopActing(o);
     fo.move = "jolt";
     fo.moveTick = -1;

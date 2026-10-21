@@ -522,6 +522,19 @@ async function hammerAndFireRod(page: Page): Promise<void> {
   const missing = [411, 412].filter((id) => !flying.includes(id)).concat([584, 580].filter((id) => !burning.includes(id)));
   if (missing.length) problems.push(`fire rod: effects ${missing.join(", ")} missing`);
   await shot(page, "mech-burning");
+  // A fireball left into the cliff (x 96): it bursts into a BLZE flame on the tile beyond (JPA 415, 416, 417).
+  await place(page, 0, 200, 184, "left");
+  await tick(page, 2);
+  await tap(page, "KeyL");
+  for (let t = 0; t < 120 && !(await game(page)).battle.entities.some((e) => e.kind === "blaze" && e.hp >= 0); t++) await tick(page, 1);
+  await tick(page, 2);
+  const blazing = await ids();
+  g = await game(page);
+  const blazes = g.battle.entities.filter((e) => e.kind === "blaze" && e.hp >= 0).map((e) => `(${e.x / 256}, ${e.y / 256})`);
+  console.log(`fire rod: BLZE ${blazes.join(" ")}; ${blazing.join(",")}`);
+  if (!blazes.length) problems.push("fire rod: no BLZE where the fireball met the cliff");
+  else if (![415, 416, 417].every((id) => blazing.includes(id))) problems.push(`fire rod: BLZE effects 415-417 missing (${blazing.join(",")})`);
+  await shot(page, "mech-blaze");
 }
 
 // The Field: P1 throws the boomerang at P2 (the Dolphin state's spots); it leaves pale afterimages behind it.

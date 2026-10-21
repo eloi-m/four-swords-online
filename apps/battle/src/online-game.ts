@@ -77,8 +77,11 @@ import {
  *    100 px, jolted Links land dizzy (state 12); CPUs use the boots, the hammer and the Fire Rod.
  * 27: splits refereed (only a majority cuts; a tie goes to the lobby's first claim, the other side drops out and
  *    rejoins), a free room's players away keep their places through restarts (absent from frame 0, `start` with `keep`).
+ * 28: the Fire Rod and the hammer traced: a 13-tick rod pose, the fireball from 0 px/tick, flames trailing their Link by
+ *    a tick, BLZE flames where fire meets a wall or burns a bush, shallow water puts a burning Link out, the stream back
+ *    60 ticks after a wall; a charged pound sets no thud switch and doesn't jolt a flattened Link.
  */
-export const ONLINE_VERSION = 27;
+export const ONLINE_VERSION = 28;
 
 /** A free room's match: free play on the free map, or a Shadow Battle for everyone who was on it. */
 export type MatchMode = "free" | "battle";

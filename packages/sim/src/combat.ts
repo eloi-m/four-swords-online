@@ -224,6 +224,9 @@ export interface Fighter {
   charge: number; // the hammer's charge (Link +0x3FC) or the Fire Rod's flame ticks (its magic used: firerod.ts)
   flat: number; // ticks left flattened by a hammer (Link +0xC9C: hammer.ts), 0 = none
   squash: number; // his height in hundredths (Link +0xC8C: 50 flattened, growing back to 100)
+  fireX: number; // his Fire Rod stream's flame or his flame while burning (firerod.ts): where he stood last tick, 1/256 px
+  fireY: number;
+  fireWait: number; // ticks before his stream's flame comes back after it burst on a wall; -1: his burning flame burst
 }
 
 export function createFighter(hearts: number, spawn: { x: number; y: number; facing: Facing }): Fighter {
@@ -272,6 +275,9 @@ export function createFighter(hearts: number, spawn: { x: number; y: number; fac
     charge: 0,
     flat: 0,
     squash: 100,
+    fireX: 0,
+    fireY: 0,
+    fireWait: 0,
   };
 }
 

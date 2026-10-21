@@ -164,13 +164,18 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   and reels the ball in for 30 ticks; a sword meeting the ball clanks. Not traced; assumed (TODO(measure)): one hit per
   reel-in, the clank cancelling that Link's strikes that tick, the ball's spin direction. The Pegasus Boots appear (The Field's mask
   0x1182; the castle's side rooms' 0x97E2): **done**, below. The hammer and the Fire Rod (only in the castle's side
-  rooms, 0x97E2, which have no `DOSN`): **done 2026-10-11**, read statically from main.dol, not traced
-  (`packages/sim/src/hammer.ts`, `firerod.ts`; docs/measurements/battle-combat.md "The Magic Hammer and the Fire Rod";
-  `ONLINE_VERSION` 25): the pound (2 life, 4 charged after 48 ticks held) flattens a Link for 300 / 600 ticks (no
-  Action button) and a charged one is a ground impact like the boots' crash; the fireball (or the held stream, up to
-  384 ticks) sets a Link alight: 2 life, he runs away 300 ticks setting alight whom he meets. CPUs use them since
-  2026-10-11 (B4). Left (TODO(measure)): a Dolphin trace of both (the poke recipe of "The Pegasus Boots"), what
-  the fire burns besides Links (`BLZE` on burnable tiles), the pound on pots and orbs, the effects' look. `DOSN` thud switches: The Field only ((128, 64) → 3, (256, 128)
+  rooms, 0x97E2, which have no `DOSN`): **done 2026-10-11**, read from main.dol; **traced 2026-10-21**
+  (`packages/sim/src/hammer.ts`, `firerod.ts`; docs/measurements/battle-combat.md "The Magic Hammer and the Fire Rod,
+  traced", 11 replayed traces; `ONLINE_VERSION` 28): the pound (2 life, 4 charged after 48 ticks held) flattens a Link
+  for 300 / 600 ticks and a charged one is a ground impact (bees, the jolt within 50 / 100 px, but no `DOSN` switch);
+  pots and orbs ignore it. The fireball (or the held stream, up to 384 ticks) sets a Link alight: 2 life, he runs
+  300 ticks steered by the stick, into pits, put out by shallow water, setting alight whom he meets; fire meeting a
+  wall leaves a `BLZE` flame (2 life, the slow knockback, any Link: a burning Link grazing a wall is hurt by his own),
+  fireballs and the stream burn bushes. CPUs use them since 2026-10-11 (B4; they don't avoid `BLZE` flames yet). Left
+  (TODO(measure)): fire on pots, orbs and soldiers, the hammer's Action-button lock while flat, why the charged pound
+  sets no `DOSN` switch, Above the Clouds' outer pits (a burning Link fell into one: state 30, back on the edge 58
+  ticks later with 2 life less, not the sim's jump-out of the Tower of Flames' hole), the effects' look. `DOSN` thud
+  switches: The Field only ((128, 64) → 3, (256, 128)
   → 4, (144, 256) and (352, 256) → 1).
 - **The Pegasus Boots** (done 2026-10-10; `packages/sim/src/boots.ts`, docs/measurements/battle-combat.md "The Pegasus
   Boots", 7 replayed traces; the run-up and crash first traced 2026-10-09, docs/measurements/battle-open-items.md

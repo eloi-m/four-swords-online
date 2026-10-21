@@ -22,6 +22,8 @@
 //   e.g. --link 35c:c for the push velocity)
 //   --watch <from>-<to>:<hexoff>:<hexlen> (repeatable; a write watchpoint on that field of every Link over those frames:
 //   each write prints the frame, the Link, pc and lr and goes into the output's `watchHits`; slow, Dolphin single-steps)
+//   --break <hexpc> (repeatable; a code breakpoint: each time the CPU gets there, the frame, lr, r3–r10 and the callers
+//   go into the output's `breakHits`, e.g. to see who spawns an actor and with what params)
 // With --dump-frames the output's `frameDumps` holds, per frame, how many images Dolphin had dumped (framedump_<n>.png is
 // the n-th; the game skips presenting frames while it loads, so n drifts from the frame number).
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -59,6 +61,7 @@ const { values } = parseArgs({
     tele: { type: "string", multiple: true, default: [] },
     link: { type: "string", multiple: true, default: [] },
     watch: { type: "string", multiple: true, default: [] },
+    break: { type: "string", multiple: true, default: [] },
     "dump-frames": { type: "boolean", default: false },
     "dump-audio": { type: "boolean", default: false },
   },
@@ -121,6 +124,8 @@ const watches = values.watch!.map((w) => {
   return { from: a!, to: b ?? a!, off: parseInt(off!, 16), len: parseInt(len!, 16) };
 });
 const watchHits: { f: number; link: number; off: number; pc: string; lr: string; callers: string[] }[] = [];
+const breaks = values.break!.map((b) => parseInt(b, 16));
+const breakHits: { f: number; pc: string; lr: string; r: string[]; callers: string[] }[] = [];
 const teles = values.tele!.map((t) => t.split(":").map(Number) as [number, number, number]);
 const config = values["dump-frames"]
   ? ["Dolphin.Movie.DumpFrames=True", "GFX.Settings.DumpFramesAsImages=True", "GFX.Settings.InternalResolution=1", "GFX.Settings.InternalResolutionFrameDumps=True"]
@@ -148,6 +153,27 @@ try {
   const pipe = saves.length ? new HotkeyPipe(userDir) : null;
   await gdb.addBreakpoint(MAIN_LOOP_HEAD);
   for (const p of patches) await gdb.addBreakpoint(p.pc);
+  for (const b of breaks) await gdb.addBreakpoint(b);
+  // The callers: the saved LRs up the stack's back chain (r1).
+  const callersOf = async (gprs: number[]) => {
+    const callers: string[] = [];
+    for (let sp = gprs[1]!, k = 0; k < 6 && sp >= 0x80000000 && sp < 0x81800000; k++) {
+      const frame = new DataView((await gdb.readMemory(sp, 8)).buffer);
+      sp = frame.getUint32(0);
+      if (sp >= 0x80000000 && sp < 0x81800000) callers.push(hex(new DataView((await gdb.readMemory(sp + 4, 4)).buffer).getUint32(0)));
+    }
+    return callers;
+  };
+  let frameNow = 0;
+  // A stop at a --break's pc is noted; true when it was one.
+  const noteBreak = async (pc: number) => {
+    if (!breaks.includes(pc)) return false;
+    const gprs = await gdb.readGprs();
+    const hit = { f: frameNow, pc: hex(pc), lr: hex(await gdb.readRegister(67)), r: gprs.slice(3, 11).map((r) => hex(r)), callers: await callersOf(gprs) };
+    breakHits.push(hit);
+    console.log(`break: frame ${hit.f} pc ${hit.pc} lr ${hit.lr} r3-r10 ${hit.r.join(" ")} callers ${hit.callers.join(" ")}`);
+    return true;
+  };
   // A stop at a --patch's pc applies it (once); true when it was one.
   const applyPatch = async (pc: number) => {
     const hit = patches.find((p) => p.pc === pc);
@@ -161,27 +187,22 @@ try {
   };
   // Runs to the next main-loop pass, applying any --patch reached on the way.
   const nextFrame = async () => {
-    while (await applyPatch((await gdb.continue()).pc));
+    for (let pc = (await gdb.continue()).pc; (await applyPatch(pc)) || (await noteBreak(pc)); pc = (await gdb.continue()).pc);
   };
   await nextFrame();
   const labels = segments.flatMap((s) => Array<string>(s.frames).fill(s.label));
   let resumed = false;
   for (let f = 0; f < frames; f++) {
+    frameNow = f;
     if (f > 0 && !resumed) {
       // A watchpoint stops the CPU before the next frame's breakpoint: note who wrote, and go on to the frame.
       for (let stop = await gdb.continue(); stop.pc !== MAIN_LOOP_HEAD; stop = await gdb.continue()) {
-        if (await applyPatch(stop.pc)) continue;
+        if ((await applyPatch(stop.pc)) || (await noteBreak(stop.pc))) continue;
         const lr = await gdb.readRegister(67);
         // The Link written: the first of them a register holds (r3, then r31 down).
         const gprs = await gdb.readGprs();
         const link = [3, ...Array.from({ length: 29 }, (_, i) => 31 - i)].map((r) => actors.indexOf(gprs[r]!)).find((i) => i >= 0) ?? -1;
-        // The callers: the saved LRs up the stack's back chain (r1).
-        const callers: string[] = [];
-        for (let sp = gprs[1]!, k = 0; k < 6 && sp >= 0x80000000 && sp < 0x81800000; k++) {
-          const frame = new DataView((await gdb.readMemory(sp, 8)).buffer);
-          sp = frame.getUint32(0);
-          if (sp >= 0x80000000 && sp < 0x81800000) callers.push(hex(new DataView((await gdb.readMemory(sp + 4, 4)).buffer).getUint32(0)));
-        }
+        const callers = await callersOf(gprs);
         for (const w of watches.filter((w) => f - 1 >= w.from && f - 1 <= w.to)) {
           const hit = { f, link, off: w.off, pc: hex(stop.pc), lr: hex(lr), callers };
           watchHits.push(hit);
@@ -228,7 +249,7 @@ try {
   gdb.close();
   writeFileSync(
     out,
-    JSON.stringify({ script, savestate: savestate ? values.savestate : "boot", ports, pollsPerFrame: POLLS_PER_FRAME, actors, frameDumps, ...(watches.length ? { watchHits } : {}), frames: records }),
+    JSON.stringify({ script, savestate: savestate ? values.savestate : "boot", ports, pollsPerFrame: POLLS_PER_FRAME, actors, frameDumps, ...(watches.length ? { watchHits } : {}), ...(breaks.length ? { breakHits } : {}), frames: records }),
   );
   raw.forEach(([addr], r) => writeFileSync(`${out}.${addr.toString(16)}.bin`, rawBufs[r]!));
   console.log(`${records.length} frames -> ${out}`);

@@ -27,6 +27,7 @@ export type EntityKind =
   | "explosion"
   | "debris" // a broken pot, bush or orb (effect only)
   | "flame" // BLZ2 eternal flame ("active" while lit)
+  | "blaze" // BLZE, a flame left where fire met a wall or burnt a bush (firerod.ts): `timer` its ticks left, `owner`
   | "jet" // FLME flame shooting out of the Tower of Flames' fire pit, `param` = direction 0-3, `timer` = size 0-1000
   | "firebar" // one arm of an FBMR fire bar, `angle` rotating around (x, y)
   | "switch" // SWTH floor switch, `param` = switch number

@@ -20,7 +20,7 @@ Index of the docs: [README.md](README.md).
   Script syntax in `tools/dolphin/src/script.ts`; `--raw <hexaddr>:<hexlen>` also dumps RAM ranges per frame,
   `--dump-frames` dumps frames (`--dump-audio` the DSP audio, into the user dir's Dump/Audio), `--script @file` reads the script from a file, `--dump <frame>:<addr>:<len>` saves a
   range once, `--write <frame>:<addr>:<hexbytes>` pokes RAM (e.g. Link +0xC10 = the item; `--fill <frame>:<addr>:<len>:<byte>`
-  a whole range, e.g. a texture: see measurements/screens.md "Renderer checks by RAM pokes"), `--patch <pc>:r<n>:<hexbytes>` writes at a register's address the first time the CPU reaches pc (Tingle's Tower's CSV header: measurements/adventure-world1.md), `--tele <frame>:<x>:<y>` moves
+  a whole range, e.g. a texture: see measurements/screens.md "Renderer checks by RAM pokes"), `--patch <pc>:r<n>:<hexbytes>` writes at a register's address the first time the CPU reaches pc (Tingle's Tower's CSV header: measurements/adventure-world1.md), `--break <pc>` notes each time the CPU gets there (frame, lr, r3–r10, the callers: who spawns an actor, with what params), `--tele <frame>:<x>:<y>` moves
   the Links. `R` in scripts presses the analog trigger too (FSA's Action button reads it). `trace-print.ts <trace.json>`
   tabulates a trace; `rawdiff.ts`, `memfind.ts`, `objtrace.ts` analyse raw dumps (spawned actors);
   `actor-trace.ts` records chosen fields of live actors found by vtable each frame (`actor-print.ts` prints them; `--tele`,

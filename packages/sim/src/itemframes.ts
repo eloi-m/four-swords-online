@@ -47,7 +47,7 @@ const DIR_INDEX: Readonly<Record<Facing, number>> = { right: 0, left: 1, down: 2
  * direction (the big hammer); raised while held (index 2, 1 then 0 by the charge), then by the release counter:
  * 1 ×2, 2 ×2, 5 ×8, 6 to the end (measured facing down: 306 ×2, 307 ×2, 310 ×8, 311 ×5); charged 1, 2, then 5 and 6
  * by turns (on the TV indices 3 and 4 show as 5 and 6), 5 ×2, 6 ×2, 5 ×2, 6 ×5, 7 to the end. A flattened Link
- * stands (TODO(measure): state 64's own frame). Null on the press tick (he walks or stands).
+ * stands (traced). Null on the press tick (he walks or stands).
  */
 export function hammerFrame(p: PlayerState, f: Fighter): number | null {
   const d = DIR_INDEX[p.facing];
@@ -62,13 +62,15 @@ export function hammerFrame(p: PlayerState, f: Fighter): number | null {
 }
 
 export const FIRE_ROD = {
-  /** The pose's ticks; the fireball (or the stream) on its last. */
-  pose: 12,
-  /** The fireball: how far ahead it appears (px), its speeds (1/256 px/tick: traced in the adventure) and box. */
+  /** The pose's ticks (its counter +0x3FA 0…12) and the counter the fireball leaves on, or the stream holds it on
+   *  (traced: 13 ticks, the fireball on the 12th). */
+  pose: 13,
+  fire: 11,
+  /** The fireball: how far ahead it appears (px), its speed (1/256 px/tick: from 0, easing 3 tenths of the way to
+   *  2 px/tick before each move, the first on the tick it appears: 0.6, 1.02, 1.31 … traced) and box. */
   out: 8,
-  startSpeed: 261,
   speed: 2 * SUBPX,
-  ease: 3, // tenths of the way to `speed`, a tick
+  ease: 3,
   half: 6,
   /** Ticks a burst fireball stays for its effect (drawing only: FIRE removes itself at once on the TV). */
   burst: 30,
@@ -80,16 +82,38 @@ export const FIRE_ROD = {
   invincible: 2,
 } as const;
 
+/** Fighter.shot while the Fire Rod's button has stayed held from the press (+0xB84: the stream may go on). */
+export const STREAMING = 1;
+
+/** Is this Link's stream of flame out this tick (the pose held on its counter 11, Fighter.charge its ticks)? */
+export const streaming = (f: Fighter) => f.move === "fireRod" && f.shot === STREAMING && f.moveTick === FIRE_ROD.fire - 1 && f.charge > 0;
+
+/** The stream's walk frames (rodWalk: 466 right, 470 left, 474 down, 481 up), by the charge's walk cycle. */
+const STREAM_WALK: Readonly<Record<Facing, readonly number[]>> = {
+  right: [466, 467, 468, 469, 466, 467, 468, 469],
+  left: [470, 471, 472, 473, 470, 471, 472, 473],
+  down: [474, 475, 476, 477, 474, 478, 479, 480],
+  up: [481, 482, 483, 484, 481, 485, 486, 487],
+};
+const STREAM_WALK_TICKS = [4, 2, 4, 4, 4, 2, 4, 4]; // (animations.ts CHARGE.walkTicks: traced alike)
+
 /**
- * The Fire Rod's player_sob frame: 395 + 6 × direction + the index (0 ×2, 1, 2, 3 ×6, 4, 5; 5 through the stream).
- * Null on the press tick (he walks or stands). A burning Link runs on the TV's run frames (0x80267018: 885 + 8 ×
- * direction + a frame every 2 ticks; the GBA screens draw 917… with the flames).
+ * The Fire Rod's player_sob frame: 395 + 6 × direction + the index by the pose's counter (0 ×2, 1, 2, 3 ×6, 4, 5 ×2:
+ * traced facing right, 395 ×2, 396, 397, 398 ×6, 399, 400 ×2); through the stream the rod held out (466…), walking
+ * on the charge's cycle. Null on the press tick (he walks or stands). A burning Link runs on the TV's run frames
+ * (0x80267018: 885 + 8 × direction + a frame every 2 ticks; the GBA screens draw 917… with the flames).
  */
 export function fireRodFrame(p: PlayerState, f: Fighter): number | null {
   const d = { right: 0, left: 1, down: 2, up: 3 }[p.facing];
-  if (f.move === "burning") return 885 + 8 * d + (Math.floor(f.moveTick / 2) & 7);
+  // (The hit tick still shows the pose he was in.)
+  if (f.move === "burning") return f.moveTick < 0 ? null : 885 + 8 * d + (Math.floor((f.moveTick + 1) / 2) & 7);
   if (f.moveTick < 0) return null;
-  // The pose's counter this tick (the stream holds it on its last tick: firerod.ts keeps its ticks in `charge`).
-  const c = f.charge > 0 ? FIRE_ROD.pose - 1 : Math.min(f.moveTick, FIRE_ROD.pose - 1);
+  if (streaming(f)) {
+    let t = p.moving ? p.walkTicks : 0, k = 0;
+    while (t >= STREAM_WALK_TICKS[k]!) t -= STREAM_WALK_TICKS[k++]!;
+    return STREAM_WALK[p.facing][k]!;
+  }
+  // (After a stream the pose is on its counter 11 at least: the tick the magic ran out shows it too, traced.)
+  const c = f.charge > 0 ? Math.max(FIRE_ROD.fire, Math.min(f.moveTick, FIRE_ROD.pose - 1)) : Math.min(f.moveTick, FIRE_ROD.pose - 1);
   return 395 + 6 * d + (c < 2 ? 0 : c < 3 ? 1 : c < 4 ? 2 : c < 10 ? 3 : c < 11 ? 4 : 5);
 }

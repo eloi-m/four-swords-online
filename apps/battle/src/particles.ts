@@ -59,6 +59,8 @@ export const BATTLE_PARTICLES = {
   fireball: [414, 412],
   /** BLZ2 eternal flames, queued every frame while lit (main.dol 0x802E57E0; unlit on the TV in battle). */
   flame: [844, 845],
+  /** BLZE, the flame fire leaves on a wall or a burnt bush: its init (main.dol 0x802BD25C) starts 415, 416, 417. */
+  blaze: [415, 416, 417],
   /** The heat haze over a lit eternal flame (layer 1), a fireball and a jet that's out (layer 1 / 1): queued, distorting (RAM: Tower of Flames). */
   haze: 1357,
   /** HBMB fuse while lit: smoke and sparks at the bomb (RAM: a lifted socket bomb). */
@@ -173,6 +175,7 @@ export function drawnAsParticles(e: Entity): boolean {
     case "jet":
     case "firebar":
     case "fireball":
+    case "blaze":
       return true;
     case "explosion":
       return !(e.param & BLAST_GIANT); // (the giant bomb's flash is drawn too: entities.ts)
@@ -388,6 +391,9 @@ export class BattleParticles {
         for (const id of fire.flame) add(`rodfire:${e.id}:${id}`, tick - e.tick, { ...at(id), rotation: [0, fire.turn[e.facing], 0] }, ahead);
         return;
       }
+      case "blaze":
+        for (const id of BATTLE_PARTICLES.blaze) add(`blaze:${e.id}:${id}`, tick - e.tick, at(id));
+        return;
       case "flame":
         if (e.phase === "active") {
           for (const id of BATTLE_PARTICLES.flame) add(`flame:${e.id}:${id}`, this.roundStart, at(id));

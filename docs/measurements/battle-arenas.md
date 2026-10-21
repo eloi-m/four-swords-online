@@ -172,7 +172,7 @@ it now. Where he comes back: traced since (below, "Shadow Battle's open items, t
 the socket bomb going off 26 px away in P1's hands (18 px up) and the same bomb thrown against the trunk, going off on
 the ground 24 px away, didn't wake them. Their idle state (the update 0x80343D90 → 0x8034423C, kind 0) only wakes on a
 Link within 80 px (6400 = 80²) for whom 0x8026FCE0 is true: Link +0xB9A, +0xB9C or +0xB9D set. +0xB9A is set by the
-hammer's state 0x8025B3F0 on its release counter's 18 and 19, charged only (battle-combat.md "The Magic Hammer and the Fire Rod"),
+hammer's state 0x8025B3F0 on its release counter's 18 and 19, charged only (battle-combat.md "The Magic Hammer and the Fire Rod, traced"),
 +0xB9C by 0x8025D7E4 (another item's impact: the boots?), +0xB9D by 0x8024BBB8: a ground impact, which the TV arenas'
 items (bow, bombs, boots in the Field) can hardly give. The HBMB, state-5 and box checks (0x801F2718, 0x801F82CC,
 0x801F285C) belong to the swarm's other states. So swords and blasts don't wake them; a boots crash 50 px away did (2026-10-10,
