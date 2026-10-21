@@ -32,6 +32,7 @@ export * from "./cavenoreturn.ts";
 export * from "./tingletower.ts";
 export * from "./hyrulecastle.ts";
 export * from "./phantomganon.ts";
+export { TINGLE, TINGLE_BASE_FRAME, TINGLE_STATE, tingleHolds, tingleShown, type Tingle } from "./tingle.ts";
 export * from "./tileblocks.ts";
 export * from "./colorblocks.ts";
 export * from "./replay.ts";

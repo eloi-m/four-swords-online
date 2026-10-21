@@ -146,6 +146,9 @@ export interface Rock {
 export const RCK2_HOLD_HALF = 16;
 export const RCK2_HOLD_MAX = 8;
 export const RCK2_REVEAL_TICKS = 3;
+/** The lift's ticks with the rock still on the ground (traced under Lake Hylia's bridge: 8 px up on the 66th tick after
+ *  the press, 16 two ticks on, on their heads, 18 px, at the carry): what it holds comes out 3 ticks later. */
+export const RCK2_UP_TICKS = 66;
 
 /** The actors (their indices) held under the area's two-Link rocks still in place, each by its rock's index. */
 export function heldUnderRocks(game: AdventureGame, actors: readonly AreaActor[]): Map<number, number> {
@@ -300,8 +303,8 @@ export function stepHeavy(game: AdventureGame, buttons: number, pressed: number)
   const lifters = game.players.filter((_, i) => h.lifters & (1 << i));
   const mx = Math.round(lifters.reduce((s, p) => s + p.x, 0) / lifters.length), my = Math.round(lifters.reduce((s, p) => s + p.y, 0) / lifters.length);
   if (h.phase === "lift") {
-    // It slides onto them and up (traced: on their heads, 18 px up, from 65 ticks in).
-    const k = Math.min(1, h.tick / HEAVY_LIFT_TICKS);
+    // It stays put, then slides onto them and up (traced: off the ground from 65 ticks in, on their heads, 18 px up, at the carry).
+    const k = Math.min(1, Math.max(0, h.tick - RCK2_UP_TICKS) / (HEAVY_LIFT_TICKS - RCK2_UP_TICKS));
     r.x += Math.round((mx - r.x) * k);
     r.y += Math.round((my - r.y) * k);
     r.z = Math.round(HEAVY_CARRY_HEIGHT * k);

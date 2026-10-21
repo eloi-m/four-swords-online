@@ -62,6 +62,12 @@ interface Seen {
   blades: number[];
   fireballs: number;
   trapEffects: number;
+  /** Tingle under Lake Hylia's bridge (sim tingle.ts): his state, frame and area, whether he's drawn; the message on show. */
+  tingle: { state: number; frame: number; area: number } | null;
+  tingleDrawn: boolean;
+  talk: number;
+  /** The characters the message box shows typed (0: no box). */
+  typed: number;
   /** The whirlpools of the leader's room synced (their swirl 1363). */
   whirlpools: number;
 }
@@ -127,6 +133,10 @@ async function stepUntil(page: Page, until: string, ms: number, frames: number, 
           blades: a.enemies.filter((e: any) => e.type === "TRAP").map((e: any) => e.shot),
           fireballs: a.enemies.filter((e: any) => e.type === "OKTM" && e.kind === 5).length,
           trapEffects: v.drawnTrapEffects,
+          tingle: a.tingle ? { state: a.tingle.state, frame: a.tingle.frame, area: a.tingle.area } : null,
+          tingleDrawn: v.tingleGroup.children.length + v.tvTingle.children.length > 0,
+          talk: a.talk?.message ?? -1,
+          typed: v.dialogue?.shown?.typed ?? 0,
           whirlpools: v.drawnWhirlpools,
         };
       };
@@ -185,6 +195,14 @@ try {
   // (Once it's opened, it opens over 17 ticks and the Links go in; seen again as they come back out.)
   const house = await check(page, "house-door", "s.room === 3 && s.area === 0 && s.opened.includes(3 * 4096 + 5)", 1000 / 60, 40000, houseDoor);
   if (house) expectTiles("house-door", await check(page, "house-door-open", `s.room === 3 && s.area === 0 && s.window === 0 && s.tick >= ${house.tick + 60}`, 1000 / 60, 20000, houseDoor), [0x3b0, 0x3b1]);
+  // Room 5's area 2, under the bridge: Tingle, freed from under the two-Link rock, talking (1305), chanting (1302:
+  // both2 192 + 37 in the Kooloo- part), up on his balloon (+ 2), then on the TV behind the window as the Links leave.
+  const tingle = (name: string, s: Seen | null) => {
+    if (s && !s.tingleDrawn) problems.push(`${name}: Tingle isn't drawn (${JSON.stringify(s.tingle)})`);
+  };
+  tingle("ftgl-talks", await check(page, "ftgl-talks", "s.room === 5 && s.area === 2 && s.window === 1 && s.talk === 1305 && s.typed >= 40", 1000 / 60, 40000));
+  tingle("ftgl-chant", await check(page, "ftgl-chant", "s.talk === 1302 && s.tingle?.frame === 37 && s.typed > 0", 1000 / 60, 4000));
+  tingle("ftgl-flies", await check(page, "ftgl-flies", "s.tingle?.state === 10 && s.tingle.frame === 2", 1000 / 60, 2000));
   // Room 6's whirlpool (WARP (416, 224), style 0x0E: its swirl 1363 and sparkles 1262 at (424, 232)) as the route swims
   // to it from the waterfall's pool, the leader 100 px off it at most.
   const pool = await check(page, "whirlpool", "s.room === 6 && s.area === 0 && Math.hypot(s.x - 424, s.y - 232) < 100", 1000 / 60, 60000);

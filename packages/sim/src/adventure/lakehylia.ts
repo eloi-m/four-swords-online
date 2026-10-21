@@ -4,6 +4,7 @@
 import { Button, SUBPX } from "../player.ts";
 import { collect, defeat, face, fight, formation, goTo, holdUntil, openChestFacing, press, sequence, shadowGone, travelTo, wait, waitUntil, walkTo, type Goal } from "./drive.ts";
 import { KEY_MESSAGE, TALK_OPEN_TICKS } from "./dialogue.ts";
+import { TINGLE_STATE, tingleHolds } from "./tingle.ts";
 import { GATHER_BUTTON, SEPARATE_BUTTON, selectButtons } from "./formation.ts";
 
 const { Up, Down, Left, Right, Sword, Action, Item } = Button;
@@ -40,6 +41,24 @@ const together = (): Goal[] => [press(GATHER_BUTTON, 1, 0), waitUntil("together"
 /** A goal, then the four trailing again, as one goal (the bent playtests count the goals): a C-stick formation walks as
  *  one, a follower that meets a wall holding the leader (formation.ts holdFormation), so the routes leave it once done. */
 const thenTogether = (goal: Goal): Goal => sequence(`${goal.name}, then together`, [goal, ...together()]);
+
+/** Tingle's scene under the bridge (tingle.ts): his messages read (a press a page; his chant turns by itself) until
+ *  he's up on his balloon and the Links walk again. */
+function tingleScene(): Goal {
+  let last = -99;
+  return {
+    name: "Tingle's scene",
+    limit: 3000,
+    next(g, _s, t) {
+      if (t === 0) last = -99;
+      const s = g.adventure.tingle;
+      if (!s || (s.state >= TINGLE_STATE.fly && !tingleHolds(g))) return true;
+      if (!g.adventure.talk || t - last < 8) return 0;
+      last = t;
+      return Item;
+    },
+  };
+}
 
 /** The route, in milestones (each a list of goals); `LAKE_HYLIA_ROUTE` is all of them. */
 export const LAKE_HYLIA_MILESTONES: readonly { name: string; goals: readonly Goal[] }[] = [
@@ -274,7 +293,10 @@ export const LAKE_HYLIA_MILESTONES: readonly { name: string; goals: readonly Goa
       press(Action, 2, 4),
       waitUntil("the rock carried", (g) => g.adventure.heavy?.phase === "carry", 120),
       press(Action, 2, 4),
-      thenTogether(waitUntil("the rock thrown", (g) => !g.adventure.heavy, 60)),
+      // Under it, Tingle: his scene holds the Links until he floats off (a rock still carried then is taken).
+      waitUntil("the rock thrown", (g) => !g.adventure.heavy, 60),
+      tingleScene(),
+      ...together(),
       travelTo(192, 120),
       holdUntil("off the ledge into the water", Down, (g) => g.adventure.links[0]!.mode === "swim", 120),
       // Out by a low way: the higher ones lead into a pen of stakes.

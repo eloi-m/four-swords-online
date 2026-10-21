@@ -57,6 +57,8 @@ export const EXPECTED: Readonly<Record<string, string>> = {
   "plateau-switch / cross formation": FOUR_ON_SWITCH,
   "plateau-rock / idle 120 ticks": "route (inferred): the walk's stop before room 4's north exit (travelTo (56, 24), tolerance 1.5) is at the exit's edge; after the snap the leader leaves at x 57.0 and the exit isn't taken (an exact stop there might clear it: unverified)",
   "plateau-rock / wide formation": TWO_LIFTERS,
+  "plateau-rock / y -1 px": "route: the trail into room 5's pocket puts a follower on its south bank's floor switch (80, 336), switch 1 (the scripted run's passes beside it)",
+  "plateau-rock / y -2 px": "route: the trail into room 5's pocket puts a follower on its south bank's floor switch (80, 336), switch 1 (the scripted run's passes beside it)",
   "pocket-stone / from another side": "route: coming round from below, a follower steps on room 5's floor switch 1 at (80, 336) (it starts the generator at (304, 208))",
   "block / cross formation": PUSH_FORMATION,
   "raft / wide formation": RAFT_FORMATION,

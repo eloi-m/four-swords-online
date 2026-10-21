@@ -248,7 +248,9 @@ clear (`#route`, `window.fso.route`).
   Lake Hylia room 3's sign; an item or a chest's content got: the pose, then its message on the 97th tick (traced).
   A message that is only a flow (branch4, ifFlag: Lake Hylia's old man and cave villager; branch 2.07 on a room
   switch: Tingle's house villagers) shows the text it leads to, with the controllers, flags and room switches the sim
-  keeps (`MessageBook.resolve`; the rules: `docs/formats/j2d-and-bmg.md`).
+  keeps (`MessageBook.resolve`; the rules: `docs/formats/j2d-and-bmg.md`). A message whose text ends in a `branch`
+  2.07 goes on with the one it picks in the same box (`MessageBook.follows`, `Talk.sameBox`), and a page with a `wait`
+  2.15 stays that long once typed and turns by itself, the button ignored (Tingle's chant, traced: `tingle.ts`).
   Not done: villagers that talk by themselves when touched, the balloon placed over a speaker, a press while typing,
   the flows of `branch` 2.10 and 2.2C, `ifGems`, `ifItem` and a text's `then`.
 - **The Cave of No Return (boss011), by its route from its start to its goal.** `cavenoreturn.ts`, 12 milestones,
@@ -354,8 +356,11 @@ Played to its clear (`lakehylia.ts`). Checked off the route by `tools/playtest` 
 the puzzles bent, the actors against their drawings); what they found is in `docs/BACKLOG.md` B6.
 Room 4's minor Shadow Link (`ZSLH`, `minorshadow.ts`, traced): 103 ticks after the room change he raises his hammer,
 three blows whose shock wave stuns the Link in control near them, then spins away in dark smoke and walks off unseen;
-gone for good. Placed but not simulated (besides `FGAL`, `KEPO`, `ZSLJ` and the hidden controllers named above): `YAJI` (the
-arrows on room 0's ground, drawn only), `FTGL` (Tingle on his balloon under room 5's bridge, drawn only), `TMI2` (room
+gone for good. Room 5's Tingle (`FTGL`, `tingle.ts`, traced): under the two-Link rock on area 2's ledge (the bridge's
+GBA area); the rock lifted, he lies there, then stops the Links, talks (1294, then 1295 → 1305 → his chant 1302 in one
+box), floats off on his balloon past the GBA screen's edge and over room 5's TV, gone for good; the route reads him
+(`lakehylia.ts`). Placed but not simulated (besides `FGAL`, `KEPO`, `ZSLJ` and the hidden controllers named above): `YAJI` (the
+arrows on room 0's ground, drawn only), `TMI2` (room
 58's 2-3 player blocks, in its tiles), `PRTC` (the waterfalls' particles, drawn by the stage effects), and `WPWL`,
 `SENP`, `ZOOM`, `GLWP` (hidden; what they do unknown).
 The 2026-10-18 black-box playtest (screenshots only, `#manual`): its "push blocks" walked through in room 4 and room

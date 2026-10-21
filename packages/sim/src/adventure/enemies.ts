@@ -29,6 +29,7 @@ import { armosHalf, armosHurtable, BONE_KIND, BUZZ, CRAB, initArmos, initBuzzBlo
 import type { AdventureStage } from "./stage.ts";
 import { initPame, initRope, initZol, PAME, pameBig, pameDeathGems, pameHarms, pameStruck, pameUpright, stepPame, stepRope, stepZol, walkerAfterKnock, walkerKnocked, WALKERS } from "./walkers.ts";
 import { heldUnderRocks, RCK2_REVEAL_TICKS } from "./rocks.ts";
+import { revealTingle } from "./tingle.ts";
 import { FIREBALL_KIND, hurtZora, initPuku, initZora, PUKU, pukuHalf, stepFireball, stepPuku, stepZora, ZORA, ZORA_SHOT, zoraUp } from "./waterfoes.ts";
 import { initRaisedStalfos, initWizzrobe, isCaster, RAISED_STALFOS, raisedStalfosHit, raisedStalfosHurtable, raisedStalfosHurts, stepRaisedStalfos, stepWizzrobe, wizzrobeDies, wizzrobeHurt, wizzrobeHurts, wizzrobeSolid, WIZZROBE, WIZZROBE_BOLTS, type WizzrobeHooks } from "./wizzrobe.ts";
 import { initShadowLink, shadowAfterKnock, shadowBeaten, shadowForm, shadowHurtable, shadowMatches, shadowParries, shadowStruck, SHADOW, stepShadowLink } from "./shadowlink.ts";
@@ -474,12 +475,17 @@ function die(game: AdventureGame, stage: AdventureStage, e: Enemy): void {
   if (e.type === "SLR4" && e.kind === 1) for (const s of game.adventure.enemies) if (s.leader === e.id && enemyActive(s)) [s.life, s.state, s.tick] = [0, "die", 0];
 }
 
-/** What a lifted two-Link rock held comes out RCK2_REVEAL_TICKS ticks after it left the ground (rocks.ts). */
+/** What a lifted two-Link rock held comes out RCK2_REVEAL_TICKS ticks after it left the ground (rocks.ts): its enemies,
+ *  Tingle (tingle.ts). */
 function revealHeld(game: AdventureGame, stage: AdventureStage): void {
   for (const r of game.adventure.rocks) {
     if (!r.held.length || !((r.state === "held" && r.z > 0) || r.state === "flying")) continue;
     if (++r.reveal < RCK2_REVEAL_TICKS) continue;
-    for (const actor of currentArea(game, stage).actors) if (r.held.includes(actor.index) && ENEMY_TYPES.includes(actor.id)) spawnEnemy(game, stage, actor.id, actor.x, actor.y, actor.params, actor.index);
+    for (const actor of currentArea(game, stage).actors) {
+      if (!r.held.includes(actor.index)) continue;
+      if (ENEMY_TYPES.includes(actor.id)) spawnEnemy(game, stage, actor.id, actor.x, actor.y, actor.params, actor.index);
+      else if (actor.id === "FTGL") revealTingle(game, stage, actor.index);
+    }
     r.held = [];
   }
 }

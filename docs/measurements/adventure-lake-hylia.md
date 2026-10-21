@@ -86,6 +86,38 @@ port 55129). His own states at +0x248 (table 0x804A6B4C), their ticks +0x24C, pl
   still, then walking (frames 24-31, 3 each) up at 0.1, 0.2 … 1 px/frame to 48 px past the room's top edge ((p >> 4) &
   3 = 3), gone there (frame 981: 242 frames into state 2). The camera widened after the ball. He dropped nothing.
 
+**Tingle under the bridge** (`FTGL`, room 5 area 2 at (144, 112), params 0, under the `RCK2` (params 0x30) on the
+same spot; traced 2026-10-21 with `actor-trace.ts --ids FTGL,RCK2 --scan 812D8000:81300000` from `ref/adv/room5-river.sav`
+teleported to room 5 (140, 232), swum right into area 2 under the bridge, teleported to (110, 103), the long formation
+(c-down), walked right to x 121 facing right, R, then R again on the carry; A every 40 frames from then; frame dumps;
+`ref/dolphin-user-adventure-ftgl`, GDB port 2430). His object at 0x812D8500: state +0x230 (table 0x804AAE2C), its count
++0x238, frame +0x23C (both2 192 + it), the table animation +0x240/+0x244/+0x248, his listener +0x234, screen +0x4 (9:
+area 2's GBA screen, 0: the TV). Frames are the trace's.
+- The lift's press on 270 (the rock's +0x230 = 1 on 271, the Links' state 17 on 272); the rock stays at its place
+  with no height until 336 (8 px up, x 133), 16 px on 344, on their heads (18 px) at the carry, 353. Tingle is made on
+  338 (68 ticks after the press), lying there (frame 29), state 0 with 50 ticks. Thrown, the rock flew as usual.
+- 388: state 1, the scene takes the game; 389: state 2 (60 ticks). The four stand facing him (player_sob 60, all left
+  of him; facing right), whatever they did. In an earlier run with the rock still carried at 388 it was out of RAM by
+  the next look (a dump at 420).
+- 449: state 3, 450: state 4 (120 ticks): frames 29 (1 tick), 30 (4), 21 (50), 31 (4), 32 (8), 33 (4), 34 (8), 21.
+  570: state 5, 572: state 6, the box with msgus 1294 ("... ... ... / ... ... ... / Huh?!"; the code's number 1293
+  is the index, id − 1, as `KEY0`'s 360 for 361). Three presses closed it (604, 644, 684); 687: state 7, 688: state 8,
+  the box with 1295 ("You... You've saved Tingle! …") going on with 1305 (its trailing `branch` 1304: "Oh, Mr.
+  Fairy! …", read in the dumps) and 1302 (1305's trailing `branch` 1301: the chant), frame 20 meanwhile.
+- The chant (1302, four pages `{part n}{wait w}` text: w 55, 55, 60, 45): each page's part pose from its start (part
+  0 on 1801, 3 frames after the press that turned 1305's last page; then 1863, 1925, 1993: the page lasts w + its
+  characters + 1, its text typed from about 9 frames in (the dumps: the page before's text until then), the presses
+  in between changed nothing), the box gone after the last on 2046 (its closing seen to 2057): state 9, frames 21,
+  26, 25, 24, 23, 6 (4 ticks each); 2070: state 10, frames 0, 1, 2, 1 (4, 4, 6, 6, then 10 each), moving (0.4, 0)
+  px/frame and 0.3 px/frame up to 30.3 px. The Links walked again from 2074 (the end of the scene, 0x801F6884, on 2070).
+- 2362: x 261.2, his ±20 px box past the GBA screen's right edge (the leader at x 121): state 11; 2363: state 12 on the
+  TV (screen 0) at world (1364, 920) = room 5 (340, 152), 60 frames; 2423: state 13, 0.6 px/frame right, up to 30.3 px;
+  gone on 2724 (x 520.6). The Force Gems' count (104) was the same before and after. Swum out of area 2 (its ledge's
+  east side, area 0 at x 344) and back in (the WARPs at x 336, going left), no `FTGL` was made again (watched 500
+  frames).
+- In the dumps, not simulated: a "..." balloon on the GBA screen above the Links while he talks; the box is the TV's
+  message band across the bottom (over the GBA window, one player).
+
 **The key and the locked door** (`adv-door-frames`, room 3; `actor-trace.ts --tele`): teleported onto the `KEY0`
 (456, 200), the game stopped for a message (lift it with R and carry it to a keyhole,
 dismissed with A); facing it from 18 px below, R lifted it (state 17, 16 frames, then 18 carrying, player_sob 719-723),

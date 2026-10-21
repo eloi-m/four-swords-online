@@ -69,10 +69,18 @@ export interface MessageBook {
   sets(id: number): readonly (readonly [number, number])[];
   /** The message to show for `id`: itself when it has text, else what its flow leads to; null when nothing does. */
   resolve(id: number, state: FlowState): number | null;
+  /** The message a branch (2.07) standing at the end of `id`'s text goes on with in the same box (after its flow), or
+   *  null: Tingle's 1295 → 1305 → 1302 (tingle.ts, traced: one talk). */
+  follows(id: number, state: FlowState): number | null;
+  /** Per page of a message, the frames of a `wait` (2.15) on it (0 none) and the number of its `part` (2.2B, -1 none). */
+  waits(id: number): readonly number[];
+  parts(id: number): readonly number[];
 }
 
 /** Flow tags the talk follows (BMG_TAGS' keys): branch (one of two by a switch), branch4 (one of four), ifFlag (one of two), setFlag. */
 const BRANCH = 0x20007, BRANCH4 = 0x20018, IF_FLAG = 0x20023, SET_FLAG = 0x20022;
+/** A page's pause before its text (u32 frames), a numbered part of Tingle's chant (u8). */
+const WAIT = 0x20015, PART = 0x2002b;
 /** The longest chain of flows followed (a loop shows nothing). */
 const MAX_FLOW = 8;
 
@@ -107,6 +115,24 @@ export function messageBook(bmg: Bmg): MessageBook {
         at = next;
       }
       return null;
+    },
+    follows(id, state) {
+      // The last thing before the closing page tag: a branch, after the text.
+      const parts = bmgMessageById(bmg, id)?.parts ?? [];
+      let end = parts.length - 1;
+      while (end >= 0 && parts[end]!.kind === "tag" && (parts[end] as BmgTag).key === 0) end--;
+      const last = parts[end];
+      if (!last || last.kind !== "tag" || last.key !== BRANCH || !parts.slice(0, end).some((p) => p.kind === "text")) return null;
+      const next = flowNext({ ...bmgMessageById(bmg, id)!, parts: [last] }, state);
+      return next === null ? null : this.resolve(next, state);
+    },
+    waits(id) {
+      const m = bmgMessageById(bmg, id);
+      return m ? bmgPages(m).map((page) => page.reduce((n, p) => (p.kind === "tag" && p.key === WAIT ? n + (bmgTagArgs(p)[0] ?? 0) : n), 0)) : [];
+    },
+    parts(id) {
+      const m = bmgMessageById(bmg, id);
+      return m ? bmgPages(m).map((page) => { const p = page.find((x): x is BmgTag => x.kind === "tag" && x.key === PART); return p ? bmgTagArgs(p)[0] ?? 0 : -1; }) : [];
     },
   };
 }
@@ -147,6 +173,11 @@ export interface Talk {
   close: number;
   /** Messages this talk shows after this one closes, in order, without a press (an escort Zora's greeting). */
   after?: number[];
+  /** Whether `after` goes on in the same box (a message's trailing branch: MessageBook.follows): the last page's press
+   *  turns to the next message as to a page. */
+  sameBox?: boolean;
+  /** The page on show's `wait` (MessageBook.waits): such a page types, stays that many ticks more, and turns by itself. */
+  wait?: number;
 }
 
 /** A speaker of the current area: the message it shows (after its flow), style and box (area px, inclusive), and whether a TV sign is read from below. */
@@ -245,9 +276,15 @@ function nextTalk(game: AdventureGame, stage: AdventureStage, done: Talk): void 
     game.adventure.talk = null;
     return;
   }
-  game.adventure.talk = { actor: done.actor, message, style: done.style, page: 0, tick: 0, close: 0, ...(rest.length ? { after: rest } : {}) };
+  game.adventure.talk = { actor: done.actor, message, style: done.style, page: 0, tick: 0, close: 0, ...(rest.length ? { after: rest } : {}), ...pageWait(stage, message, 0) };
   setFlags(game, stage, message);
 }
+
+/** A page's `wait` as Talk.wait (none: no field). */
+const pageWait = (stage: AdventureStage, message: number, page: number): { wait?: number } => {
+  const wait = stage.messages?.waits(message)[page] ?? 0;
+  return wait ? { wait } : {};
+};
 
 /** How many characters of the page on show are typed (0 before the box shows). */
 export function talkTyped(talk: Talk): number {
@@ -273,19 +310,49 @@ export function stepTalk(game: AdventureGame, stage: AdventureStage, buttons: nu
     if (--t.close === 0) nextTalk(game, stage, t);
     return 0;
   }
+  const pages = stage.messages?.pages(t.message) ?? [];
+  // A page with a wait (Tingle's chant, 1302: traced) ignores the button: typed, it stays `wait` ticks more and turns
+  // (the page wait + its characters + 1 ticks); after its last page the box is gone at once (the scene went on the
+  // tick after).
+  if (t.wait) {
+    if (t.tick >= TALK_OPEN_TICKS - 1 + t.wait + (pages[t.page] ?? 0)) {
+      if (t.page < pages.length - 1) turnPage(t, stage);
+      else if (t.sameBox && t.after?.length) goOn(game, stage, t);
+      else nextTalk(game, stage, t);
+      return 0;
+    }
+    t.tick++;
+    return 0;
+  }
   t.tick++;
   if (pressed && t.tick > TALK_OPEN_TICKS) {
-    const pages = stage.messages?.pages(t.message) ?? [];
     if (!pageTyped(t, stage)) t.tick = TALK_OPEN_TICKS - 1 + (pages[t.page] ?? 0);
-    else if (t.page < pages.length - 1) Object.assign(t, { page: t.page + 1, tick: TALK_OPEN_TICKS - 1 });
+    else if (t.page < pages.length - 1) turnPage(t, stage);
+    else if (t.sameBox && t.after?.length) goOn(game, stage, t);
     else t.close = TALK_CLOSE_TICKS;
   }
   return 0;
 }
 
+/** The next message of a box that goes on (Talk.sameBox) types at once, as a page turned. */
+function goOn(game: AdventureGame, stage: AdventureStage, t: Talk): void {
+  nextTalk(game, stage, t);
+  const next = game.adventure.talk;
+  if (!next) return;
+  next.tick = TALK_OPEN_TICKS - 1;
+  if (next.after?.length) next.sameBox = true;
+}
+
+/** The next page goes on show (it types from TALK_OPEN_TICKS on). */
+function turnPage(t: Talk, stage: AdventureStage): void {
+  Object.assign(t, { page: t.page + 1, tick: TALK_OPEN_TICKS - 1 });
+  delete t.wait;
+  Object.assign(t, pageWait(stage, t.message, t.page));
+}
+
 /** A speaker that talks by itself opens its message now (no press): the owl, an escort Zora meeting the Link (zoras.ts). */
-export function openScripted(game: AdventureGame, stage: AdventureStage, actor: number, message: number, style: TalkStyle, after: number[] = []): void {
-  game.adventure.talk = { actor, message, style, page: 0, tick: 0, close: 0, ...(after.length ? { after } : {}) };
+export function openScripted(game: AdventureGame, stage: AdventureStage, actor: number, message: number, style: TalkStyle, after: number[] = [], sameBox = false): void {
+  game.adventure.talk = { actor, message, style, page: 0, tick: 0, close: 0, ...(after.length ? { after, ...(sameBox ? { sameBox } : {}) } : {}), ...pageWait(stage, message, 0) };
   setFlags(game, stage, message);
 }
 

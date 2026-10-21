@@ -7,7 +7,7 @@
 // the sim has them instead of as static sprites. The environment as the game draws it: the river bed under the water
 // and the cloud shadows (rooms whose SWEV turns them on), the SEV2 J3D effects (waterfalls, rainbows), the particles'
 // screen distortions from a copy of the frame. It only reads the state.
-import { ACTOR_SOB_FILES, actorPieces, decodeBti, fsaParticlePlacement, type EffectPlacement, isHiddenUnsimulated, loadOverlay, parseJpac, loadSob, loadTileset, playerPaletteMap, type ActorSob, type RarcArchive, type SpriteFrame, type SpriteSheet, type Stage } from "@fso/formats";
+import { ACTOR_SOB_FILES, actorPieces, type ActorPiece, decodeBti, fsaParticlePlacement, type EffectPlacement, isHiddenUnsimulated, loadOverlay, parseJpac, loadSob, loadTileset, playerPaletteMap, type ActorSob, type RarcArchive, type SpriteFrame, type SpriteSheet, type Stage } from "@fso/formats";
 import {
   actorSpriteMeshes,
   blendLayer,
@@ -33,7 +33,7 @@ import {
   opaqueFrame,
 } from "@fso/render";
 import { fighterFrame, fighterHeight, fighterVisible, HURTBOX, linkDisplayFrame, SUBPX, switchOn, type PixelBox } from "@fso/sim";
-import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, doorLookTiles, drawnRewrites, ENEMY_TYPES, goneDoorwayFigures, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
+import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, doorLookTiles, drawnRewrites, ENEMY_TYPES, goneDoorwayFigures, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { CloudShadow, cloudShadowLevel } from "../../battle/src/cloudshadow.ts";
 import { EntityView } from "../../battle/src/entities.ts";
@@ -157,6 +157,10 @@ export class AdventureView {
   /** The current area's rocks, drawn from the state (rebuilt when one moves). */
   private readonly rockGroup = new THREE.Group();
   private rockKey = "";
+  /** Tingle (sim tingle.ts) in the area shown, or on the TV behind the GBA window; what he was last drawn as. */
+  private readonly tingleGroup = new THREE.Group();
+  private readonly tvTingle = new THREE.Group();
+  private tingleKey = "";
   private areaBounds = { x0: 0, y0: 0, x1: GBA_W, y1: GBA_H };
   private view = new RoomPan();
   private gbaView = { x: 0, y: 0 };
@@ -200,7 +204,7 @@ export class AdventureView {
     this.entities = new EntityView(this.actorSources, data);
     this.enemies = new EnemyView(this.actorSources, data);
     this.ganon = new GanonView(stage.archive ?? null);
-    this.local.add(this.entities.group, this.enemies.group, this.rockGroup, this.ganon.group);
+    this.local.add(this.entities.group, this.enemies.group, this.rockGroup, this.tingleGroup, this.ganon.group);
     const tileset = loadTileset(data, stage.layout.tilesetIndex);
     this.tiles = new TilemapTextures(tileset);
     this.riverBed = new RiverBed(data);
@@ -212,7 +216,7 @@ export class AdventureView {
     for (const room of adventure.rooms) this.buildRoom(room);
     this.effects = new StageEffects(stage, data, { clouds: false, sceneZ: (p) => this.effectZ(p) });
     this.tv.add(this.effects.group);
-    this.tv.add(this.local);
+    this.tv.add(this.local, this.tvTingle);
     const jpc = data.files.find((file) => file.path === "particle.jpc");
     this.particles = jpc ? new JpaEffects(parseJpac(jpc.data), { zBase: 2.5, zScale: 1 / 16384 }) : null;
     this.stageEffects = this.particles ? stageParticles(stage) : [];
@@ -565,6 +569,7 @@ export class AdventureView {
     if (game.adventure.area === 0) this.fillRoomStatics(game, game.adventure.room);
     this.renderLinks(game);
     this.renderRocks(game);
+    this.renderTingle(game);
     this.entities.update(game);
     this.patchArea(game);
     this.enemies.update(game, this.adventure);
@@ -744,6 +749,27 @@ export class AdventureView {
     }
   }
 
+  // Tingle's first appearance (sim tingle.ts tingleShown): both2 192 + his frame, at his height; in the area the
+  // Links are in, or on the room's TV while they're in a GBA-screen area (his flight off from under the bridge).
+  private renderTingle(game: AdventureGame): void {
+    const t = tingleShown(game), a = game.adventure;
+    const key = t ? `${a.room}/${a.area}:${t.area}:${t.frame}:${Math.floor(t.x)}:${Math.floor(t.y)}:${Math.floor(t.z)}` : "";
+    if (key === this.tingleKey) return;
+    this.tingleKey = key;
+    disposeChildren(this.tingleGroup);
+    disposeChildren(this.tvTingle);
+    if (!t || (t.area !== a.area && t.area !== 0)) return;
+    const x = Math.floor(t.x), y = Math.floor(t.y), z = Math.floor(t.z);
+    const pieces: ActorPiece[] = [{ kind: "sprite", sob: "both2", frame: t.frame, dx: 0, dy: 0 }];
+    const into = t.area === a.area ? this.tingleGroup : this.tvTingle;
+    const room = this.rooms.get(a.room);
+    if (into === this.tvTingle) this.tvTingle.position.set(room?.origin.x ?? 0, -(room?.origin.y ?? 0), 0);
+    for (const mesh of actorSpriteMeshes(this.actorSources, [{ x, y: y - z, pieces }], 2, { depthPerPixel: DEPTH_PER_PIXEL })) {
+      if (z > 0) mesh.position.z += (z + 1) * DEPTH_PER_PIXEL;
+      into.add(mesh);
+    }
+  }
+
   /** How open the GBA window is (0-1), as last rendered (for tests). */
   get gbaWindow(): number {
     return this.windowOpen;
@@ -815,9 +841,9 @@ function contentBounds(layer: Uint16Array | null): { x0: number; y0: number; x1:
 /** Actors lying on the floor, drawn under the Links (floor decals) rather than sorted by y: the four-Link switch. */
 const FLAT_ACTORS: ReadonlySet<string> = new Set(["YNSW"]);
 
-/** An area's rocks, chain levers and pull handles (by actor list index), drawn from the state (EnemyView,
- *  renderRocks) rather than as static sprites. */
-const FROM_STATE = new Set(["BCK2", "PSWK", "PLSW", "PSWB"]);
+/** An area's rocks, chain levers, pull handles and Tingle (by actor list index), drawn from the state (EnemyView,
+ *  renderRocks, renderTingle) rather than as static sprites. */
+const FROM_STATE = new Set(["BCK2", "PSWK", "PLSW", "PSWB", "FTGL"]);
 const rockIndices = (area: Area): Set<number> => new Set(area.actors.filter((a) => (ROCK_TYPES as readonly string[]).includes(a.id) || FROM_STATE.has(a.id)).map((a) => a.index));
 
 /** The area's base layer as EntityView takes it (by screen; the adventure runs its area as screen 0). */

@@ -69,13 +69,13 @@ describe.skipIf(!existsSync(root))("the adventure's snakes, Zols and PAMEs", () 
     expect(game.adventure.enemies.some((e) => e.type === "ZASL")).toBe(false);
     const rock = game.adventure.rocks.find((r) => r.type === "RCK2" && r.x === 176 * SUBPX && r.y === 112 * SUBPX)!;
     expect(rock.held.length).toBe(1);
-    // The two Links side by side below it, facing it: they lift it, and a few ticks after it leaves the ground the Zol
-    // comes out where it was placed.
+    // The two Links side by side below it, facing it: they lift it, and a few ticks after it leaves the ground (the
+    // lift's 67th tick: rocks.ts RCK2_UP_TICKS) the Zol comes out where it was placed.
     Object.assign(game.players[0]!, { x: 172 * SUBPX, y: 140 * SUBPX, facing: "up" });
     Object.assign(game.players[1]!, { x: 182 * SUBPX, y: 140 * SUBPX, facing: "up" });
     expect(tryHeavyLift(game, Button.Action)).toBe(true);
     let zol = undefined;
-    for (let t = 0; t < 20 && !zol; t++) {
+    for (let t = 0; t < 90 && !zol; t++) {
       step(game, stage);
       zol = game.adventure.enemies.find((e) => e.type === "ZASL");
     }

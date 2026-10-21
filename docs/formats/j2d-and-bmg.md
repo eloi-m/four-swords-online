@@ -411,7 +411,7 @@ Parser `packages/formats/src/j2d/bmg.ts`, layout `packages/render/src/screentext
   | 2.22 setFlag / 2.23 ifFlag | u8 kind, u16 flag, u8 value / u8 kind, u16 flag, u32 msg × 2 | set (value 1) or clear a game flag / the first message if the flag is set, else the second | *likely* |
   | 2.1D ifGems, 2.33 ifItem | u32, u32 msg × 2 | branch on Force Gems / an item | *hypothesis* |
   | 2.0D pay, 2.24 give | | take Force Gems, give an item | *hypothesis* |
-  | 2.15 wait, 2.25 autoClose | u32 frames | pauses, a box that closes itself | *hypothesis* |
+  | 2.15 wait, 2.25 autoClose | u32 frames | the page held that long after its text, then turning by itself (traced: Tingle's chant, below) / a box that closes itself | *traced* / *hypothesis* |
   | 2.16 voice, 2.06/2.17 act, 2.0E fortune, 2.1F story, 2.2A notice, 2.2B part, 2.2D jingle, 2.2E/2F/31/32 event, 2.26-2.28 race timer | | message-system events; print nothing | *hypothesis* |
 
   Every tag in the four files is in this table (the real-disc test fails on a new one); the group 2 tags not listed as
@@ -463,9 +463,18 @@ Parser `packages/formats/src/j2d/bmg.ts`, layout `packages/render/src/screentext
     flags: 1-4 the players 1-4, 0 the Link talking (0x802D7E5C(stage, player, flag), a 64-bit word at stage + 0x3C8 +
     800 · player). The sim keys its flags by that byte and the flag (`flagKey`), which agrees as long as setFlag's u8
     means the same (its handler not read).
+  - **traced** A `branch` 2.07 at the *end* of a message's text (after its last page's text, before the closing
+    page tag) goes on with the message it picks in the same box, the press on the last page turning to it as to a
+    page: Lake Hylia's Tingle (`FTGL`, measurements/adventure-lake-hylia.md "Tingle under the bridge"): 1295 `{branch 0
+    1304 1304}` → 1305 `{branch 0 1301 1301}` → 1302, his chant, in one talk (`MessageBook.follows`).
+  - **traced** `wait` 2.15 (u32 frames, u8 0) and `part` 2.2B (u8) on the chant's pages (1302: `{part n}{wait w}`
+    text, four pages): the page types as any (in the dumps about 9 frames after its part began), stays, and turns by
+    itself (the box closing after the last) w + its characters + 1 frames after it began, the button doing nothing;
+    FTGL's poses follow the part number on show (0x8037E9F4 reads it). The sim does so for any page with a wait
+    (dialogue.ts `Talk.wait`).
   - **not followed**: `branch` 2.10 and 2.2C, `ifGems` (2.1D), `ifItem` (2.33), and `then` (2.05, "continues with
-    another message", a hypothesis; `{branch 0 1301 1301}` ends Tingle's speech to a fairy, 1305). A message that leads
-    only into these shows nothing (the playtest's actors check reports it).
+    another message", a hypothesis). A message that leads only into these shows nothing (the playtest's actors check
+    reports it).
 - *hypothesis* Layout of a message in a box: J2DPrint as for any text box (above), pages split at 0.00. Our renders of
   the balloon fit 3 lines per page and the widest lines in its 416 px, which supports the box choice.
 

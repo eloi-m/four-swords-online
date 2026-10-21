@@ -374,8 +374,9 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   waterfalls, the C stick's formations, the Links apart (X, the D-pad, Y), pushed boulders and blocks, two-Link rocks,
   the boomerang and the Fire Rod, all traced in Dolphin; a scripted player (`drive.ts`) and Lake Hylia's route
   (`lakehylia.ts`).
-- **Lake Hylia is played to its goal** by the route, in node and in the browser (14 milestones, 21,439 ticks, 2,280
-  Force Gems, the stage cleared, its fights without a Link out of hearts): rooms 50+ played as their alone variants
+- **Lake Hylia is played to its goal** by the route, in node and in the browser (14 milestones, 22,714 ticks, 2,239
+  Force Gems, the stage cleared, its fights without a Link out of hearts; Tingle's scene under room 5's bridge read
+  through, `tingle.ts`, traced): rooms 50+ played as their alone variants
   (room 58 → room 8, traced), the Links apart holding switches, leaving an area alone and called back from it, `SWT4`'s latch, the raft, the side views' walk-offs and their followers (falls, cannon shots),
   keys lifted and carried (all traced), room 5's generator ambush fought (traced); what it skips or assumes is in
   `docs/ADVENTURE.md` M5 (room 58's Zora left, so its big gem stays hidden; the raft's riders box; the quota met by

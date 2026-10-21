@@ -37,6 +37,7 @@ import { gateWorld, startStairs, stepGates, stepStairs, type StairsTrip } from "
 import { blockWorld, ringWorld, stepBlocks, stepPoints, type MovedBlock } from "./tileblocks.ts";
 import { colorBlockWorld, stepColorBlocks } from "./colorblocks.ts";
 import { spawnGanon, stepGanon, type Ganon } from "./phantomganon.ts";
+import { stepTingle, tingleHolds, type Tingle } from "./tingle.ts";
 import { carryingKey, doorWorld, keyThrowHolds, knockKeyOut, liftKey, shutDoors, stepDoors, stepKeyLift, stepKeyThrow, throwKey, type CarriedKey, type KeyThrow } from "./doors.ts";
 import { rewriteWorld, rewrittenTiles, savedSwitches, saveSwitches, stepLogic } from "./logic.ts";
 import { barrierWorld, stepZoras, type Escort } from "./zoras.ts";
@@ -125,6 +126,8 @@ export interface AdventureState {
   pulls: number[];
   /** The room's boss, Phantom Ganon (phantomganon.ts), and the rooms whose boss is beaten. */
   ganon: Ganon | null;
+  /** Tingle's first appearance, under Lake Hylia's bridge, while it plays (tingle.ts). */
+  tingle: Tingle | null;
   beatenBosses: number[];
   /** The current area's chain levers (lever.ts), and the one the leader holds (an index in it, -1 none). */
   levers: Lever[];
@@ -324,6 +327,7 @@ export function createAdventure(stage: AdventureStage, opts: AdventureStart = {}
     colorBlocks: [],
     pulls: [],
     ganon: null,
+    tingle: null,
     beatenBosses: [],
     levers: [],
     grab: -1,
@@ -439,7 +443,9 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
   a.ignore &= held;
   if (a.ignore) inputs = [held & ~a.ignore, ...inputs.slice(1)];
   // Cleared: the Links stand where they are; so while a boss holds them (Phantom Ganon's demo lock).
-  if (a.cleared || a.ganon?.lock) inputs = inputs.map(() => 0);
+  // Tingle's scene (tingle.ts) holds them too, but for the button that reads his messages.
+  stepTingle(game, stage);
+  if (a.cleared || a.ganon?.lock || (tingleHolds(game) && !a.talk)) inputs = inputs.map(() => 0);
   // The owl talks by itself when the Links come up to it (dialogue.ts).
   startOwlTalk(game, stage);
   // A message on show: the leader stands while it types and turns its pages; an item got: the pose first (dialogue.ts).
@@ -1135,6 +1141,7 @@ export function cloneAdventure(game: AdventureGame): AdventureGame {
       colorBlocks: [...a.colorBlocks],
       pulls: [...a.pulls],
       ganon: a.ganon ? { ...a.ganon, ball: a.ganon.ball ? { ...a.ganon.ball } : null, shards: a.ganon.shards.map((x) => ({ ...x })) } : null,
+      tingle: a.tingle ? { ...a.tingle } : null,
       beatenBosses: [...a.beatenBosses],
       levers: a.levers.map((x) => ({ ...x })),
       taken: [...a.taken],
