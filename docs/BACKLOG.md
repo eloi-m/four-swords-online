@@ -461,10 +461,9 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      `travelTo(376, 66)` is reached only by that second slide (the block at 48-63 blocks the walk otherwise, and the
      same walk in room 1's return milestone). Unmeasured: check the castle blocks in Dolphin, then re-time that walk
      (changing a milestone's timing shifts the route's later checks: room 57 failed when tried). M.
-  4. **Followers walk back up through a waterfall's face** (a): over a falls-lip tile (Tingle's Tower, falls.ts
-     stepTileFalls) the four are put on the pool, but the followers' trail still holds the points above the lip; idle
-     there, they walk up through the solid face to them and down again (`playtest-bent-tower-falls-5-idle-120-ticks`:
-     two Links back above the lip at its end). Fix: drop the trails on the drop, as ledge.ts stepJump does. S.
+  4. **Done:** followers no longer walk back up through a waterfall's face: over a falls-lip tile (Tingle's Tower,
+     falls.ts stepTileFalls) the trails start again where the four land in the pool
+     (`tower-falls-5 / idle 120 ticks` stays below the lip).
   5. **Done (2026-10-11):** the Cave's room 3 crystal's own tile wins over a PNPC's rewrite in the drawn swaps
      (logic.ts `drawnRewrites`: apps/game's patchArea and the census's drawn swaps). Collision keeps `rewrittenTiles`
      (a dark crystal's base tile is passable there). Assumed: in the game the crystal's write is the one on screen
@@ -514,8 +513,8 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   shows the same figure; the puffs are base-layer doorstep tiles), the sign "over a Link's head" (base layer, the Link
   in front), the carry pose (704, right). Left: `FGAL` (room 1's girls) stand in their spawn column, the formations
   aren't simulated; room 9's soldiers (`SLR1` ×6, `SLR4`) all chase to one spot and the knight crossed the fence (sim
-  chase/collision); a `#room=N` start puts the followers at the room's centre (`createAdventure`: only the leader takes
-  x, y), so they walk through the room's enemies off screen (the "hearts lost with no enemy" of room 3).
+  chase/collision). (Done: a `#room=N` start with a spot places all four Links on it (`createAdventure`); the followers
+  used to start at the room's centre and walk through its enemies off screen, the "hearts lost with no enemy" of room 3.)
 
 - **Cave of No Return findings (blind playtest, 2026-10-18), all checked faithful, nothing changed:** the HUD's empty
   heart slots are `heart_04_2` dots (docs/formats/j2d-and-bmg.md, checked in Dolphin); room 2's wait at 0 hearts is
