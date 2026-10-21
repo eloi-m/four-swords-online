@@ -9,7 +9,9 @@
 // walls bombed open (doorlook.ts: their base pair and the top layer's lintel): Hyrule Castle room 5's and room 9's area
 // 3's on the route, Tingle's Tower room 4's area 5's marked opened by hand (off its route); the traps (sim traps.ts):
 // Hyrule Castle room 9's area 2's blade traps set off on the route, the Cave of No Return room 1's fireball traps
-// shooting (the Links put in their reach), Tingle's Tower room 2's blade traps (a Link put in one's row).
+// shooting (the Links put in their reach), Tingle's Tower room 2's blade traps (a Link put in one's row); Lake Hylia
+// room 3's jumping minor Shadow Link (sim minorshadow.ts ZSLJ) in the house's doorway, in the air with his shadow and
+// afterimages once the Links come near, and in his smoke after his third jump (the Links put by him).
 // A screenshot at each into out/e2e/looks-*.png (kept out of git).
 // Expects the dev server (pnpm --filter @fso/game dev), which serves the game files.
 //   node tools/e2e/src/looks.ts [url] [outDir]
@@ -70,6 +72,10 @@ interface Seen {
   typed: number;
   /** The whirlpools of the leader's room synced (their swirl 1363). */
   whirlpools: number;
+  /** The jumping minor Shadow Link's state, its ticks, his x and height (px), and the minor Shadow Links' effects
+   *  synced (-1s: none). */
+  zslj: number[];
+  minorEffects: number;
 }
 
 const browser = await puppeteer.launch({
@@ -138,6 +144,8 @@ async function stepUntil(page: Page, until: string, ms: number, frames: number, 
           talk: a.talk?.message ?? -1,
           typed: v.dialogue?.shown?.typed ?? 0,
           whirlpools: v.drawnWhirlpools,
+          zslj: ((e: any) => (e ? [e.shot, e.tick, Math.round(e.x / 256), Math.round(e.z / 256)] : [-1, -1, -1, -1]))(a.enemies.find((e: any) => e.type === "ZSLJ")),
+          minorEffects: v.drawnMinorShadowEffects,
         };
       };
       const test = new Function("s", `return ${until};`) as (s: Seen) => boolean;
@@ -305,6 +313,43 @@ try {
   const off = await stepUntil(page, "s.blades[0] === 1", 1000 / 60, 200);
   if (off) drew("tingle-blades-off", await check(page, "tingle-blades-off", `s.tick >= ${off.tick + 12}`, 1000 / 60, 100), "TRAP");
   else problems.push("tingle-blades-off: not set off");
+
+  // Lake Hylia room 3's jumping minor Shadow Link: hopping in the house's doorway (400, 120) with the Links 80 px off,
+  // then the Links put 40 px below him: at the top of his jump (22 ticks in) with his shadow and afterimages; then put
+  // by him where he lands, twice more: in his smoke (JPA 1046, 1047) 30 ticks after it starts (the spin's 100th tick).
+  // The Octoroks are taken out (their rocks would knock the Links about).
+  await open(page, "stage=boss010&room=3&players=4&mute&run=off");
+  const put = (x: number, y: number) =>
+    page.evaluate(
+      (x, y) => {
+        const g = (window as unknown as { fso: any }).fso.game;
+        g.adventure.enemies = g.adventure.enemies.filter((e: any) => e.type === "ZSLJ");
+        g.players.forEach((p: any) => ((p.x = x * 256), (p.y = y * 256)));
+      },
+      x,
+      y,
+    );
+  await put(400, 200);
+  const doorway = await check(page, "zslj-doorway", "s.room === 3 && s.tick >= 60 && s.zslj[0] === 3 && s.zslj[3] >= 10", 1000 / 60, 400);
+  drew("zslj-doorway", doorway, "ZSLJ");
+  if (doorway && doorway.zslj[2] !== 400) problems.push(`zslj-doorway: at x ${doorway.zslj[2]}, not 400`);
+  await put(400, 160);
+  const jump = await check(page, "zslj-jump", "s.zslj[0] === 4 && s.zslj[1] >= 22", 1000 / 60, 200);
+  drew("zslj-jump", jump, "ZSLJ");
+  drew("zslj-jump", jump, "afterimages");
+  drew("zslj-jump", jump, "minorShadowShadows");
+  if (jump && (jump.zslj[3] ?? 0) < 40) problems.push(`zslj-jump: ${jump.zslj[3]} px up, not near 48`);
+  for (const x of [275, 400]) {
+    if (!(await stepUntil(page, "s.zslj[0] === 3", 1000 / 60, 200))) problems.push("zslj: not down");
+    await put(x, 160);
+    if (!(await stepUntil(page, "s.zslj[0] === 4", 1000 / 60, 200))) problems.push(`zslj: no jump from ${x}`);
+  }
+  const smoke = await check(page, "zslj-smoke", "s.zslj[0] === 1 && s.zslj[1] >= 100", 1000 / 60, 400);
+  if (smoke && !smoke.minorEffects) problems.push("zslj-smoke: his smoke isn't synced");
+  // Then off the TV, walking off left (gone 48 px past the edge).
+  const away = await check(page, "zslj-away", "s.zslj[0] === 2 && s.zslj[1] >= 60", 1000 / 60, 400);
+  if (away?.drawnTypes.ZSLJ) problems.push("zslj-away: still drawn");
+  if (!(await stepUntil(page, "s.zslj[0] === -1", 1000 / 60, 600))) problems.push("zslj-away: not gone");
 } finally {
   await browser.close();
 }

@@ -284,22 +284,6 @@ function blastWalls(game: AdventureGame, stage: AdventureStage): void {
   }
 }
 
-/**
- * The minor Shadow Links (ZSLJ, not simulated) standing in a doorway that has been opened, by list index: Lake Hylia
- * room 3's dark figure in the house's door (400, 112) vanishes in smoke when the key opens it (Dolphin frame dumps,
- * docs/measurements/adventure-lake-hylia.md "The key and the locked door"). Drawing only: taken as gone from the door's
- * opening on (assumed; the smoke isn't drawn). A figure is in a doorway when it stands in the door's box.
- */
-export function goneDoorwayFigures(opened: readonly number[], room: number, actors: readonly AreaActor[]): Set<number> {
-  const gone = new Set<number>();
-  for (const d of actors) {
-    if (d.id !== "DOOR" || !opened.includes(actorKey(room, d.index))) continue;
-    const c = doorCenter(d);
-    for (const f of actors) if (f.id === "ZSLJ" && Math.abs(f.x - c.x) <= DOOR_HALF && Math.abs(f.y - c.y) <= DOOR_HALF) gone.add(f.index);
-  }
-  return gone;
-}
-
 /** The current area's doors that block the way now. */
 export function shutDoors(game: AdventureGame, stage: AdventureStage): AreaActor[] {
   return currentArea(game, stage).actors.filter((a) => a.id === "DOOR" && doorShut(game, a));

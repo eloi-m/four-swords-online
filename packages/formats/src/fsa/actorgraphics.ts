@@ -361,8 +361,10 @@ export const ACTOR_LOOKS: Readonly<Record<string, ActorLook>> = {
   ZSLJ: {
     draw: "sprite",
     confidence: "matched",
-    note: "minor Shadow Link (jumping): player_sob with the dark placeholder palettes; standing down (16) picked",
-    pieces: one("player", 16),
+    note:
+      "minor Shadow Link who jumps: player_sob frame from a field, drawn with the placeholder palettes 7/15 left as is (dark); " +
+      "standing down (62, traced in Lake Hylia room 3: the adventure simulates him, sim minorshadow.ts)",
+    pieces: one("player", 62),
   },
   SNPC: {
     draw: "sprite",

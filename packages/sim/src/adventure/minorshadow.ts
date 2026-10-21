@@ -1,3 +1,4 @@
+// The minor Shadow Links: the one with a hammer here, the one who jumps (ZSLJ) further down.
 // The minor Shadow Link with a hammer (ZSLH: Lake Hylia's room 4, Hyrule Castle's room 9). His actor (init 0x80222124,
 // his own states 0-8 at +0x248 by the table 0x804A6B4C, their ticks at +0x24C; player_sob.bin's frame at +0x280; the
 // update 0x801CDD58 is SLK2's). Read from main.dol, the values traced in Dolphin (`ref/adv/room4.sav`, actor-trace.ts:
@@ -26,7 +27,7 @@
 import { onGround, stunFighter, vulnerable } from "../combat.ts";
 import { isqrt } from "../entities.ts";
 import { SUBPX, type Facing } from "../player.ts";
-import { ROOM_H, ROOM_W } from "../world.ts";
+import { isSolidAt, ROOM_H, ROOM_W, type World } from "../world.ts";
 import { actorKey, type AdventureGame } from "./adventure.ts";
 import type { Enemy } from "./enemies.ts";
 
@@ -153,34 +154,44 @@ export function stepMinorShadow(game: AdventureGame, e: Enemy): void {
       if (e.tick >= M.after) setState(e, S.spin);
       break;
     case S.spin:
-      if (e.tick % M.turnEvery === 0) e.facing = SPIN[(SPIN.indexOf(e.facing) + 1) % 4]!;
-      if (e.tick >= M.spin) {
-        // Done for the room: he doesn't come back (0x801F3604 counts him).
-        const a = game.adventure;
-        if (e.actor >= 0 && !a.taken.includes(actorKey(a.room, e.actor))) a.taken.push(actorKey(a.room, e.actor));
-        const leave = LEAVE[(e.params >>> 4) & 3]!, [dx, dy] = STEP[leave];
-        e.facing = leave;
-        e.state = "hide";
-        e.homeX = dx > 0 ? (ROOM_W + M.past) * SUBPX : dx < 0 ? -M.past * SUBPX : e.x;
-        e.homeY = dy > 0 ? (ROOM_H + M.past) * SUBPX : dy < 0 ? -M.past * SUBPX : e.y;
-        e.speed = 0;
-        setState(e, S.away);
-      }
+      stepSpin(game, e);
       break;
-    case S.away: {
-      if (e.tick <= M.still) break;
-      e.speed = Math.min(M.speed, e.speed + M.accel);
-      const [dx, dy] = STEP[e.facing];
-      const left = Math.abs(e.homeX - e.x) + Math.abs(e.homeY - e.y);
-      if (left <= e.speed) {
-        e.life = -1; // gone
-        break;
-      }
-      e.x += dx * e.speed;
-      e.y += dy * e.speed;
+    case S.away:
+      stepAway(e);
       break;
-    }
   }
+}
+
+// The two minor Shadow Links' shared states (their actors' common code: 0x8022149c sets them, 0x80221334 and
+// 0x802212ac run them): 1 spinning in the dark smoke, then 2, off the TV, walking off past the room's side.
+function stepSpin(game: AdventureGame, e: Enemy): void {
+  const M = MINOR_SHADOW;
+  if (e.tick % M.turnEvery === 0) e.facing = SPIN[(SPIN.indexOf(e.facing) + 1) % 4]!;
+  if (e.tick < M.spin) return;
+  // Done for the room: he doesn't come back (0x801F3604 counts him).
+  const a = game.adventure;
+  if (e.actor >= 0 && !a.taken.includes(actorKey(a.room, e.actor))) a.taken.push(actorKey(a.room, e.actor));
+  const leave = LEAVE[(e.params >>> 4) & 3]!, [dx, dy] = STEP[leave];
+  e.facing = leave;
+  e.state = "hide";
+  e.homeX = dx > 0 ? (ROOM_W + M.past) * SUBPX : dx < 0 ? -M.past * SUBPX : e.x;
+  e.homeY = dy > 0 ? (ROOM_H + M.past) * SUBPX : dy < 0 ? -M.past * SUBPX : e.y;
+  e.speed = 0;
+  setState(e, MINOR_SHADOW_STATE.away);
+}
+
+function stepAway(e: Enemy): void {
+  const M = MINOR_SHADOW;
+  if (e.tick <= M.still) return;
+  e.speed = Math.min(M.speed, e.speed + M.accel);
+  const [dx, dy] = STEP[e.facing];
+  const left = Math.abs(e.homeX - e.x) + Math.abs(e.homeY - e.y);
+  if (left <= e.speed) {
+    e.life = -1; // gone
+    return;
+  }
+  e.x += dx * e.speed;
+  e.y += dy * e.speed;
 }
 
 // The wave reaches the Link in control (the followers it left alone: traced) within `radius` px of where the hammer
@@ -195,8 +206,9 @@ function shockWave(game: AdventureGame, e: Enemy, radius: number): void {
   stunFighter(p, f);
 }
 
-/** His frame (player_sob.bin) now, or -1 when he isn't on the TV. */
+/** His frame (player_sob.bin) now, or -1 when he isn't on the TV (the jumping one's: jumpingShadowFrame). */
 export function minorShadowFrame(e: Enemy): number {
+  if (e.type === "ZSLJ") return jumpingShadowFrame(e);
   const S = MINOR_SHADOW_STATE;
   switch (e.shot) {
     case S.raise:
@@ -216,6 +228,8 @@ export function minorShadowFrame(e: Enemy): number {
 export function minorShadowEffects(game: AdventureGame, e: Enemy): { id: number; x: number; y: number; z: number; scale: number; start: number }[] {
   const S = MINOR_SHADOW_STATE, M = MINOR_SHADOW;
   const x = e.x / SUBPX, y = e.y / SUBPX, at = (t: number) => game.tick - e.tick + t;
+  // (The jumping one has no hammer: only the smoke, his states 1 and 2 being ZSLH's.)
+  if (e.type === "ZSLJ" && e.shot !== S.spin && e.shot !== S.away) return [];
   switch (e.shot) {
     case S.hold:
       return [203, 204].map((id) => ({ id, x, y: y - 22, z: e.z / SUBPX, scale: 1, start: at(0) }));
@@ -234,3 +248,131 @@ export function minorShadowEffects(game: AdventureGame, e: Enemy): { id: number;
       return [];
   }
 }
+
+// The jumping minor Shadow Link (ZSLJ: Lake Hylia's room 3, in the house's doorway; the Cave's and Hyrule Castle's are
+// left unsimulated, formats fsa/unsimulated.ts). His actor (init 0x80220BD0 over the shared 0x802217C8, his own states
+// 3-6 by the table 0x804A6974, 0-2 the shared ones; the update 0x801CDD58 is SLK2's; his draw 0x80220F54 is ZSLH's).
+// Read from main.dol, the values traced in Dolphin (room 3 from `ref/save-adv-lake-room3.sav`, actor-trace.ts, frame
+// dumps: docs/measurements/adventure-lake-hylia.md "The minor Shadow Link who jumps"):
+// - 3, hopping in place facing down (ZSLH's hop), player_sob 62; a Link within 48 px of him (0x801D05F8: any of the
+//   four) sets him off (+0x230 bit 0x4000), and on his next landing he jumps;
+// - 4, the jump (sound 0x400C7): 4.5 px/tick up, 0.2 less each tick (44 ticks in the air, 48.4 px up at the top),
+//   128/45 px a tick along params & 3 (0 right, 1 left, 2 down, 3 up; the other way after an odd number of jumps):
+//   125.16 px aside (traced, room 3: x 400, 274.84, 400, 274.84), still frame 62 facing down;
+// - 5, standing 12 ticks once down (6 if [0x8053AAF8]+0x7E is set: not seen), the jumps counted (+0x2BC); after 3
+//   (+0x2C0: 3 + a random number below 1), 1 the spin and 2 away as ZSLH's (params (p >> 4) & 3 the side he leaves
+//   by: room 3's 0x11 left, traced: gone 48 px past the left edge 488 ticks after the spin began); else 3 again,
+//   hopping where he landed until a Link comes near again.
+// The door's opening does nothing to him (no door in his code): the Link who brings the key is within 48 px of him
+// before he reaches the door (traced: set off by the Link at (396, 167.5), he jumped 15 ticks later, the key went 15
+// after that, the Link went in while he was in the air). Placed at (400, 112), he stands at (400, 120) from the first
+// frame: out of the house's wall by his ±8 px box (assumed: pushed down, the way out there). Not simulated
+// (TODO(measure)): a sword on him (state 0: 160 ticks turning every 8, then a puff 0x801CB434: never seen), his body
+// against the Links, walls in his jump (none in room 3's), state 6 (a 120-tick leap: nothing sets it), his sounds.
+
+export const JUMPING_SHADOW = {
+  /** A Link this near (px) sets him off. */
+  reach: 48,
+  /** The jump: its ticks (4.5 px/tick up less 0.2 a tick: z = 0.1 t (44 - t) px), its run (128/45 px a tick). */
+  jumpTicks: 44,
+  run: { num: 128 * SUBPX, den: 45 },
+  /** Standing once down (state 5); the jumps before he goes. */
+  land: 12,
+  jumps: 3,
+  /** His box's half size (px): what pushes him out of a wall where he's placed. */
+  half: 8,
+};
+
+/** His states (+0x248); 1 and 2 are ZSLH's (MINOR_SHADOW_STATE.spin, .away). */
+export const JUMPING_SHADOW_STATE = { spin: 1, away: 2, hop: 3, jump: 4, land: 5 } as const;
+
+const ALONG: readonly (readonly [number, number])[] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+// His fields in the sim's enemy record: `shot` his state (+0x248), `tick` its ticks (+0x24C), `timer` the wait before
+// his count starts, `kind` the way he jumps (params & 3, +0x2B8), `frame` the jumps so far (+0x2BC), (`homeX`,
+// `homeY`) where the jump began, `flags` 1 set off (+0x230 bit 0x4000), 2 out of the wall where he's placed.
+
+export function initJumpingShadow(e: Enemy): void {
+  e.kind = e.params & 3;
+  e.facing = "down";
+  e.life = 1;
+  e.atcp = 0;
+  e.state = "stop";
+  e.shot = JUMPING_SHADOW_STATE.hop;
+  e.timer = MINOR_SHADOW.wait; // (ZSLH's, assumed: his count at the room change isn't traced)
+  e.frame = 0;
+  e.flags = 0;
+}
+
+/** Height (1/256 px) `t` ticks into his jump: 0.1 t (44 - t) px. */
+const jumpHeight = (t: number) => Math.trunc((128 * t * (JUMPING_SHADOW.jumpTicks - t)) / 5);
+
+/** Whether a Link is within `reach` px of him (0x801D05F8: any of the four). */
+function linkNear(game: AdventureGame, e: Enemy): boolean {
+  const r = JUMPING_SHADOW.reach * SUBPX;
+  return game.players.some((p) => (p.x - e.x) ** 2 + (p.y - e.y) ** 2 < r * r);
+}
+
+export function stepJumpingShadow(game: AdventureGame, e: Enemy, world: World): void {
+  const J = JUMPING_SHADOW, S = JUMPING_SHADOW_STATE;
+  if (!(e.flags & 2)) {
+    // Out of the wall his box's top is in, down (room 3: the doorway's sides, from y 112 to 120).
+    e.flags |= 2;
+    const x = Math.floor(e.x / SUBPX), h = J.half, inWall = () => [x - h, x, x + h - 1].some((cx) => isSolidAt(world, cx, Math.floor(e.y / SUBPX) - h));
+    for (let n = 0; n < 2 * h && inWall(); n++) e.y += SUBPX;
+  }
+  if (e.timer > 0) {
+    // Still, his count too, while the Links come in (as ZSLH).
+    e.timer--;
+    e.tick--;
+    return;
+  }
+  switch (e.shot) {
+    case S.hop: {
+      const t = (e.tick - 1) % MINOR_SHADOW.hopTicks;
+      e.z = hopHeight(t);
+      if (linkNear(game, e)) e.flags |= 1;
+      if (t === 0 && e.flags & 1) {
+        e.flags &= ~1;
+        e.homeX = e.x;
+        e.homeY = e.y;
+        setState(e, S.jump);
+      }
+      break;
+    }
+    case S.jump: {
+      const t = Math.min(e.tick, J.jumpTicks), [dx, dy] = ALONG[e.kind]!;
+      const run = Math.trunc((t * J.run.num) / J.run.den) * (e.frame & 1 ? -1 : 1);
+      e.x = e.homeX + dx * run;
+      e.y = e.homeY + dy * run;
+      e.z = jumpHeight(t);
+      if (t >= J.jumpTicks) {
+        e.frame++;
+        setState(e, S.land);
+      }
+      break;
+    }
+    case S.land:
+      if (e.tick >= J.land) setState(e, e.frame >= J.jumps ? S.spin : S.hop);
+      break;
+    case S.spin:
+      stepSpin(game, e);
+      break;
+    case S.away:
+      stepAway(e);
+      break;
+  }
+}
+
+/** His frame (player_sob.bin) now: standing (60 + facing; 62 down), none once he walks away off the TV (-1). */
+function jumpingShadowFrame(e: Enemy): number {
+  return e.shot === JUMPING_SHADOW_STATE.away ? -1 : STAND_FRAMES[e.facing];
+}
+
+/**
+ * The black afterimages both minor Shadow Links leave: their draw 0x80220F54 passes afterimage kind 14 in its sprite
+ * parameters (+0x30), and the sprite drawer's tables (0x80471060…, docs/formats/sprites-and-actors.md "Afterimages")
+ * give kind 14 every 4 frames, 20 frames' life, color × (0, 0, 0, 191), its own size: dark copies trailing his hops and
+ * jumps (Dolphin frame dumps). None while he's off the TV (another draw, 0x801EF574).
+ */
+export const MINOR_SHADOW_AFTERIMAGE = { every: 4, life: 20, alpha: 191 / 255 } as const;

@@ -33,7 +33,7 @@ import {
   opaqueFrame,
 } from "@fso/render";
 import { fighterFrame, fighterHeight, fighterVisible, HURTBOX, linkDisplayFrame, SUBPX, switchOn, type PixelBox } from "@fso/sim";
-import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, doorLookTiles, drawnRewrites, ENEMY_TYPES, goneDoorwayFigures, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
+import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { CloudShadow, cloudShadowLevel } from "../../battle/src/cloudshadow.ts";
 import { EntityView } from "../../battle/src/entities.ts";
@@ -349,13 +349,12 @@ export class AdventureView {
   }
 
   // The TV rooms' static actors: the current room's rocks are drawn from the state, the other rooms' where they were
-  // placed; a doorway's figure is gone once its door opened (goneDoorwayFigures). Every frame for the current room
-  // (only it can open a door): cheap when nothing changed.
+  // placed. Every frame for the current room: cheap when nothing changed.
   private fillRoomStatics(game: AdventureGame, only?: number): void {
     const a = game.adventure;
     for (const [n, meshes] of this.rooms) {
       if (only !== undefined && n !== only) continue;
-      const area = this.adventure.area(n, 0), hidden = goneDoorwayFigures(a.opened, n, area.actors);
+      const area = this.adventure.area(n, 0), hidden = new Set<number>();
       if (n === a.room) for (const i of rockIndices(area)) hidden.add(i);
       this.fillStatics(meshes, area, hidden, meshes.origin);
     }
@@ -421,16 +420,16 @@ export class AdventureView {
   }
 
   /**
-   * The minor Shadow Link's effects (sim minorshadow.ts minorShadowEffects): the hammer's glint, the blow's, the smoke he
-   * goes in, each while its step lasts (one-shot emitters: they stop on their own). 975 or 976 by the ground under the
-   * blow (0x802258D4, not read): 975 drawn.
+   * The minor Shadow Links' effects (sim minorshadow.ts minorShadowEffects): the hammer's glint, the blow's, the smoke
+   * they go in, each while its step lasts (one-shot emitters: they stop on their own). 975 or 976 by the ground under
+   * the blow (0x802258D4, not read): 975 drawn.
    */
   private minorShadows(game: AdventureGame): JpaEffectSpec[] {
     const out: JpaEffectSpec[] = [];
     const room = this.rooms.get(game.adventure.room);
     if (!room || game.adventure.area !== 0) return out;
     for (const e of game.adventure.enemies) {
-      if (e.type !== "ZSLH") continue;
+      if (e.type !== "ZSLH" && e.type !== "ZSLJ") continue;
       for (const fx of minorShadowEffects(game, e)) {
         const placement = fsaParticlePlacement(fx.id, room.origin.x + fx.x, room.origin.y + fx.y, fx.z, { scale: fx.scale, sublayer: fx.id === 203 || fx.id === 204 ? 1 : 0 });
         if (placement) out.push({ key: `zslh:${e.id}:${fx.id}:${fx.start}`, start: fx.start, placement });

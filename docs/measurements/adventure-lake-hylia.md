@@ -124,9 +124,48 @@ dismissed with A); facing it from 18 px below, R lifted it (state 17, 16 frames,
 and the Link carried it at 1.5 px/frame. Walking up into the house's `DOOR` (0x83 at (384, 96), its box's middle
 (396, 108)), the key went when he reached y 123 (his ±7 body meeting the door's ±8 box), he walked on (state 2) to 119
 and was held there 16 frames while the door opened, then walked on and went through the `WARP` behind it (state 28) on
-the 21st frame after the key went. In the frame dumps the doorway's dark figure (`ZSLJ`) vanishes in smoke and a keyhole
-shows. The sim lifts the key (the Action button facing it within 20 px, 16 ticks) and carries it, and opens the door the
-same way (`doors.ts`).
+the 21st frame after the key went. In the frame dumps the doorway's dark figure (`ZSLJ`) is gone by then, leaving a dark
+trail, and a keyhole shows: he jumped away as the Link came near (next paragraph; the door does nothing to him). The sim
+lifts the key (the Action button facing it within 20 px, 16 ticks) and carries it, and opens the door the same way
+(`doors.ts`).
+
+**The minor Shadow Link who jumps** (`ZSLJ`, room 3 in the house's doorway, placed (400, 112), params 0x11; traced
+2026-10-21 with `actor-trace.ts --ids ZSLJ,DOOR,KEY0 --scan 812d0000:812f0000 --fields
+ZSLJ=230,248,24c,250,280,2b8,2bc,2c0,98,14:f,3c:f,40:f,44:f,2b0:f,2b4:f` from `save-adv-lake-room3.sav` (a copy of
+`ref/dolphin-user-adventure2`, GDB port 2440; his object at 0x812DED00), frame dumps: 600 frames idle; the Links
+teleported to (400, 200) then walked up; teleported by him three times; the key route: `--tele 2:1992:1370`, A twice for
+the message, R, `--tele 195:1932:1330`, up). Read in main.dol: his vtable 0x804A68D0, init 0x80220BD0 over the shared
+0x802217C8, his states 3-6 by the table 0x804A6974 and 0-2 the code he shares with ZSLH (0x8022149C sets them), his draw
+0x80220F54 (ZSLH's). His +0x248 state, +0x24C its ticks, +0x280 the player_sob frame, +0x2B8 params & 3, +0x2BC the
+jumps, +0x2C0 how many (3 + 0x801CD664(1), a random number below 1: 3).
+- He stands at (400, 120) from the first frame (out of the house's wall: his ±8 box, set in init; +0x2B0 keeps (400,
+  112)). State 3: hopping in place facing down, frame 62 (player_sob standing down), ZSLH's hop (2.5 px/tick up, 0.2
+  less each tick: 0, 2.3, 4.4 … 14.4 … 2.3, 0, 24 frames a hop), the whole 600 frames with the Links away.
+- A Link within 48 px of him (0x801D05F8, the nearest of the four within a radius) sets +0x230 bit 0x4000; on his next
+  landing (z ≤ 0) he jumps: state 4, sound 0x400C7, vz 4.5 less 0.2 a frame (z 4.3, 8.4, 12.3 … 48.4 at the top … 0 on
+  the 44th frame), 2.8444 px a frame (128/45) along params & 3 (0 right, 1 left, 2 down, 3 up; negated after an odd
+  number of jumps): 125.16 px. Frame 62 throughout, facing down. Traced: the Links put 40 px below him, the jump on his
+  next landing 21 frames later, x 400 → 274.84; again from there → 400.00; again → 274.84.
+- State 5 once down: the jump counted, 12 frames standing (6 if the byte [0x8053AAF8]+0x7E is set: not seen), then the
+  spin (state 1) after the third jump, else state 3 again: hopping where he landed until a Link comes within 48 px again
+  (not the place he left: room 3's hop at 274.84 went on 380+ frames once the Links had gone into the house).
+- The spin and the walk off are ZSLH's (the same code): 115 frames, facing every 4 (down → right 60, up 63, left 61,
+  down 62), JPA 1046/1047 at his feet on its 70th frame (the dark ball grows over him in the frame dumps); state 2, off
+  the TV, 45 frames still, then left ((p >> 4) & 3 = 1) at 0.1 more a frame up to 1 px/frame (walk frames 8-15 drawn by
+  the other draw), to x −48 (target (1488, 1272) world = room (−48, 120)): gone 488 frames after the spin began.
+- The key route: the Link carrying the key set him off at (396, 167.5) (47.7 px), he jumped 15 frames later at his
+  landing, the key went at the door 15 frames after that, the Link went in while he was still in the air (he landed at
+  274.84, 5 frames after the WARP took him). The door does nothing to him: nothing in his code reads it, and nobody can
+  reach the door without coming within 48 px of him first.
+- Drawn: player_sob +0x280 with palette 7 left dark; shadow spec 7 (his own frame squashed, on the ground under him: the
+  dark oval below him in the air); afterimage kind 14 in his draw parameters (+0x30 = 14: every 4 frames, 20 frames'
+  life, × (0, 0, 0, 191), scale 1; tables 0x80471060…): the black trail his hops and jumps leave (frame dumps); grown by
+  his height (× 1.34 at 48 px). In the frame dumps at the top of his jump he's drawn over the house's roof (the top
+  layer): apps/game draws the minor Shadow Links off the ground over the top layer (assumed for the hops).
+- Not seen: state 0 (via vtable +0x74, called by the shared update 0x801CDD58 when +0xD8 goes from 1 to 0: a spin of 160
+  frames turning every 8, sound 0x40037, then 0x801CB434's puff and gone; his +0xD8 stayed 0), state 6 (a 120-frame leap
+  to +0x2B0 with vz 12: nothing sets it). The Cave's and Hyrule Castle's ZSLJs run the same code (Hyrule Castle's
+  "walked up" 125.2 px left, (368, 304) → (242.8, 304): one jump, adventure-world1.md); not simulated.
 
 **The key's throw, its first message, and the key on the floor** (room 3, traced in Dolphin with `trace.ts` and
 `actor-trace.ts --ids KEY0=804a8cd8 --fields KEY0=0-2b8`, the KEY0 object found by its vtable; a private user folder

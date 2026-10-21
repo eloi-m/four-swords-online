@@ -4,8 +4,9 @@
 import { BIG_HANDLE_TEXTURES, bigHandleClass, decodeBti, ESCORT_ZORA_FRAME, ESCORT_ZORA_WALK, ESCORT_ZORA_WALK_TICKS, PULL_HANDLE_FRAME, pullHandleClass, type ActorSob, type RarcArchive, type SpriteFrame } from "@fso/formats";
 import { SpriteAtlas, SpriteMesh, type ActorSpriteSources } from "@fso/render";
 import { PLAYER_ANIMATIONS, SUBPX, SWING, switchOn, WALK_FRAME_TICKS, type Facing } from "@fso/sim";
-import { armosStatue, ARROW_KIND, BLADE_TRAP, bladeFrame, FIRE_TRAP_KIND, BALL_FRAME, BALL_SCALE, BALL_SOLDIER, BALL_SOLDIER_FRAME, BALL_TURN, BONE_KIND, CHAIN_FRAME, CHAIN_SCALE, ironBallHand, ironBallOf, BOWMAN_LOOK, BOWMAN_SHOOT, BOWMAN_WALK, CAPTAIN_LUNGE, CAPTAIN_MARCH, BUZZ_SHOCK_STEPS, BUZZ_STEPS, enemyShown, MOZO_FRAMES, GEM_FRAMES, GEAR_BY_NUMBER, getFrame, keyHeight, minorShadowFrame, FIREBALL_KIND, hinoxFrame, isCaster, PAME, pameBig, pickupShown, POE_FRAMES, soldierPose, STALFOS_JUMP, STALFOS_WALK, WIZZROBE_BOLTS, ZOL_PALETTES, ZORA_SHOT, actorKey, currentArea, pullOut, shadowShownColor, type AdventureGame, type AdventureStage, type Enemy, type Lever, type Pickup } from "@fso/sim/adventure";
+import { armosStatue, ARROW_KIND, BLADE_TRAP, bladeFrame, FIRE_TRAP_KIND, BALL_FRAME, BALL_SCALE, BALL_SOLDIER, BALL_SOLDIER_FRAME, BALL_TURN, BONE_KIND, CHAIN_FRAME, CHAIN_SCALE, ironBallHand, ironBallOf, BOWMAN_LOOK, BOWMAN_SHOOT, BOWMAN_WALK, CAPTAIN_LUNGE, CAPTAIN_MARCH, BUZZ_SHOCK_STEPS, BUZZ_STEPS, enemyShown, MOZO_FRAMES, GEM_FRAMES, GEAR_BY_NUMBER, getFrame, keyHeight, MINOR_SHADOW_AFTERIMAGE, minorShadowFrame, FIREBALL_KIND, hinoxFrame, isCaster, PAME, pameBig, pickupShown, POE_FRAMES, soldierPose, STALFOS_JUMP, STALFOS_WALK, WIZZROBE_BOLTS, ZOL_PALETTES, ZORA_SHOT, actorKey, currentArea, pullOut, shadowShownColor, type AdventureGame, type AdventureStage, type Enemy, type Lever, type Pickup } from "@fso/sim/adventure";
 import * as THREE from "three";
+import { actorShadowOpacity, heightScale, LINK_SHADOW, linkShadow, ShadowSprite } from "../../battle/src/shadows.ts";
 
 const DEPTH_PER_PIXEL = 1 / 1024;
 const DIR_INDEX: Readonly<Record<Facing, number>> = { right: 0, left: 1, down: 2, up: 3 };
@@ -133,11 +134,14 @@ function lookOf(e: Enemy, tick: number): Look | null {
       return armosStatue(e) ? { sob: "gc", frame: 1092 + (e.frame & 1) } : { sob: "both2", frame: 338 + (e.frame & 1), ...(e.turn === 1 ? { size: 2 } : {}) };
     case "SLK2":
       return shadowLook(e, tick);
-    case "ZSLH": {
-      // The minor Shadow Link with a hammer (ZSLH's draw 0x80220F54): player_sob.bin's frame at +0x280 (sim
-      // minorShadowFrame), dark (palette 7 as it is); off the TV once he walks away.
+    case "ZSLH":
+    case "ZSLJ": {
+      // The minor Shadow Links, with a hammer and who jumps (their draw 0x80220F54): player_sob.bin's frame at +0x280
+      // (sim minorShadowFrame), dark (palette 7 as it is), grown by his height as anything drawn up in the air
+      // (192 / (192 - z): × 1.34 at the top of a jump); off the TV once he walks away. His shadow and afterimages:
+      // EnemyView.minorShadowTrails.
       const frame = minorShadowFrame(e);
-      return frame < 0 ? null : { sob: "player", frame };
+      return frame < 0 ? null : { sob: "player", frame, size: heightScale(Math.floor(e.z / SUBPX)) };
     }
     case "TRAP":
       // A blade trap (TRAP's draw 0x80164640): its look's kind 0 enemy_both2 340, the others enemy_gc 378 + its step
@@ -280,6 +284,12 @@ export const HELD_UP = { dx: 7, z: 16 } as const;
 /** Over the top layer (3): the pedestal's own item, drawn there, doesn't hide it (the frame dumps: the bow held up over
  *  the pedestal behind). */
 const HELD_UP_DEPTH = 3.2;
+/**
+ * A minor Shadow Link off the ground is drawn over the top layer, by his y among the others (assumed, from the Dolphin
+ * frame dumps: at the top of his jump, room 3's is drawn over the house's roof; as JPA effects off the ground go a
+ * layer up, docs/formats/jpa.md createEffect's lift).
+ */
+const minorShadowDepth = (y: number, z: number) => (z > 0 ? 3.1 + (y * DEPTH_PER_PIXEL) / 16 : 2 + y * DEPTH_PER_PIXEL);
 export function heldUpLook(game: AdventureGame): Look | null {
   const g = game.adventure.get;
   if (!g || g.pose !== "item" || getFrame(game) < 0) return null;
@@ -319,6 +329,10 @@ export class EnemyView {
   private readonly handles: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>[] = [];
   /** The escort Zora's last spot and facing (the sim keeps neither facing nor step: they're read off its moves). */
   private escortSeen: { key: number; x: number; y: number; facing: Facing; walked: number } | null = null;
+  /** The minor Shadow Links' afterimages still showing (MINOR_SHADOW_AFTERIMAGE), and their sprites and shadows. */
+  private trails: { id: number; tick: number; frame: number; x: number; y: number; z: number }[] = [];
+  private readonly trailPool: SpriteMesh[] = [];
+  private readonly silhouettes: ShadowSprite[] = [];
   /** Enemies drawn in the last frame, by type (for tests). */
   drawn: Record<string, number> = {};
 
@@ -407,7 +421,8 @@ export class EnemyView {
       // Knocked back it flashes; dying it blinks out (TODO(measure): the game's hit flash and death look).
       const blink = (e.state === "knock" || e.state === "die") && Math.floor(game.tick / 2) % 2 === 1;
       const look = lookOf(e, game.tick), hidden = blink || !enemyShown(game, e);
-      things.push({ look, x: e.x, y: e.y, z: e.z, type: e.type, hidden });
+      const lifted = (e.type === "ZSLH" || e.type === "ZSLJ") && e.z > 0 ? { depth: minorShadowDepth(Math.floor(e.y / SUBPX), e.z) } : {};
+      things.push({ look, x: e.x, y: e.y, z: e.z, type: e.type, hidden, ...lifted });
       if (e.type === "SLR3" && look) this.ironBall(e, game.tick, hidden, things);
     }
     if (stage && game.adventure.levers.length) {
@@ -462,6 +477,7 @@ export class EnemyView {
       this.drawn[e.type] = (this.drawn[e.type] ?? 0) + 1;
     }
     for (let i = used; i < this.pool.length; i++) this.pool[i]!.visible = false;
+    this.minorShadowTrails(game, stage);
     this.drawGhosts(game);
     this.drawBigHandles(game, stage);
   }
@@ -558,6 +574,68 @@ export class EnemyView {
       things.push({ look: { sob: "gc", frame: CHAIN_FRAME, size: CHAIN_SCALE }, x, y: y + SUBPX, z: z + SUBPX, type: "SLR3 chain", hidden });
     }
     things.push({ look: { sob: "gc", frame: BALL_FRAME, size: BALL_SCALE, turn: BALL_TURN * tick }, x: bx, y: by + SUBPX, z: z + SUBPX, type: "SLR3 ball", hidden });
+  }
+
+  /**
+   * The minor Shadow Links' shadow and afterimages (their draw 0x80220F54). Its shadow spec 7: his own frame squashed
+   * 0.9 × 0.5 at height -5, flat (40, 40, 40), on the ground under him whatever his height, an actor shadow's opacity
+   * (223, less z / 2 in the air, at least 159), none on ground types 0x02, 0x03, 0x0E
+   * (docs/formats/sprites-and-actors.md). Its afterimage kind 14 (sim MINOR_SHADOW_AFTERIMAGE): a black copy of him
+   * every 4th tick where he's drawn, fading over 20 ticks from 191/255, just under him: the dark trail his hops and
+   * jumps leave (Dolphin frame dumps). Which 4th tick is the game's frame counter's and the SOB's address's (not
+   * known): the sim's tick % 4 here.
+   */
+  private minorShadowTrails(game: AdventureGame, stage?: AdventureStage): void {
+    const A = MINOR_SHADOW_AFTERIMAGE, tick = game.tick, atlas = this.atlas;
+    // Stamps from ticks not reached any more (a rollback, a replay) go.
+    this.trails = this.trails.filter((t) => t.tick <= tick && tick - t.tick < A.life);
+    let shadows = 0;
+    if (atlas) {
+      for (const e of game.adventure.enemies) {
+        if ((e.type !== "ZSLH" && e.type !== "ZSLJ") || !enemyShown(game, e)) continue;
+        const frame = minorShadowFrame(e);
+        if (frame < 0) continue;
+        const x = Math.floor(e.x / SUBPX), y = Math.floor(e.y / SUBPX), z = Math.floor(e.z / SUBPX);
+        const at = tick - (tick % A.every);
+        if (tick - at <= 1 && !this.trails.some((t) => t.id === e.id && t.tick === at)) this.trails.push({ id: e.id, tick: at, frame, x, y, z });
+        const slot = this.slots.get(this.key({ sob: "player", frame }));
+        const ground = stage ? stage.tileTypeAt(currentArea(game, stage), x, y) : 0;
+        if (slot === undefined || ground === 0x02 || ground === 0x03 || ground === 0x0e) continue;
+        let mesh = this.silhouettes[shadows];
+        if (!mesh) {
+          mesh = new ShadowSprite(atlas, LINK_SHADOW.color);
+          this.silhouettes.push(mesh);
+          this.group.add(mesh);
+        }
+        shadows++;
+        const s = linkShadow(x, y, 0);
+        mesh.setFrame(slot);
+        mesh.place(s.x, s.y, 2 + (y - 0.5) * DEPTH_PER_PIXEL, s.sx, s.sy, actorShadowOpacity(z));
+      }
+    }
+    for (let i = shadows; i < this.silhouettes.length; i++) this.silhouettes[i]!.visible = false;
+    let n = 0;
+    for (const t of atlas ? this.trails : []) {
+      const slot = this.slots.get(this.key({ sob: "player", frame: t.frame }));
+      if (slot === undefined) continue;
+      let mesh = this.trailPool[n];
+      if (!mesh) {
+        // × (0, 0, 0): black (an add of -1, the output clamps at 0).
+        mesh = new SpriteMesh(atlas!);
+        mesh.setAdd(-1, -1, -1);
+        this.trailPool.push(mesh);
+        this.group.add(mesh);
+      }
+      n++;
+      mesh.visible = true;
+      mesh.setFrame(slot);
+      mesh.setSize(heightScale(t.z));
+      mesh.setOpacity((A.alpha * (A.life - (tick - t.tick))) / A.life);
+      mesh.place(t.x, t.y - t.z, minorShadowDepth(t.y, t.z) - 0.5 * DEPTH_PER_PIXEL);
+    }
+    for (let i = n; i < this.trailPool.length; i++) this.trailPool[i]!.visible = false;
+    if (n) this.drawn.afterimages = n;
+    if (shadows) this.drawn.minorShadowShadows = shadows;
   }
 
   /**

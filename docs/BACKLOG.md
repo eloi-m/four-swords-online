@@ -226,7 +226,8 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
     `entities.ts` `AFTERIMAGE`, sprites-and-actors.md "Afterimages"). Against Dolphin (Lake Hylia room 3, the river's
     pixels): blue 205 before (no cloud shadows), 186 now, Dolphin 163, the cloud spread now Dolphin's (σ 28.7 / 28.8);
     the grass is 9 % darker in Dolphin too (not the water's). Left: the cloud level's rise in the adventure (the
-    battle's assumed), the other afterimage kinds (the sprite drawer's tables, 0x80471060…) and who passes them;
+    battle's assumed), the other afterimage kinds (the sprite drawer's tables, 0x80471060…) and who passes them (kind
+    14: the minor Shadow Links, drawn in apps/game);
   - J3D GX lights, fog and billboards (checked 2026-10-10, docs/formats/j3d.md): no model on the disc enables fog; the
     lit channels only show where a TEV stage reads RASC/RASA: the `suisyo_*` crystals (also the only billboards),
     `osiro_mon` (Hyrule Castle's gate) and `poisonswamp00`, none of them drawn by an app yet (actor-spawned: who places
@@ -500,10 +501,15 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   6. **Done (2026-10-11):** minor Shadow Links aren't drawn where unsimulated: `HIDDEN_UNSIMULATED` (formats
      `fsa/unsimulated.ts`: the Cave's `ZSLJ`, Hyrule Castle's `ZSLH` and `ZSLJ`), skipped by apps/game's statics, and
      `playtest:actors --census` lists them "drawn: hidden". **Done (2026-10-18):** Lake Hylia's two stay drawn,
-     standing facing down as Dolphin shows them (ZSLH was the hammer frame 363, now 16 like ZSLJ); room 3's doorway
-     ZSLJ goes once the key opens its door (sim `doors.ts goneDoorwayFigures`). **Done (2026-10-18):** room 4's ZSLH
-     simulated (sim `minorshadow.ts`, traced: by time, not distance; three blows that stun the leader, the spin, the
-     smoke, off the TV), Hyrule Castle's too; left: a sword on him, the camera widening, his sounds.
+     standing facing down as Dolphin shows them (ZSLH was the hammer frame 363, now 16 like ZSLJ). **Done
+     (2026-10-18):** room 4's ZSLH simulated (sim `minorshadow.ts`, traced: by time, not distance; three blows that stun
+     the leader, the spin, the smoke, off the TV), Hyrule Castle's too; left: a sword on him, the camera widening, his
+     sounds. **Done (2026-10-21):** room 3's doorway ZSLJ simulated (sim `minorshadow.ts`, traced: hops in place, a
+     Link within 48 px sets him off, a 44-tick jump 125.16 px aside on his next landing, three of them, then ZSLH's
+     spin, smoke and walk off; the door does nothing to him, the old "gone when the key opens it" is dropped), drawn
+     with his shadow, his black afterimages (both minor Shadow Links: kind 14) and over the top layer in the air
+     (assumed for the hops); left: a sword on him (state 0, read, never seen), his body against the Links, walls in
+     his jump, his sounds, the Cave's and Hyrule Castle's (same code, still hidden).
   7. **Done (2026-10-21):** a bombed cracked wall shows the game's open look: its base pair and, one tile out from
      the wall, a row on the top layer (doorlook.ts `doorOpenTopTiles`, tables 0x8046D718/0x8046D728/0x8046D738; the
      layer read in RAM on Hyrule Castle room 5's bombed wall: docs/formats/adventure.md "DOOR's open tiles"). Hyrule

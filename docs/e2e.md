@@ -25,7 +25,8 @@ Index of the docs: [README.md](README.md).
   cracked walls shut then bombed open, base and top layer (Hyrule Castle room 5's and room 9's area 3's on the route,
   Tingle's Tower room 4's area 5's marked opened by hand; the traps: Hyrule Castle room 9's area 2's blade traps at
   rest and set off on the route, the Cave's room 1 fireball trap's shot (the Links put in its reach), Tingle's Tower
-  room 2's blade traps at rest and one set off);
+  room 2's blade traps at rest and one set off; Lake Hylia room 3's jumping minor Shadow Link hopping in the house's
+  doorway, at the top of his jump with his shadow and afterimages, in his smoke after the third, then off the TV;
   `looks-*.png`) and
   `node tools/e2e/src/viewer.ts [url]` drive system Chrome headless (puppeteer-core) against the
   running dev server: load the game files, check the reload (HTTP cache, nothing in OPFS) and take screenshots into

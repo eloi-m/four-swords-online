@@ -356,13 +356,15 @@ Played to its clear (`lakehylia.ts`). Checked off the route by `tools/playtest` 
 the puzzles bent, the actors against their drawings); what they found is in `docs/BACKLOG.md` B6.
 Room 4's minor Shadow Link (`ZSLH`, `minorshadow.ts`, traced): 103 ticks after the room change he raises his hammer,
 three blows whose shock wave stuns the Link in control near them, then spins away in dark smoke and walks off unseen;
-gone for good. Room 5's Tingle (`FTGL`, `tingle.ts`, traced): under the two-Link rock on area 2's ledge (the bridge's
-GBA area); the rock lifted, he lies there, then stops the Links, talks (1294, then 1295 → 1305 → his chant 1302 in one
-box), floats off on his balloon past the GBA screen's edge and over room 5's TV, gone for good; the route reads him
-(`lakehylia.ts`). Placed but not simulated (besides `FGAL`, `KEPO`, `ZSLJ` and the hidden controllers named above): `YAJI` (the
-arrows on room 0's ground, drawn only), `TMI2` (room
-58's 2-3 player blocks, in its tiles), `PRTC` (the waterfalls' particles, drawn by the stage effects), and `WPWL`,
-`SENP`, `ZOOM`, `GLWP` (hidden; what they do unknown).
+gone for good. Room 3's (`ZSLJ`, the one who jumps, `minorshadow.ts`, traced): he hops in the house's doorway until a
+Link comes within 48 px, then jumps 125 px aside (left, then back, then left), three times, each on the next Link to
+come near, then spins away in the same smoke and walks off left unseen; the door does nothing to him (the Link with the
+key sets him off first). Room 5's Tingle (`FTGL`, `tingle.ts`, traced): under the two-Link rock on area 2's ledge (the
+bridge's GBA area); the rock lifted, he lies there, then stops the Links, talks (1294, then 1295 → 1305 → his chant 1302
+in one box), floats off on his balloon past the GBA screen's edge and over room 5's TV, gone for good; the route reads
+him (`lakehylia.ts`). Placed but not simulated (besides `FGAL`, `KEPO` and the hidden controllers named above): `YAJI`
+(the arrows on room 0's ground, drawn only), `TMI2` (room 58's 2-3 player blocks, in its tiles), `PRTC` (the waterfalls'
+particles, drawn by the stage effects), and `WPWL`, `SENP`, `ZOOM`, `GLWP` (hidden; what they do unknown).
 The 2026-10-18 black-box playtest (screenshots only, `#manual`): its "push blocks" walked through in room 4 and room
 2's cave are the four-Link switches (`YNSW`, floor; its "Link drawn under the block" was blinking after an Octorok's
 rock), and room 4's "cliff walked through" at x 416-431 is floor right of the face's diagonal tiles (type 0x0B), the

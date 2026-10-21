@@ -13,6 +13,7 @@
 // - one whose params' top 5 bits name a switch shows (and moves) only once that switch is on (as WARPs, PNPCs and
 //   Force Gems read them; assumed for enemies, TODO(measure)).
 // Per type below. Every value marked TODO(measure) is a placeholder.
+import { isHiddenUnsimulated } from "@fso/formats";
 import { attackMeets, type SubBox } from "../attacks.ts";
 import { linkAttack } from "./whirl.ts";
 import { BALL_KNOCK } from "../castlesoldiers.ts";
@@ -33,7 +34,7 @@ import { revealTingle } from "./tingle.ts";
 import { FIREBALL_KIND, hurtZora, initPuku, initZora, PUKU, pukuHalf, stepFireball, stepPuku, stepZora, ZORA, ZORA_SHOT, zoraUp } from "./waterfoes.ts";
 import { initRaisedStalfos, initWizzrobe, isCaster, RAISED_STALFOS, raisedStalfosHit, raisedStalfosHurtable, raisedStalfosHurts, stepRaisedStalfos, stepWizzrobe, wizzrobeDies, wizzrobeHurt, wizzrobeHurts, wizzrobeSolid, WIZZROBE, WIZZROBE_BOLTS, type WizzrobeHooks } from "./wizzrobe.ts";
 import { initShadowLink, shadowAfterKnock, shadowBeaten, shadowForm, shadowHurtable, shadowMatches, shadowParries, shadowStruck, SHADOW, stepShadowLink } from "./shadowlink.ts";
-import { initMinorShadow, stepMinorShadow } from "./minorshadow.ts";
+import { initJumpingShadow, initMinorShadow, stepJumpingShadow, stepMinorShadow } from "./minorshadow.ts";
 import { bladeClanks, bladeHalf, FIRE_TRAP, FIRE_TRAP_KIND, initBladeTrap, initFireTrap, stepBladeTrap, stepFireTrap } from "./traps.ts";
 import { dropHinoxRock, HINOX, HINOX_ROCK, hinoxBox, hinoxContact, initHinox, rockHurts, ROCK_KIND, stepHinox, stepHinoxRock, strikeHinox } from "./hinox.ts";
 
@@ -101,7 +102,7 @@ export interface Enemy {
 }
 
 /** The enemy types the adventure animates (others stay static sprites, apps/game). */
-export const ENEMY_TYPES: readonly string[] = ["OKTA", "KETH", "SLR1", "SLR2", "SLR4", "TKTA", "STAL", "BZBR", "POOH", "MOZO", "NZMI", "PEAC", "AMOS", "ROPE", "ZASL", "PAME", "ZORA", "PUKU", "HINO", "WIZR", "SLK2", "SLR3", "ZSLH", "FBGE", "TRAP"];
+export const ENEMY_TYPES: readonly string[] = ["OKTA", "KETH", "SLR1", "SLR2", "SLR4", "TKTA", "STAL", "BZBR", "POOH", "MOZO", "NZMI", "PEAC", "AMOS", "ROPE", "ZASL", "PAME", "ZORA", "PUKU", "HINO", "WIZR", "SLK2", "SLR3", "ZSLH", "ZSLJ", "FBGE", "TRAP"];
 
 /** Knocked back by Link's attacks (measured on an Octorok hit by a stab): 15.66 px/tick, × 0.78 a tick, ≤ 24 ticks. */
 export const ENEMY_KNOCK_SPEED = 4009;
@@ -173,9 +174,12 @@ export function spawnEnemies(game: AdventureGame, stage: AdventureStage): void {
   const area = currentArea(game, stage);
   // (What a two-Link rock holds comes out once it's lifted: rocks.ts heldUnderRocks.)
   const held = heldUnderRocks(game, area.actors);
-  // (The minor Shadow Link doesn't come back once he's left: minorshadow.ts.)
-  const gone = (a: { id: string; index: number }) => a.id === "ZSLH" && game.adventure.area === 0 && game.adventure.taken.includes(actorKey(game.adventure.room, a.index));
-  for (const a of area.actors) if (ENEMY_TYPES.includes(a.id) && !held.has(a.index) && !gone(a)) spawnEnemy(game, stage, a.id, a.x, a.y, a.params, a.index);
+  // (A minor Shadow Link doesn't come back once he's left: minorshadow.ts. The Cave's and Hyrule Castle's jumping ones
+  // aren't simulated: formats fsa/unsimulated.ts.)
+  const gone = (a: { id: string; index: number }) =>
+    (a.id === "ZSLH" || a.id === "ZSLJ") && game.adventure.area === 0 && game.adventure.taken.includes(actorKey(game.adventure.room, a.index));
+  const skip = (a: { id: string }) => isHiddenUnsimulated(stage.index, a.id);
+  for (const a of area.actors) if (ENEMY_TYPES.includes(a.id) && !held.has(a.index) && !gone(a) && !skip(a)) spawnEnemy(game, stage, a.id, a.x, a.y, a.params, a.index);
 }
 
 /**
@@ -287,6 +291,10 @@ export function spawnEnemy(game: AdventureGame, stage: AdventureStage, type: str
       initMinorShadow(e);
       e.gate = 0;
       break;
+    case "ZSLJ":
+      initJumpingShadow(e);
+      e.gate = 0;
+      break;
     case "FBGE":
       if (!initFireTrap(e)) {
         game.adventure.enemies.pop();
@@ -383,7 +391,7 @@ export function enemyShown(game: AdventureGame, e: Enemy): boolean {
 export const enemyActive = (e: Enemy) => e.state !== "die" && e.life > 0;
 /** Whether it counts for "all enemies beaten" (ZNSW): not a shot, a thrown rock, a Wizzrobe's spell, the minor Shadow Link
  *  or a trap. */
-export const countsAsEnemy = (e: Enemy) => e.type !== "OKTM" && e.type !== "OIWA" && e.type !== "ZSLH" && e.type !== "FBGE" && e.type !== "TRAP" && !(e.type === "WIZR" && !isCaster(e));
+export const countsAsEnemy = (e: Enemy) => e.type !== "OKTM" && e.type !== "OIWA" && e.type !== "ZSLH" && e.type !== "ZSLJ" && e.type !== "FBGE" && e.type !== "TRAP" && !(e.type === "WIZR" && !isCaster(e));
 
 export function stepEnemies(game: AdventureGame, stage: AdventureStage, world: World): void {
   const a = game.adventure;
@@ -434,6 +442,7 @@ export function stepEnemies(game: AdventureGame, stage: AdventureStage, world: W
         else if (e.type === "OIWA") stepHinoxRock(e);
         else if (e.type === "SLK2") stepShadowLink(game, stage, e, world);
         else if (e.type === "ZSLH") stepMinorShadow(game, e);
+        else if (e.type === "ZSLJ") stepJumpingShadow(game, e, world);
         else if (e.type === "FBGE") stepFireTrap(game, e, (vx, vy) => newEnemy(game, "OKTM", e.x, e.y, { kind: FIRE_TRAP_KIND, state: "fly", vx, vy, atcp: FIRE_TRAP.damage, life: 1, tick: -1 }));
         else if (e.type === "TRAP") stepBladeTrap(game, e, world);
         else if (e.type === "ZASL") stepZol(game, e, world);
@@ -900,7 +909,8 @@ const hittable = (game: AdventureGame, e: Enemy) => enemyActive(e) && e.invincib
 function hurtable(e: Enemy): boolean {
   switch (e.type) {
     case "ZSLH":
-      return false; // (the minor Shadow Link: what a sword does to him isn't known, minorshadow.ts)
+    case "ZSLJ":
+      return false; // (the minor Shadow Links: what a sword does to them isn't known, minorshadow.ts)
     case "FBGE":
     case "TRAP":
       return false; // (traps.ts: nothing beats them; a sword clanks on a blade trap)

@@ -156,6 +156,9 @@ at the frames of the block the code draws from; for ZASL, ZSLH and KEPO the pick
     added alpha scale by life left / life, its size from 1 to the end scale. The boomerang (draw 0x80168E78) passes kind
     17: every 4 frames, life 20, × (255, 255, 255, 191) + (127, 127, 127, 0), scale 1: pale copies left behind (poking
     its `li r0, 17` at 0x80168F2C to −1 removes them in Dolphin). Drawn in `apps/battle/src/entities.ts` (`AFTERIMAGE`).
+    The minor Shadow Links (ZSLH, ZSLJ: their draw 0x80220F54) pass kind 14: every 4 frames, life 20, × (0, 0, 0, 191)
+    + 0, scale 1: black copies trailing their hops and jumps (Dolphin, Lake Hylia room 3; apps/game `enemies.ts`
+    `minorShadowTrails`).
   - 0x804030C4 / 0x804032E8 / … draw BTI textures (`'TIMG'` resources, e.g. RCK3's `timg/yy_1_1_iwa1.bti`).
   - The frame argument is usually `field + constant`: the constant is the first frame of the type's block in the list and
     the field an animation step, a direction (× frames per direction) or a variant chosen in init. Direction order is
@@ -203,7 +206,7 @@ at the frames of the block the code draws from; for ZASL, ZSLH and KEPO the pick
   | PLAS (player start) | player_sob 8 × direction, palettes 7/15 <- 12 + player | confirmed: direction table 0x8046C890 |
   | GOL2 (goal) | 4 × gc 603 laid out by params & 0x1F (float tables 0x8046EA10/0x8046EA70) | confirmed |
   | CNON 332, PUKU 323, FTGL 192, YNSW both 13, YAJI both 16 + params & 0xF, BLCK both 4 + size / 69 / 72 + color, ZORA gc 213, HBMB both2 232, BEEE both2 460, SNPC variants, RCK2 both2 43 (+8 y) | as listed | confirmed: the constants are the draw call's immediates |
-  | ZASL gc 721, SLR4 gc 556, NIWA both2 687, CIRC gc 297 + color, KEY0 both2 45 + kind, LSTI both2 64 + item, ZSLH/ZSLJ player_sob 16 (palette 7 left as is = dark; both stand facing down in Dolphin, Lake Hylia rooms 3 and 4; ZSLH is simulated, its +0x280 traced: 60 + facing standing, 305-307, 379, 380-386 the hammer: sim minorshadow.ts), RCK3 `yy_1_1_iwa1.bti` | base frame from code, resting pose or param field picked visually | matched |
+  | ZASL gc 721, SLR4 gc 556, NIWA both2 687, CIRC gc 297 + color, KEY0 both2 45 + kind, LSTI both2 64 + item, ZSLH player_sob 16, ZSLJ 62 (palette 7 left as is = dark; both simulated in Lake Hylia, rooms 4 and 3, their +0x280 traced: 60 + facing standing (62 down: ZSLJ's frame through his hops and jumps), ZSLH's 305-307, 379, 380-386 the hammer: sim minorshadow.ts; their draw 0x80220F54 also passes shadow spec 7 and afterimage kind 14, below), RCK3 `yy_1_1_iwa1.bti` | base frame from code, resting pose or param field picked visually | matched |
   | BLZ2 (eternal flame) | TV: an effect; GBA: both2 265 + step (from BLZE, which BLZ2 spawns), drawn as a stand-in | matched |
   | KEPO gc 618, OBLF both 20 + shape, CRGN both2 144 ('?' crystal ball; the content is chosen at run time) | | guessed |
   | PLSW (pull handle), STBL (throne) | PLSW both2 327 + length class (0 under 1 px out, 1 under 3, 2 under 8, 4 out for good) at its home; STBL both2 449 at 2×, 16 px below its placement | confirmed (Hyrule Castle: below) |

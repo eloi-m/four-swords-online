@@ -41,6 +41,6 @@ export { arrowBurning, ARROW_BURNING } from "./bow.ts";
 export { LEVER_FULL, type Lever } from "./lever.ts";
 export { pullOut } from "./pullswitch.ts";
 export { SHADOW, SHADOW_STATE, shadowColor, shadowForm, shadowShownColor, shadowState } from "./shadowlink.ts";
-export { MINOR_SHADOW, MINOR_SHADOW_STATE, minorShadowEffects, minorShadowFrame, minorShadowState } from "./minorshadow.ts";
+export { JUMPING_SHADOW, JUMPING_SHADOW_STATE, MINOR_SHADOW, MINOR_SHADOW_AFTERIMAGE, MINOR_SHADOW_STATE, minorShadowEffects, minorShadowFrame, minorShadowState } from "./minorshadow.ts";
 export { BLADE_STATE, BLADE_TRAP, bladeFrame, bladeSparks, FIRE_TRAP, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, FIRE_TRAP_LIGHT } from "./traps.ts";
 export * from "./whirl.ts";

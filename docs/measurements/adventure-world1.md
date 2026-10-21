@@ -502,7 +502,9 @@ u32 at 0x8113B40C; world px = room px + (0, 768)). Script `10 idle; 3 c-left; 20
 - **Forgiving:** all four lit (9 on) from the leader at (232, 293), (232, 299), (229, 296), (235, 296), (232, 288),
   (232, 304), (224, 296), (240, 296) (x ±8, y ±8 px); not tried further out.
 - **What broke the first tries:** the charge ended 14 frames in (state 8 → 0, B still held) whenever the Links stood
-  near the crystals 100+ frames after arriving: the minor Shadow Link (`ZSLJ`, (368, 304), not simulated) walked up
+  near the crystals 100+ frames after arriving: the minor Shadow Link (`ZSLJ`, (368, 304), not simulated here; Lake
+  Hylia's is, adventure-lake-hylia.md "The minor Shadow Link who jumps": 368 − 242.8 = 125.2 px, one of his jumps by
+  the numbers) came up
   and the bottom Link's charging sword met it (watched with `trace.ts --watch`: 0x802721A8 sets +0xCAE, the charge's
   update 0x8027C4B0 ends on +0xCAE/+0xCAF; ZSLJ's object at 0x813C0760 then, at (242.8, 304)). Charging soon after
   arriving (the script above) beats it.
