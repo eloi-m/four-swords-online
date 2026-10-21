@@ -4,7 +4,9 @@
 // area 6: a Link held overhead, the thrown Link in flight, the bridge laid by switch 19 (its PNPC row's tile 0x3FC); on
 // along its route, the things the sim simulates that apps/game drew nothing for before: room 3's pull handle (PLSW)
 // pulled, room 9's four-Link handle (PSWB) pulled, the escort Zoras (FAZR) met and following, room 57's barrier (BARI's
-// effects) with a Zora come to its arrival point (FZRA), the barrier gone, room 10's throne (STBL) pushed.
+// effects) with a Zora come to its arrival point (FZRA), the barrier gone, room 10's throne (STBL) pushed; the cracked
+// walls bombed open (doorlook.ts: their base pair and the top layer's lintel): Hyrule Castle room 5's and room 9's area
+// 3's on the route, Tingle's Tower room 4's area 5's marked opened by hand (off its route).
 // A screenshot at each into out/e2e/looks-*.png (kept out of git).
 // Expects the dev server (pnpm --filter @fso/game dev), which serves the game files.
 //   node tools/e2e/src/looks.ts [url] [outDir]
@@ -26,11 +28,14 @@ interface Seen {
   room: number;
   area: number;
   milestone: number;
+  /** The leader's position (px). */
+  x: number;
+  y: number;
   done: boolean;
   error: string;
   switches: number;
   opened: number[];
-  /** The base layer's drawn tiles at the indices asked for (`tiles`). */
+  /** The base layer's drawn tiles at the indices asked for (`tiles`), then the top layer's at those + 1024. */
   drawn: number[];
   /** Fighters' moves and heights (px), by Link. */
   moves: string[];
@@ -74,7 +79,8 @@ async function open(page: Page, hash: string): Promise<void> {
   await page.waitForFunction(() => (window as unknown as { __loop?: unknown }).__loop !== undefined, { polling: 20 });
 }
 
-/** Steps the loop `ms` at a time until `until` holds (or `frames` run out); `tiles` are base-layer indices to read. */
+/** Steps the loop `ms` at a time until `until` holds (or `frames` run out); `tiles` are base-layer indices to read (the
+ *  top layer's + 1024). */
 async function stepUntil(page: Page, until: string, ms: number, frames: number, tiles: number[] = []): Promise<Seen | null> {
   return page.evaluate(
     (until, ms, frames, tiles) => {
@@ -90,11 +96,13 @@ async function stepUntil(page: Page, until: string, ms: number, frames: number, 
           room: a.room,
           area: a.area,
           milestone: r?.milestone ?? -1,
+          x: Math.round(g.players[0].x / 256),
+          y: Math.round(g.players[0].y / 256),
           done: !!r?.done,
           error: r?.error ?? "",
           switches: g.battle.switches >>> 0,
           opened: [...a.opened],
-          drawn: tiles.map((i: number) => v.patch?.data[i] ?? -1),
+          drawn: tiles.map((i: number) => (i < 1024 ? v.patch?.data[i] : v.topPatch?.data[i - 1024]) ?? -1),
           moves: g.battle.fighters.map((x: any) => x.move),
           z: g.battle.fighters.map((x: any) => Math.round(x.z / 256)),
           stone,
@@ -186,7 +194,19 @@ try {
     if (s && !s.drawnTypes[type]) problems.push(`${name}: no ${type} drawn (${JSON.stringify(s.drawnTypes)})`);
   };
   drew("handle", await check(page, "handle", "s.room === 3 && s.area === 0 && s.pulls.some((x, k) => k % 3 === 1 && x >= 200)", 1000 / 60, 60000), "PLSW");
+  // Room 5's garden wall (DOOR #22 (80, 256), kind 2 side 1) bombed open: its base pair 0x338 0x339 and the lintel
+  // 0x328 0x329 on the top layer the row above (doorlook.ts).
+  const wall5 = [16 * 32 + 5, 16 * 32 + 6, 1024 + 15 * 32 + 5, 1024 + 15 * 32 + 6];
+  expectTiles("wall-5-shut", await check(page, "wall-5-shut", "s.room === 5 && s.area === 0 && s.x > 40 && s.x < 140 && s.y > 270 && s.y < 330 && !s.opened.includes(5 * 4096 + 22)", 1000 / 60, 60000, wall5), [0x330, 0x331, 0, 0]);
+  const blown5 = await check(page, "wall-5", "s.room === 5 && s.area === 0 && s.opened.includes(5 * 4096 + 22)", 1000 / 60, 60000, wall5);
+  if (blown5) expectTiles("wall-5-open", await check(page, "wall-5-open", `s.tick >= ${blown5.tick + 60}`, 1000 / 60, 200, wall5), [0x338, 0x339, 0x328, 0x329]);
   drew("big-handle", await check(page, "big-handle", "s.room === 9 && s.area === 0 && s.pulls.some((x, k) => k % 3 === 1 && x >= 400)", 1000 / 60, 60000), "PSWB");
+  // Room 9's area 3 throne-room wall (DOOR #45 (192, 64), kind 2 side 3): 0x32E 0x33E down from the anchor, the top
+  // layer's 0x32F 0x33F a tile to the right.
+  const wall9 = [4 * 32 + 12, 5 * 32 + 12, 1024 + 4 * 32 + 13, 1024 + 5 * 32 + 13];
+  expectTiles("wall-9-shut", await check(page, "wall-9-shut", "s.room === 9 && s.area === 3 && s.window === 1 && !s.opened.includes(9 * 4096 + 45)", 1000 / 60, 60000, wall9), [0x326, 0x336, 0, 0]);
+  const blown9 = await check(page, "wall-9", "s.room === 9 && s.area === 3 && s.opened.includes(9 * 4096 + 45)", 1000 / 60, 60000, wall9);
+  if (blown9) expectTiles("wall-9-open", await check(page, "wall-9-open", `s.tick >= ${blown9.tick + 30}`, 1000 / 60, 200, wall9), [0x32e, 0x33e, 0x32f, 0x33f]);
   const met = await check(page, "zora-met", "s.room === 9 && s.area === 5 && s.escort", 1000 / 60, 60000);
   drew("zora-met", met, "FAZR");
   // (It comes into the area behind the Links, among them under the lowered tower's south wall: seen 100 ticks on, past it.)
@@ -203,6 +223,20 @@ try {
   }
   await check(page, "throne", "s.room === 10 && s.area === 2 && s.window === 1", 1000 / 60, 60000);
   await check(page, "throne-pushed", "s.room === 10 && s.area === 2 && s.throne === 'set'", 1000 / 60, 20000);
+
+  // Tingle's Tower room 4's area 5 wall (DOOR #16 (144, 176), kind 2 side 3), off the route: the Links put in the area,
+  // the wall marked blown (the opened list, as a blast's).
+  await open(page, "stage=boss012&room=4&players=4&mute&run=off");
+  await page.evaluate(() => {
+    const g = (window as unknown as { fso: any }).fso.game;
+    g.adventure.area = 5;
+    g.players.forEach((p: any) => ((p.x = 112 * 256), (p.y = 192 * 256)));
+  });
+  const wall4 = [11 * 32 + 9, 12 * 32 + 9, 1024 + 11 * 32 + 10, 1024 + 12 * 32 + 10];
+  expectTiles("tingle-wall-shut", await check(page, "tingle-wall-shut", "s.room === 4 && s.area === 5 && s.window === 1 && s.tick >= 60", 1000 / 60, 600, wall4), [0x326, 0x336, 0, 0]);
+  await page.evaluate(() => void (window as unknown as { fso: any }).fso.game.adventure.opened.push(4 * 4096 + 16));
+  const blown4 = await stepUntil(page, "true", 1000 / 60, 1);
+  if (blown4) expectTiles("tingle-wall-open", await check(page, "tingle-wall-open", `s.tick >= ${blown4.tick + 10}`, 1000 / 60, 100, wall4), [0x32e, 0x33e, 0x32f, 0x33f]);
 } finally {
   await browser.close();
 }

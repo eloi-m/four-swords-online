@@ -72,9 +72,6 @@ export const EXPECTED_ACTORS: Readonly<Record<string, string>> = {
   "castle picture 3/2/48": "doorlook.ts: as castle door picture 3/2/23, along the route",
   "castle picture 10/0/495": "doorlook.ts: as castle door picture 10/0/14, along the route",
   "castle picture 10/0/496": "doorlook.ts: as castle door picture 10/0/14, along the route",
-  "castle door look 5/0/22": "known (BACKLOG B6): a bombed cracked wall (DOOR kind 2) keeps its look: its second pair of tiles (another layer) isn't drawn; room 5's garden wall, walked through on the route",
-  "castle door look 9/3/45": "known (BACKLOG B6): as castle door look 5/0/22 (room 9's throne room wall)",
-  "tingle door look 4/5/16": "known (BACKLOG B6): as castle door look 5/0/22 (room 4's area 5)",
 };
 
 /** The actor types packages/sim names in its code (a quoted four-letter id outside the tests). */
@@ -204,7 +201,10 @@ export function doorChecks(stage: AdventureStage): ActorFinding[] {
       game.adventure.area = area.sublayer;
       game.battle.switches = open ? -1 : 0;
       game.adventure.opened = open ? doors.map((d) => actorKey(area.room, d.index)) : [];
-      pictures.push(drawnSwaps(game, stage, area));
+      // (The top layer's swaps by index + 1024: a bombed wall's lintel, doorlook.ts.)
+      const top = new Map<number, number>();
+      doorLookTiles(game, stage, new Map(), top);
+      pictures.push(new Map([...drawnSwaps(game, stage, area), ...[...top].map(([i, t]) => [i + 1024, t] as const)]));
       if (!open) continue;
       // Open: the swaps' own checks, and the picture round each door against the collision.
       swapChecks(game, stage, area, report);
@@ -220,7 +220,7 @@ export function doorChecks(stage: AdventureStage): ActorFinding[] {
     }
     // (A shut door is drawn by its tiles, which collide as a way through (a warp's box): the sim blocks its middle.)
     for (const d of doors) {
-      const c = doorCenter(d), near = (i: number) => Math.abs((i % 32) * 16 + 8 - c.x) <= 24 && Math.abs((i >> 5) * 16 + 8 - c.y) <= 24;
+      const c = doorCenter(d), near = (i: number) => Math.abs((i % 32) * 16 + 8 - c.x) <= 24 && Math.abs(((i & 1023) >> 5) * 16 + 8 - c.y) <= 24;
       const changed = [...new Set([...pictures[0]!.keys(), ...pictures[1]!.keys()])].some((i) => near(i) && pictures[0]!.get(i) !== pictures[1]!.get(i));
       if (!changed) report(`door look ${area.room}/${area.sublayer}/${d.index}`, `${doorName(area, d)}: opened, it looks as it did shut (no tile of it changes)`);
     }

@@ -84,9 +84,18 @@ sides 2 and 3). Kinds 5-7 write nothing. By width:
   2EC 2EF 2EF 2FC / 2ED 2FF 2FF 2FD; kind 2 the same from 2DA, 2CA, 2CC, 2CD.
 - 2: table 0x8046D688, 6 tiles a side (48 bytes a kind, kinds 0-2): width 1's with four middle tiles (the Cave of No
   Return's doors).
-- Kinds 2 and 4 of widths 0 and 1 also write a pair one tile out from the wall on another layer (the layer index + 1, or
-  + 8 from area 8 on): tables 0x8046D718 (kind 2), 0x8046D728 (kind 4), 0x8046D738 (width 1), offsets per side
-  0x8046D7E8 / 0x8046D7F8 (x 0, 0, -16, 16; y 16, -16, 0, 0). Not drawn (which of our layers that is: not checked).
+- Kinds 2 and 4 of width 0, and kind 2 of width 1, also write a row one tile out from the wall (from the anchor + the
+  side's offset, tables 0x8046D7E8 / 0x8046D7F8: x 0, 0, -16, 16; y 16, -16, 0, 0; along the wall as the base row) into
+  the screen's **top layer**: the layer index is the actor's screen (+0x4: 0 the TV, 7 + sublayer a GBA area) + 1, or
+  + 8 from screen 8 on, and `[[0x8053AB10]+0x20]+0x28 + 4·index` is that layer. Width 0, 2 tiles: 0x8046D718 (kind 2)
+  33A 33B / 328 329 / 32C 33C / 32F 33F, 0x8046D728 (kind 4) 39A 39B / 388 389 / 38C 39C / 38F 39F; width 1, 4 tiles,
+  kind 2 only: 0x8046D738 2D4 2D5 2D5 2D6 / 2C4 2C5 2C5 2C6 / 2C7 2C8 2C8 2C9 / 2D7 2D8 2D8 2D9. A cracked wall is a
+  2×2 of tiles: the base pair opens the half on the room's side, the top row covers the other half (the doorway's
+  lintel, drawn over the Links); the base layer keeps its cracked tiles under it. **Measured** in RAM
+  (`w1-013-room5-tower.sav`, Hyrule Castle room 5's garden wall (80, 256), side 1, bombed): layer 0 (the TV's base)
+  holds 338 339 at tiles (5, 16), (6, 16) and 320 321 above them; layer 1 (the TV's top layer: elsewhere the stage's
+  group 2 tiles, 2A8 2A8 at (5, 14)) holds 328 329 at (5, 15), (6, 15). Drawn by `doorlook.ts` once a kind 2 or 4
+  is opened (nothing opens a kind 4 in the sim, and World 1 has none; kind 4 isn't blocked either).
 - The tiles are the same numbers in every stage's tileset. Their types (0x2A, 0x2B, 0x0C) aren't applied to the sim's
   collision (doors.ts keeps its own: doorWorld, openDoorTiles).
 

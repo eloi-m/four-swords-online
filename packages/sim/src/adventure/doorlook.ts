@@ -4,13 +4,15 @@
 // (docs/formats/adventure.md "DOOR's open tiles"):
 // - width 0, 0x8046D598: 2 tiles, by kind (0-8) then side; width 1, 0x8046D628: 4 tiles, kinds 0-2; width 2,
 //   0x8046D688: 6 tiles (the Cave of No Return's doors), kinds 0-2. Kinds 5-7 write nothing.
-// - Kinds 2 and 4 of width 0 and 1 also write a pair one tile out from the wall (tables 0x8046D718, 0x8046D728,
-//   0x8046D738) on the layer above: not drawn here (TODO: which layer that is).
+// - Kinds 2 and 4 of width 0 (tables 0x8046D718, 0x8046D728: 2 tiles) and kind 2 of width 1 (0x8046D738: 4 tiles)
+//   also write a row one tile out from the wall (x 0, 0, -16, 16, y 16, -16, 0, 0 by side: 0x8046D7E8, 0x8046D7F8)
+//   on the area's top layer (the layer index + 1 on the TV, + 8 on a GBA screen: Hyrule Castle room 5's bombed wall
+//   read in RAM): the doorway's lintel, drawn over the Links. The base layer keeps its cracked tiles under it.
 // The tiles are the stage tileset's (every stage's door tiles sit at the same numbers). They're drawn only: the
 // sim's collision keeps doors.ts (doorWorld, openDoorTiles); the open tiles' types (0x2A, 0x2B, 0x0C) aren't applied.
 import { LAYER_TILES } from "@fso/formats";
-import { currentArea, type AdventureGame } from "./adventure.ts";
-import { doorShut } from "./doors.ts";
+import { actorKey, currentArea, type AdventureGame } from "./adventure.ts";
+import { CRACKED, doorShut } from "./doors.ts";
 import type { AdventureStage } from "./stage.ts";
 
 /** Width 0's open tiles: [kind][side] → the two tiles (0x8046D598). */
@@ -34,6 +36,16 @@ const OPEN_4: readonly (readonly (readonly number[])[])[] = [
 /** Width 2's (0x8046D688): [kind][side] → six tiles, width 1's with four middles. */
 const OPEN_6: readonly (readonly (readonly number[])[])[] = OPEN_4.map((kind) => kind.map(([a, m, , b]) => [a!, m!, m!, m!, m!, b!]));
 
+/** Width 0's top-layer row: [side] → two tiles, kind 2 (0x8046D718) and kind 4 (0x8046D728). */
+const TOP_2: Readonly<Record<number, readonly (readonly number[])[]>> = {
+  2: [[0x33a, 0x33b], [0x328, 0x329], [0x32c, 0x33c], [0x32f, 0x33f]],
+  4: [[0x39a, 0x39b], [0x388, 0x389], [0x38c, 0x39c], [0x38f, 0x39f]],
+};
+/** Width 1's (0x8046D738), kind 2 only: [side] → four tiles. */
+const TOP_4: readonly (readonly number[])[] = [[0x2d4, 0x2d5, 0x2d5, 0x2d6], [0x2c4, 0x2c5, 0x2c5, 0x2c6], [0x2c7, 0x2c8, 0x2c8, 0x2c9], [0x2d7, 0x2d8, 0x2d8, 0x2d9]];
+/** Where the top-layer row starts from the anchor's tile, by side (in tiles). */
+const TOP_STEP: readonly (readonly [number, number])[] = [[0, 1], [0, -1], [-1, 0], [1, 0]];
+
 /** The tiles a door of this kind, side and width shows open (from its anchor's tile along its wall), or null. */
 export function doorOpenTiles(kind: number, side: number, width: number): readonly number[] | null {
   if (kind >= 5 && kind <= 7) return null;
@@ -41,22 +53,37 @@ export function doorOpenTiles(kind: number, side: number, width: number): readon
   return table?.[kind]?.[side & 3] ?? null;
 }
 
-/** The base-layer tiles the current area's open doors show (tile index → tile), for drawing. */
-export function doorLookTiles(game: AdventureGame, stage: AdventureStage, out: Map<number, number>): void {
+/** The top-layer tiles a door of this kind, side and width also shows open (one tile out from its wall), or null. */
+export function doorOpenTopTiles(kind: number, side: number, width: number): readonly number[] | null {
+  if (width === 0) return TOP_2[kind]?.[side & 3] ?? null;
+  return width === 1 && kind === CRACKED ? TOP_4[side & 3]! : null;
+}
+
+/**
+ * The tiles the current area's open doors show (tile index → tile), for drawing: the base layer's into `out`, the top
+ * layer's into `top`.
+ */
+export function doorLookTiles(game: AdventureGame, stage: AdventureStage, out: Map<number, number>, top?: Map<number, number>): void {
   const area = currentArea(game, stage);
   if (!area.base) return;
   for (const d of area.actors) {
     if (d.id !== "DOOR") continue;
     const kind = d.params & 0x7f, side = (d.params >>> 7) & 31;
-    // Kinds 0, 1, 3 and 8 while doors.ts has them open (a kind 0 without a switch always). A cracked wall (kind 2) keeps
-    // its look: half its open look is on the other layer.
-    const opens = (kind === 0 || kind === 1 || kind === 3 || kind === 8) && !doorShut(game, d);
-    const tiles = opens ? doorOpenTiles(kind, side, (d.params >>> 12) & 31) : null;
-    if (!tiles) continue;
-    const tx = d.x >> 4, ty = d.y >> 4, down = side >= 2;
-    tiles.forEach((t, k) => {
-      const x = down ? tx : tx + k, y = down ? ty + k : ty;
-      if (x >= 0 && y >= 0 && x < LAYER_TILES && y < LAYER_TILES) out.set(y * LAYER_TILES + x, t);
-    });
+    // Kinds 0, 1, 3 and 8 while doors.ts has them open (a kind 0 without a switch always); kinds 2 and 4 once opened
+    // (a bomb's blast opens a cracked wall; nothing opens a kind 4 in the sim, which leaves it unblocked).
+    const opens = kind === CRACKED || kind === 4 ? game.adventure.opened.includes(actorKey(game.adventure.room, d.index)) : !doorShut(game, d);
+    if (!opens) continue;
+    const width = (d.params >>> 12) & 31, tx = d.x >> 4, ty = d.y >> 4;
+    put(out, doorOpenTiles(kind, side, width), tx, ty, side);
+    if (top) put(top, doorOpenTopTiles(kind, side, width), tx + TOP_STEP[side & 3]![0], ty + TOP_STEP[side & 3]![1], side);
   }
+}
+
+/** A row of tiles from (tx, ty) along a door's wall: to the right on sides 0 and 1, down on 2 and 3. */
+function put(out: Map<number, number>, tiles: readonly number[] | null, tx: number, ty: number, side: number): void {
+  const down = (side & 3) >= 2;
+  tiles?.forEach((t, k) => {
+    const x = down ? tx : tx + k, y = down ? ty + k : ty;
+    if (x >= 0 && y >= 0 && x < LAYER_TILES && y < LAYER_TILES) out.set(y * LAYER_TILES + x, t);
+  });
 }

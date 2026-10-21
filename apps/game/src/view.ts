@@ -367,21 +367,17 @@ export class AdventureView {
   // drawnRewrites), then the open doors' own tiles (doorlook.ts: the game's, over the sim's stand-ins), and gets its
   // own back where they no longer do. A room keeps its rewritten tiles on screen once the Links leave it (its switches
   // are kept).
-  // The top layer shows the items put on the pedestals taken from (the sim's pedestalTiles). A GBA-screen area's is
-  // blended over the rest as the GBA does while its VWMD's top mode holds (the sim's topModeOf, TOP_MODE_BLEND: Lake
-  // Hylia room 5's area 2's filler only shades what is under the bridge, the underwater passages' water is seen through).
+  // The top layer shows the open doors' rows one tile out from the wall (a bombed wall's lintel: doorlook.ts) and the
+  // items put on the pedestals taken from (the sim's pedestalTiles). A GBA-screen area's is blended over the rest as
+  // the GBA does while its VWMD's top mode holds (the sim's topModeOf, TOP_MODE_BLEND: Lake Hylia room 5's area 2's
+  // filler only shades what is under the bridge, the underwater passages' water is seen through).
   private patchArea(game: AdventureGame): void {
     if (this.areaTop) blendLayer(this.areaTop, TOP_MODE_BLEND[topModeOf(game, this.adventure.area(game.adventure.room, game.adventure.area))]!);
-    if (this.patch) {
-      const tiles = drawnRewrites(game, this.adventure);
-      doorLookTiles(game, this.adventure, tiles);
-      applyPatch(this.patch, tiles);
-    }
-    if (this.topPatch) {
-      const tiles = new Map<number, number>();
-      pedestalTiles(game, tiles);
-      applyPatch(this.topPatch, tiles);
-    }
+    const tiles = drawnRewrites(game, this.adventure), top = new Map<number, number>();
+    doorLookTiles(game, this.adventure, tiles, top);
+    pedestalTiles(game, top);
+    if (this.patch) applyPatch(this.patch, tiles);
+    if (this.topPatch) applyPatch(this.topPatch, top);
   }
 
   /** Moves the cameras (call once per simulation tick). */

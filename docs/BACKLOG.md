@@ -393,8 +393,8 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   - Done: open doors show the game's open tiles (`doorlook.ts`, DOOR's tables at 0x8046D598/0x8046D628/0x8046D688,
     docs/formats/adventure.md "DOOR's open tiles"), every stage, the Cave's too (its passages now dark doorways, not
     copied floor). Drawn only: the open tiles' types aren't applied to collision (`actors.ts` EXPECTED: room 6's area 6
-    door, one 8 px cell drawn floor but solid); kinds 2 and 4's second pair (another layer) isn't drawn, so a bombed
-    cracked wall keeps its look.
+    door, one 8 px cell drawn floor but solid). A bombed cracked wall (kinds 2 and 4) shows its base pair and its top-layer
+    row (the lintel, read in RAM: B6 "Playtest, World 1" item 7).
   - RCK3's colour (the BTI's own palette, pale grey) and placement (centred: guessed), unchecked against Dolphin.
 - **Playtest checks (`tools/playtest`, `docs/tools.md` "Playtest checks"):** Lake Hylia's 22 puzzles bent 272 ways
   and its actors checked against their drawings, messages and tile swaps. Fixed: followers who jumped off a ledge
@@ -477,8 +477,11 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      ZSLJ goes once the key opens its door (sim `doors.ts goneDoorwayFigures`). **Done (2026-10-18):** room 4's ZSLH
      simulated (sim `minorshadow.ts`, traced: by time, not distance; three blows that stun the leader, the spin, the
      smoke, off the TV), Hyrule Castle's too; left: a sword on him, the camera widening, his sounds.
-  7. **A bombed cracked wall keeps its look** (known above: kind 2's second pair of tiles isn't drawn): Hyrule Castle's
-     room 5 garden wall and room 9's throne-room wall, Tingle's Tower's room 4 area 5 (`actors.ts` "door look"). M.
+  7. **Done (2026-10-21):** a bombed cracked wall shows the game's open look: its base pair and, one tile out from
+     the wall, a row on the top layer (doorlook.ts `doorOpenTopTiles`, tables 0x8046D718/0x8046D728/0x8046D738; the
+     layer read in RAM on Hyrule Castle room 5's bombed wall: docs/formats/adventure.md "DOOR's open tiles"). Hyrule
+     Castle's room 5 garden wall and room 9's throne-room wall, Tingle's Tower's room 4 area 5 (`looks.ts` checks
+     the three, shut then open). The open tiles' types still aren't applied to the collision.
   8. **Tingle's house villagers say nothing** (b): `JIJI` messages 843 and 844 are only a `branch` (2.07/2.10/2.2C)
      whose cond byte is unknown, not followed by MessageBook. Fix: read the cond in main.dol or Dolphin. M. **Done
      (2026-10-21):** read in main.dol: 2.07's byte is a switch of the current room (on: the first message), and
