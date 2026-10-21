@@ -39,8 +39,10 @@ Also in here: a small slice of the adventure (Lake Hylia), a map viewer, a 2D sc
 
 **Browsers** (checked by `tools/e2e/src/site.ts` and `site-webkit.ts`, desktop): Chrome and Firefox pass every flow,
 including a Chrome-hosted online match joined from Firefox. Safari: its WebKit engine (Playwright's WebKit 26.4
-build) passes every flow and plays online against Chrome; Safari itself wasn't automated. Mobile and touch aren't
-supported. HTTPS (or `localhost`) is required.
+build) passes every flow and plays online against Chrome; Safari itself wasn't automated. Phones and tablets work too,
+with on-screen touch controls in landscape (`touch.ts` and `mobile.ts` check them in phone emulation, online play
+included), and the game was played on an iPhone (Safari) and an Android phone (Chrome). HTTPS (or `localhost`) is
+required.
 
 ## Run it locally
 
