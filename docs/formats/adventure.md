@@ -51,7 +51,8 @@ Ganon": what the trace corrected is marked *traced* below): `FGAN` ctor 0x802024
   test. Lake Hylia's: room 2's sign 0x528, room 3's 0x532, the bridge's underside (room 5, area 2) 0x13A ("-Swimming
   Basics-"); room 3's house 0x470 and 0x471, room 7's cannon man (area 5) 0x22B, the Fire Rod's keeper (`SNPC`,
   room 3 area 2) 0x31B. Some are empty in the US file (room 1's house): nothing is said. The owl's (`KEPO` 0x190 → 0x2BB) is five pages long. Room 1's old man (0x4FE, 1278) and
-  room 58's cave villager (0x317, 791) have only a flow (branch4, ifFlag): the talk follows it to their text
+  room 58's cave villager (0x317, 791) have only a flow (branch4, ifFlag), Tingle's Tower's two in Tingle's house (843,
+  844) a branch on room 11's switch 29: the talk follows it to their text
   (`docs/formats/j2d-and-bmg.md` "Flows followed by the talk": what's established and what's assumed).
 - **confirmed** Who talks: each frame a Link's point 15.999 px ahead (table 0x8046AE78 by facing: right, left, down,
   up) inside a speaker's box marks it (0x8024CD20; the box test is inclusive); with the speaker's "needs A" flag the

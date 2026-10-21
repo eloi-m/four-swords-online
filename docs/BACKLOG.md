@@ -478,7 +478,11 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   7. **A bombed cracked wall keeps its look** (known above: kind 2's second pair of tiles isn't drawn): Hyrule Castle's
      room 5 garden wall and room 9's throne-room wall, Tingle's Tower's room 4 area 5 (`actors.ts` "door look"). M.
   8. **Tingle's house villagers say nothing** (b): `JIJI` messages 843 and 844 are only a `branch` (2.07/2.10/2.2C)
-     whose cond byte is unknown, not followed by MessageBook. Fix: read the cond in main.dol or Dolphin. M.
+     whose cond byte is unknown, not followed by MessageBook. Fix: read the cond in main.dol or Dolphin. M. **Done
+     (2026-10-21):** read in main.dol: 2.07's byte is a switch of the current room (on: the first message), and
+     `MessageBook.resolve` follows it. Room 11's switch 29 is never set, so they say 879 and 880: the horse race's
+     texts ("And in last place…", "Here's your last chance…"; boss012 isn't the retail game's stage, its message
+     numbers land there). Left: not seen in Dolphin; 2.10 and 2.2C still not followed (none in World 1's talk).
   9. **Out of hearts in the Cave's room 13, the four can be cut off** (b): bent timing let the rats at the top bite
      them out of hearts; they get up at the room's west entry (the sim's assumed revive place) with the blocks still
      pushed, and the way east is gone (`cave-big-block / let go 20 ticks in`). Fix: check the game over/revive in

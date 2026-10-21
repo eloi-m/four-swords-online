@@ -243,10 +243,11 @@ clear (`#route`, `window.fso.route`).
   talk on the GC's A (the sim's Item button) facing them, their message = params + 0x12B (main.dol), page by page in
   main2D's `hukidashi_wood` / `hukidashi_stone` / `hukidashi` boxes (apps/game `dialogue.ts`), timed as Dolphin shows
   Lake Hylia room 3's sign; an item or a chest's content got: the pose, then its message on the 97th tick (traced).
-  A message that is only a flow (branch4, ifFlag: Lake Hylia's old man and cave villager) shows the text it leads to,
-  with the controllers and flags the sim keeps (`MessageBook.resolve`; assumed rules: `docs/formats/j2d-and-bmg.md`).
+  A message that is only a flow (branch4, ifFlag: Lake Hylia's old man and cave villager; branch 2.07 on a room
+  switch: Tingle's house villagers) shows the text it leads to, with the controllers, flags and room switches the sim
+  keeps (`MessageBook.resolve`; the rules: `docs/formats/j2d-and-bmg.md`).
   Not done: villagers that talk by themselves when touched, the balloon placed over a speaker, a press while typing,
-  the flows of `branch`, `ifGems`, `ifItem` and a text's `then`.
+  the flows of `branch` 2.10 and 2.2C, `ifGems`, `ifItem` and a text's `then`.
 - **The Cave of No Return (boss011), by its route from its start to its goal.** `cavenoreturn.ts`, 12 milestones,
   ~28,700 ticks, 2,007 Force Gems, in node (`cavenoreturn.realdisc.test.ts`) and the browser (`#stage=boss011&route`, game.ts): room 12's
   rising door and spiral staircase; room 6's lamp from its pedestal and its two candles; room 7's movable block tiles,

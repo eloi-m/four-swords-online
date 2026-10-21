@@ -202,7 +202,7 @@ export const BMG_TAGS: ReadonlyMap<number, BmgTagInfo> = new Map<number, BmgTagI
   ...range(0x10010, 0x10013, (k) => tag("arrow", "", `${["up", "down", "left", "right"][k & 3]} arrow, font character 0x${BMG_ARROW_CODES[k & 3]!.toString(16)}`, "confirmed")),
   [0x20005, tag("then", "u32 msg", "continues with another message (at the start of a message)", "hypothesis")],
   [0x20006, tag("act", "u8, u8", "an NPC action or sound at this point", "hypothesis")],
-  [0x20007, tag("branch", "u8 cond, u32 msg, u32 msg", "goes on with one of two messages", "hypothesis")],
+  [0x20007, tag("branch", "u8 cond, u32 msg, u32 msg", "goes on with the first message if the current room's switch `cond` is on, else the second (message indices)", "confirmed")],
   ...range(0x20009, 0x2000c, () => tag("choice", "u32 msg, u8", "an answer leading to a message; 4 spaces for the cursor", "confirmed")),
   [0x2000d, tag("pay", "u32 amount, u8, u16", "takes Force Gems (\"100 Force Gems exactly.\")", "hypothesis")],
   [0x2000e, tag("fortune", "u8", "the fortune teller's reading", "hypothesis")],

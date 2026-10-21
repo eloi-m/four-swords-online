@@ -1,13 +1,14 @@
 // Signs and people talking (dialogue.ts) on Lake Hylia (skips without extracted/): the sign in room 3 read from below
 // as measured in Dolphin (the box on the 6th tick, a character a tick, closed 7 ticks after the press), a villager's
 // pages turned, and a sign that isn't faced staying shut; the flows of the old man (room 1) and the cave villager
-// (room 58) to their text, and the old man's flag set by his first talk.
+// (room 58) to their text, and the old man's flag set by his first talk; Tingle's Tower's two villagers in Tingle's house
+// (room 11), whose branch reads the room's switch.
 import { existsSync, readFileSync } from "node:fs";
 import { bmgMessageById, bmgPlainText, decompressYaz0, Dol, isYaz0, loadActorTypes, parseBmg, parseRarc, readTileTypes, Stage } from "@fso/formats";
 import { describe, expect, it } from "vitest";
 import { Button, SUBPX, type Facing } from "../player.ts";
 import { createAdventure, stepAdventure, type AdventureGame } from "./adventure.ts";
-import { flagKey, messageBook, pageTyped, speakers, talkTyped, TALK_CLOSE_TICKS, TALK_OPEN_TICKS } from "./dialogue.ts";
+import { facedSpeaker, flagKey, messageBook, pageTyped, speakers, talkTyped, TALK_CLOSE_TICKS, TALK_OPEN_TICKS } from "./dialogue.ts";
 import { actorStats, AdventureStage } from "./stage.ts";
 
 const root = new URL("../../../../extracted/", import.meta.url);
@@ -107,17 +108,17 @@ describe.skipIf(!existsSync(root))("signs and dialogue", () => {
   });
 
   it("follows the flows of the old man (room 1) and the cave villager (room 58) to printable text", () => {
-    const one = { controllers: 1, flags: [] as number[] };
+    const one = { controllers: 1, flags: [] as number[], switches: 0 };
     // The old man: branch4 by the controllers (1 → message index 1302, the ifFlag; 2-4 → 1304, "Hrmm..."), then ifFlag
     // by the flag (unset → index 1279 → 1280 → index 1276, the first talk, 1277).
     expect(book.resolve(0x4fe, one)).toBe(0x4fd);
-    expect(book.resolve(0x4fe, { controllers: 2, flags: [] })).toBe(0x518);
-    expect(book.resolve(0x4fe, { controllers: 1, flags: [flagKey(3, 10)] })).toBe(0x4ff); // the lecture after the drill
-    expect(book.resolve(0x4fe, { controllers: 1, flags: [flagKey(1, 10)] })).toBe(0x502); // his repeat line
+    expect(book.resolve(0x4fe, { controllers: 2, flags: [], switches: 0 })).toBe(0x518);
+    expect(book.resolve(0x4fe, { controllers: 1, flags: [flagKey(3, 10)], switches: 0 })).toBe(0x4ff); // the lecture after the drill
+    expect(book.resolve(0x4fe, { controllers: 1, flags: [flagKey(1, 10)], switches: 0 })).toBe(0x502); // his repeat line
     expect(book.sets(0x4fd)).toEqual([[flagKey(1, 10), 1]]);
     // The cave villager: branch4(791, 791, 791, 792) → 792 for one to three controllers, 793 for four.
     expect(book.resolve(0x317, one)).toBe(0x318);
-    expect(book.resolve(0x317, { controllers: 4, flags: [] })).toBe(0x319);
+    expect(book.resolve(0x317, { controllers: 4, flags: [], switches: 0 })).toBe(0x319);
     for (const id of [0x4fd, 0x518, 0x4ff, 0x502, 0x318, 0x319]) {
       const text = bmgPlainText(bmgMessageById(bmg, id)!);
       expect(text, `message ${id}`).not.toMatch(/[\u0000-\u0008\u000b-\u001f]/);
@@ -176,5 +177,37 @@ describe.skipIf(!existsSync(root))("signs and dialogue", () => {
     step(g, Button.Item);
     expect(g.adventure.talk?.message).toBe(0x318);
     expect(g.battle.fighters[0]!.move).toBe("none");
+  });
+
+  // Tingle's house (Tingle's Tower room 11, area 2): two villagers whose messages (843, 844) are only a branch (2.07) on
+  // the room's switch 29 (main.dol 0x80384074 → 0x802D800C), which nothing in the room sets.
+  const tower = new AdventureStage(new Stage(load("Boss/boss012.arc")), tileTypes, stats);
+  tower.messages = book;
+  const text = (id: number) => bmgPlainText(bmgMessageById(bmg, id)!);
+
+  it("follows Tingle's house villagers' branch by the room's switch", () => {
+    const off = { controllers: 1, flags: [] as number[], switches: 0 }, on = { ...off, switches: 1 << 29 };
+    // 843: branch(29, 877, 878): on → index 877 (id 878), off → index 878 (id 879); 844: branch(29, 880, 879).
+    expect(book.resolve(843, off)).toBe(879);
+    expect(book.resolve(843, on)).toBe(878);
+    expect(book.resolve(844, off)).toBe(880);
+    expect(book.resolve(844, on)).toBe(881);
+    // Another switch doesn't count.
+    expect(book.resolve(843, { ...off, switches: 1 << 28 })).toBe(879);
+    expect(text(879)).toMatch(/^And in last place\.\.\. P.*\nC'mon! I know you can do\nbetter than that\./);
+    expect(text(880)).toMatch(/^Here's your last chance to\nreverse your fortunes!/);
+  });
+
+  it("talks to Tingle's house villagers: the messages of the switch off, of it on once set", () => {
+    const g = createAdventure(tower, { room: 11, x: 168, y: 76, facing: "up" });
+    g.adventure.area = 2;
+    const said = () => speakers(g, tower).filter((s) => s.actor.id === "JIJI").map((s) => [s.actor.index, s.message]);
+    expect(said()).toEqual(expect.arrayContaining([[8, 879], [11, 880]]));
+    // The leader below the first, facing up: the Item button opens the message of the switch off.
+    expect(facedSpeaker(g, tower)?.actor.index).toBe(8);
+    stepAdventure(g, [Button.Item], tower);
+    expect(g.adventure.talk?.message).toBe(879);
+    g.battle.switches = 1 << 29;
+    expect(said()).toEqual(expect.arrayContaining([[8, 878], [11, 881]]));
   });
 });

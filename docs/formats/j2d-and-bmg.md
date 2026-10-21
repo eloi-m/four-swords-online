@@ -405,7 +405,8 @@ Parser `packages/formats/src/j2d/bmg.ts`, layout `packages/render/src/screentext
   | 3.00-3.08 number | [u8 unit] | prints a number from the message context (0 a player/controller number, 2 a price, 3 Force Gems held, 4 a reward, 5 a best time, 6/7 records, 8 how many are left; 1 is printed elsewhere), then a unit word if the byte is 1-9: Force Gem(s), Cucco(s), baddy/baddies, time(s), system(s), thief/thieves, mole(s), return(s), Force Fairy/Fairies, singular for 1 (0x8039C630) | **confirmed** |
   | 2.29 time | | prints the race time ("Your time is...") | *likely* |
   | 2.05 then | u32 msg | continues with another message | *hypothesis* |
-  | 2.07, 2.10, 2.2C branch | msgs | go on with one of 2 messages (their cond byte: unknown) | *hypothesis* |
+  | 2.07 branch | u8 switch, u32 msg × 2 | the first message if the current room's switch is on, else the second (below) | **confirmed** |
+  | 2.10, 2.2C branch | msgs | go on with one of 2 messages (what they test: below) | *hypothesis* (2.10's meaning) / **confirmed** (the reads) |
   | 2.18 branch4 | u32 msg × 4 | one of 4 messages: by the controllers (below) | *hypothesis* (the rule) / *likely* (the indices) |
   | 2.22 setFlag / 2.23 ifFlag | u8 kind, u16 flag, u8 value / u8 kind, u16 flag, u32 msg × 2 | set (value 1) or clear a game flag / the first message if the flag is set, else the second | *likely* |
   | 2.1D ifGems, 2.33 ifItem | u32, u32 msg × 2 | branch on Force Gems / an item | *hypothesis* |
@@ -419,7 +420,7 @@ Parser `packages/formats/src/j2d/bmg.ts`, layout `packages/render/src/screentext
   result). Lake Hylia's old man (`JIJI` 0x3D3 at (104, 56) of room 1's area 2 → message 1278, only a branch4(1302, 1303,
   1303, 1303)) and cave villager (`JIJI` at (264, 312) of room 58's area 5 → 791, only a branch4(791, 791, 791, 792))
   had no text of their own, so they said nothing.
-  - **likely** The tags' numbers are message indices (id = number + 1): read as ids, the old man's chain runs into a
+  - **confirmed** (the flow loop below; first found as *likely*) The tags' numbers are message indices (id = number + 1): read as ids, the old man's chain runs into a
     flow-only message and an empty one; read as indices, every link has its text. Over all 330 targets of the 2.18 and
     2.23 tags, 207 are texts as indices (181 as ids), 4 are empty (12). The chain with one controller: 1278 → branch4 → id 1303, ifFlag 3/10
     → (set) id 1279 "Listen up! Formations are the foundation…" (the flag is set by the drill's ends, ids 1290 and
@@ -435,12 +436,36 @@ Parser `packages/formats/src/j2d/bmg.ts`, layout `packages/render/src/screentext
     for one to three controllers) tells the player to press X or the +Control Pad to check up on the friends and L or Y
     to call them back: the Links apart, which one controller drives; the four-controller speech (793) leaves that out.
     The other reading, the four Links (index 3), would give the one-controller game the speech without its controls.
-    Not read from main.dol (the flow handler, its cond bytes, the message manager's state).
+    main.dol (the flow loop below) counts the bits set in the byte [0x8053AAF8] + 0x82 (one to four: the first to the
+    fourth message); that byte is *likely* the controllers (or players) in the game, not measured.
   - **assumed** A new adventure starts with no flags set, and a message's setFlags are set as it opens (1277's stands at
     its start, the drill's 1290 at its end: when within a message a flag is set is not measured).
-  - **not followed**: `branch` (2.07, 2.10, 2.2C: its cond byte is unknown), `ifGems` (2.1D), `ifItem` (2.33), and `then`
-    (2.05, "continues with another message", a hypothesis; `{branch 0 1301 1301}` ends Tingle's speech to a fairy, 1305).
-    A message that leads only into these shows nothing (the playtest's actors check reports it).
+  - **confirmed** The flow loop (main.dol 0x80383EB0, called by the message opener 0x8038C678 with the message's
+    index, found from its id in INF1; a missing id opens index 299): while the message *starts* with a group 2 tag
+    of a flow type (2.07, 2.10, 2.17, 2.18, 2.1D, 2.20, 2.21, 2.23, 2.2A, 2.2C, 2.30, 2.33; table 0x804AF278), it takes
+    the message that tag picks (table 0x804AF1C4; 2.2A's entry is the loop's head, the same message again) and looks
+    again; the numbers are INF1 indices (it reads entry
+    number · 8), so id = number + 1. A text first, or any other tag first, is shown as it is.
+  - **confirmed** `branch` 2.07 (u8 switch, u32 msg, u32 msg; handler 0x80384074): 0x802D800C(stage, switch), the
+    current room's switch (formats/battle-arenas.md "Switches"): on → the first message, off → the second. Switch 0 is
+    never set, so `{branch 0 a b}` always takes the second (every such tag in the files has a = b). Tingle's Tower's
+    two `JIJI`s in Tingle's house (room 11 area 2, kind 14, (168, 56) → 843 `{branch 29 877 878}`, (152, 104) → 844
+    `{branch 29 880 879}`) read switch 29, which no actor of room 11 names: off, they say id 879 "And in last place...
+    P{number 0}! C'mon! I know you can do better than that. / No prize for you!" and id 880 "Here's your last chance to
+    reverse your fortunes! / Ride!" (on: 878 "And in third place…", 881 "Come back anytime!"). These are the horse
+    race's texts (862-881): boss012 isn't loaded by the retail game (ADVENTURE.md "Tingle's Tower"), and its
+    villagers' message numbers now land in the race's. Not checked in Dolphin (the stage only loads with pokes);
+    `MessageBook.resolve` follows it with the room's switches (`game.battle.switches`).
+  - **confirmed** (read, not followed) `branch` 2.10 (u8 cond, u32 msg × 2, u8; 0x803840A0): cond 0-16 picks a check
+    of the actor the Link talks to (its four-letter type, then a state of it); any other cond takes the second. 2.2C
+    (u32 msg × 2; 0x8038460C): the first when the talker's 2 bits of the byte [0x8053AAF8] + 0x83 (bits 2p, 2p + 1)
+    are 2, else the second. 2.17 (`act`) picks by the game's random generator. ifFlag's u8 (`kind` above) picks whose
+    flags: 1-4 the players 1-4, 0 the Link talking (0x802D7E5C(stage, player, flag), a 64-bit word at stage + 0x3C8 +
+    800 · player). The sim keys its flags by that byte and the flag (`flagKey`), which agrees as long as setFlag's u8
+    means the same (its handler not read).
+  - **not followed**: `branch` 2.10 and 2.2C, `ifGems` (2.1D), `ifItem` (2.33), and `then` (2.05, "continues with
+    another message", a hypothesis; `{branch 0 1301 1301}` ends Tingle's speech to a fairy, 1305). A message that leads
+    only into these shows nothing (the playtest's actors check reports it).
 - *hypothesis* Layout of a message in a box: J2DPrint as for any text box (above), pages split at 0.00. Our renders of
   the balloon fit 3 lines per page and the widest lines in its 416 px, which supports the box choice.
 

@@ -19,10 +19,11 @@
 // - KEPO, the owl (Hyrule Castle room 0, Tingle's Tower room 11): it talks by itself, once, when a Link comes within
 //   its reach (startOwlTalk, below); an
 //   escort Zora greets the Link who meets it the same way (zoras.ts ESCORT_GREETING, through `Talk.after`).
-// - A message with no text of its own that is only flow tags (branch4, ifFlag: docs/formats/j2d-and-bmg.md "Messages
-//   (BMG)") shows the message it leads to (`MessageBook.resolve`); setFlag tags set the game's flags when a message opens.
-//   Lake Hylia's old man (room 1: 1278 → 1303 → 1280 → 1277, one controller) and cave villager (room 58: 791 → 792,
-//   one controller) are these; the ids and the rules: `MessageBook.resolve`.
+// - A message with no text of its own that is only flow tags (branch, branch4, ifFlag: docs/formats/j2d-and-bmg.md
+//   "Messages (BMG)") shows the message it leads to (`MessageBook.resolve`); setFlag tags set the game's flags when a
+//   message opens. Lake Hylia's old man (room 1: 1278 → 1303 → 1280 → 1277, one controller), cave villager (room 58:
+//   791 → 792, one controller) and Tingle's Tower's two in Tingle's house (room 11 area 2: 843 → 879, 844 → 880, the
+//   room's switch 29 off) are these; the ids and the rules: `MessageBook.resolve`.
 // Measured in Dolphin (docs/measurements/adventure-world1.md "Signs and dialogue"; Lake Hylia room 3's sign): the box shows on the 6th
 // tick after the press with the first character, one more each tick; the P1 badge (the player to press) shows once
 // the page is typed; a press then closes the box 7 ticks later. The world goes on meanwhile (Octoroks kept walking);
@@ -49,10 +50,12 @@ export const TALK_REACH = 16;
 /** The box a message shows in: the speech balloon or a sign's board. */
 export type TalkStyle = "balloon" | "wood" | "stone";
 
-/** What a message's flow reads from the game: the players with a controller, and the flags set (flagKey). */
+/** What a message's flow reads from the game: the players with a controller, the flags set (flagKey), the room's switches. */
 export interface FlowState {
   controllers: number;
   flags: readonly number[];
+  /** The current room's switches (bit n: switch n on; switches.ts). */
+  switches: number;
 }
 
 /** A game flag's key, from the BMG fields of setFlag and ifFlag (kind, then the flag). */
@@ -68,8 +71,8 @@ export interface MessageBook {
   resolve(id: number, state: FlowState): number | null;
 }
 
-/** Flow tags the talk follows (BMG_TAGS' keys): branch4 (one of four messages), ifFlag (one of two), setFlag. */
-const BRANCH4 = 0x20018, IF_FLAG = 0x20023, SET_FLAG = 0x20022;
+/** Flow tags the talk follows (BMG_TAGS' keys): branch (one of two by a switch), branch4 (one of four), ifFlag (one of two), setFlag. */
+const BRANCH = 0x20007, BRANCH4 = 0x20018, IF_FLAG = 0x20023, SET_FLAG = 0x20022;
 /** The longest chain of flows followed (a loop shows nothing). */
 const MAX_FLOW = 8;
 
@@ -109,15 +112,22 @@ export function messageBook(bmg: Bmg): MessageBook {
 }
 
 /**
- * The message a flow-only message leads to. branch4 takes its message by the controllers: the first for one, the fourth
- * for four (assumed: docs/formats/j2d-and-bmg.md). ifFlag takes the first of its two when the flag is set, else the
- * second (the old man's chain: the set branch is his lecture, whose flag the formations drill sets; the unset one leads
- * on to his first talk, which sets the flag). The tags' numbers are message indices, so the id is the number + 1.
+ * The message a flow-only message leads to. branch (2.07; main.dol's flow loop 0x80383EB0 reads the switch with
+ * 0x802D800C) takes the first of its two when the current room's switch `cond` is on, else the second (Tingle's house
+ * villagers, 843 and 844, on switch 29). branch4 takes its message by the controllers: the first for one, the fourth for
+ * four (assumed: docs/formats/j2d-and-bmg.md). ifFlag takes the first of its two when the flag is set, else the second
+ * (the old man's chain: the set branch is his lecture, whose flag the formations drill sets; the unset one leads on to
+ * his first talk, which sets the flag). The tags' numbers are message indices, so the id is the number + 1.
  */
 function flowNext(m: BmgMessage | undefined, state: FlowState): number | null {
-  const tag = m?.parts.find((p): p is BmgTag => p.kind === "tag" && (p.key === BRANCH4 || p.key === IF_FLAG));
+  const tag = m?.parts.find((p): p is BmgTag => p.kind === "tag" && (p.key === BRANCH || p.key === BRANCH4 || p.key === IF_FLAG));
   if (!tag) return null;
   const args = bmgTagArgs(tag);
+  if (tag.key === BRANCH) {
+    if (args.length !== 3) return null;
+    const on = args[0]! < 32 && ((state.switches >>> args[0]!) & 1) === 1;
+    return args[on ? 1 : 2]! + 1;
+  }
   if (tag.key === BRANCH4) return args.length === 4 ? args[Math.max(1, Math.min(4, state.controllers)) - 1]! + 1 : null;
   if (args.length !== 4) return null;
   const set = state.flags.includes(flagKey(args[0]!, args[1]!));
@@ -160,7 +170,7 @@ const BIG_JIJI: ReadonlySet<number> = new Set([6, 11, 16, 25]);
 const AHEAD: Readonly<Record<Facing, readonly [number, number]>> = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] };
 
 /** The game's state the flows read (dialogue.ts FlowState). */
-export const flowState = (game: AdventureGame): FlowState => ({ controllers: game.adventure.controllers, flags: game.adventure.flags });
+export const flowState = (game: AdventureGame): FlowState => ({ controllers: game.adventure.controllers, flags: game.adventure.flags, switches: game.battle.switches });
 
 /** The current area's speakers (the ones with a message in `stage.messages`, after its flow: `MessageBook.resolve`). */
 export function speakers(game: AdventureGame, stage: AdventureStage): Speaker[] {

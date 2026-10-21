@@ -75,8 +75,6 @@ export const EXPECTED_ACTORS: Readonly<Record<string, string>> = {
   "castle door look 5/0/22": "known (BACKLOG B6): a bombed cracked wall (DOOR kind 2) keeps its look: its second pair of tiles (another layer) isn't drawn; room 5's garden wall, walked through on the route",
   "castle door look 9/3/45": "known (BACKLOG B6): as castle door look 5/0/22 (room 9's throne room wall)",
   "tingle door look 4/5/16": "known (BACKLOG B6): as castle door look 5/0/22 (room 4's area 5)",
-  "tingle message JIJI 11/2/8": "rule (b): Tingle's house villager: message 843 is only a `branch` (2.07/2.10/2.2C) whose cond byte is unknown (docs/formats/j2d-and-bmg.md: not followed): he says nothing",
-  "tingle message JIJI 11/2/11": "rule (b): as tingle message JIJI 11/2/8 (message 844)",
 };
 
 /** The actor types packages/sim names in its code (a quoted four-letter id outside the tests). */
@@ -151,11 +149,12 @@ export function staticChecks(stage: AdventureStage, source: Stage, bmg: Bmg): { 
         else if (!pieces.length && look?.draw === "sprite") findings.push({ key: `no pieces ${a.id} ${area.room}/${area.sublayer}/${a.index}`, what: `${at}: a sprite actor whose pieces are empty (params ${(a.params >>> 0).toString(16)})` });
         else if (!look) findings.push({ key: `no look ${a.id}`, what: `${at}: simulated, with no entry in actorgraphics.ts` });
       }
-      // Its message: what the talk shows for one to four controllers (no flags set yet): the message, or what its flow leads to.
+      // Its message: what the talk shows for one to four controllers (no flags or switches set yet): the message, or what
+      // its flow leads to.
       if (["KNBN", "JIJI", "SNPC", "NAVI"].includes(a.id)) {
         const id = (a.params & (a.id === "JIJI" || a.id === "SNPC" ? 0xfff : 0xffff)) + MESSAGE_BASE;
         const m = bmgMessageById(bmg, id), text = m ? bmgPlainText(m).trim() : "", flow = m ? flowTags(m.parts) : [];
-        const shown = [1, 2, 3, 4].map((controllers) => book.resolve(id, { controllers, flags: [] }));
+        const shown = [1, 2, 3, 4].map((controllers) => book.resolve(id, { controllers, flags: [], switches: 0 }));
         const textOf = (k: number | null) => (k === null ? "" : bmgPlainText(bmgMessageById(bmg, k)!).trim());
         const key = `message ${a.id} ${area.room}/${area.sublayer}/${a.index}`;
         if (a.id === "KNBN") {
