@@ -9,7 +9,8 @@ A fan-made version of **Shadow Battle**, the 2–4 player arena mode of *The Leg
 - Those files are never in this repo: whoever runs the server extracts them from their own disc
 - The code is our own TypeScript, tuned against the original game running in the Dolphin emulator
 
-Also in here: a small slice of the adventure (Lake Hylia), a map viewer, a 2D screen (HUD/menu) viewer and a sound test.
+Also in here: the adventure's World 1, in progress (Lake Hylia, the Cave of No Return, Tingle's Tower and Hyrule Castle,
+played as one run), a map viewer, a 2D screen (HUD/menu) viewer and a sound test.
 
 ## Legal
 
@@ -26,16 +27,19 @@ Also in here: a small slice of the adventure (Lake Hylia), a map viewer, a 2D sc
 ## Status
 
 - **Shadow Battle, local**: all 10 arenas (5 plus their Dark World variants) with their tilesets, ground overlays,
-  static actors, backdrops and hazards; 2–4 Links; hearts, time limit, wins; sword, spin attack, shield, knockback,
-  pits; lifting and throwing (Links too), rolling, items from orbs (bow, boomerang, slingshot, bombs, cucco, Epona,
-  the Four Sword), bushes, bombs, fire bars, soldiers, bees, Vaati's giant bomb; the game's own J2D HUD; BGM and
-  sound effects through our JAudio2 synth. Keys and gamepad buttons are remappable (menu → Controls).
-- **Shadow Battle, online**: rooms by code or invite link, 2–4 players (one per browser) plus spectators, rematches,
-  GGPO-style rollback over WebRTC data channels with a relay fallback, desync detection, disconnect handling.
+  static actors, backdrops and hazards, and the side rooms shown on the Game Boy Advance screens; 2–4 Links, any of
+  them a CPU (easy, normal, hard); hearts, time limit, wins; sword, spin attack, shield, knockback, pits; lifting and
+  throwing (Links too), rolling, items from orbs (bow, boomerang, slingshot, bombs, cucco, Epona, Pegasus Boots,
+  Magic Hammer, Fire Rod, the Four Sword), bushes, bombs, bombchus, fire bars, soldiers, bees, Vaati's giant bomb; the
+  game's own J2D HUD; BGM and sound effects through our JAudio2 synth. Keyboard, gamepads or on-screen touch controls;
+  keys and buttons are remappable (menu → Controls).
+- **Shadow Battle, online**: rooms by code or invite link, 2–4 players (one per browser) plus CPU players and
+  spectators, rematches, GGPO-style rollback over WebRTC data channels with a relay fallback, an input delay that
+  adapts to the connection, desync detection, disconnect handling, and rejoining a match after a reload.
 - **Free Play, online**: one shared field for up to 8 players who come and go, fighting without losing hearts, until
   the first one there starts a Shadow Battle for everyone on it (up to 8 Links); its results lead back to the field.
-- Walking, sword timings, lifting, rolling and more are measured in Dolphin (`docs/measurements.md`); many battle-only
-  numbers are still placeholders. What's missing: see `docs/ROADMAP.md`.
+- Walking, sword timings, lifting, rolling and more are measured in Dolphin, in the adventure and in Shadow Battle
+  itself (`docs/measurements.md`); the remaining guesses are marked `TODO(measure)`. What's left: `docs/BACKLOG.md`.
 
 **Browsers** (checked by `tools/e2e/src/site.ts` and `site-webkit.ts`, desktop): Chrome and Firefox pass every flow,
 including a Chrome-hosted online match joined from Firefox. Safari: its WebKit engine (Playwright's WebKit 26.4
@@ -65,16 +69,18 @@ with the lobby and the game files. For a server, `pnpm bundle` copies the files 
 (`pnpm --filter @fso/battle dev`, …; see `docs/apps.md` for ports and deep links).
 
 Tests: `pnpm test` (Vitest; tests that need game files read an `extracted/` folder made with
-`pnpm --filter @fso/extract extract <disc.rvz>` and skip without it) and `pnpm typecheck`. Browser tests drive
-headless Chrome/Firefox (set `CHROME` / `FIREFOX` when they aren't installed in the usual place) against the pages,
-which load `extracted/` from the dev or preview server: `node tools/e2e/src/site.ts all` (the whole site; builds and serves it itself), `node tools/e2e/src/perf.ts all`
-(frame times), and one script per app in `tools/e2e/src/`.
+`pnpm --filter @fso/extract extract <disc.rvz> extracted` and skip without it) and `pnpm typecheck`. Browser tests
+drive headless Chrome/Firefox (set `CHROME` / `FIREFOX` when they aren't installed in the usual place) and Playwright's
+WebKit against the pages, which load `extracted/` from the dev or preview server: `node tools/e2e/src/site.ts all`
+(the whole site; builds and serves it itself), `node tools/e2e/src/perf.ts all` (frame times), and one script per app
+in `tools/e2e/src/`.
 
 ## Hosting
 
 Static files, the game files next to them (`pnpm bundle`), and one small WebSocket server (the
 lobby, `tools/signal`). `docs/deploy.md` walks through a VPS with a domain: Docker Compose with Caddy (automatic HTTPS,
-the lobby behind `/signal`), or systemd + any web server, or a static host plus a separate lobby.
+the lobby behind `/signal`), or systemd + any web server, or a static host plus a separate lobby, or a sub-path of an
+existing nginx.
 
 ## Architecture
 
@@ -83,11 +89,11 @@ stripping), so tools and tests need no build step.
 
 ```
 browser                                                          node
-┌───────────────────────────────── apps/site (one origin) ───┐
+┌───────────────────────────────── apps/site (one origin) ────┐
 │  home ─▶ packages/web (HttpStore: game files from data/)    │   tools/extract, bundle, census, render…
-│  apps/battle   local + online Shadow Battle                 │   tools/dolphin  RAM traces from Dolphin
-│  apps/game     Lake Hylia slice                             │   tools/e2e      headless browser checks
-│  apps/viewer · apps/screens · apps/sound-test               │   tools/signal   lobby + relay (WebSocket)
+│  apps/battle   local + online Shadow Battle, free play      │   tools/dolphin  RAM traces from Dolphin
+│  apps/game     the adventure (World 1)                      │   tools/e2e      headless browser checks
+│  packages/input  keyboard, gamepads, touch controls         │   tools/signal   lobby + relay (WebSocket)
 └──────┬───────────────┬──────────────────┬───────────────────┘          ▲
        │               │                  │                              │ wss://…/signal
  packages/render  packages/sim       packages/net ──────────────────────┘ + WebRTC between players
@@ -106,13 +112,16 @@ browser                                                          node
 - `packages/net` is the netcode (`docs/netcode.md`): a GGPO-style rollback session over any datagram transport,
   spectators, a lobby client, WebRTC and relay transports.
 - `packages/render` draws with three.js: a GPU tilemap that looks tiles up in the game's own 4bpp sheets and palettes,
-  sprite atlases, and a J2D screen renderer that emulates the GameCube's TEV stages.
+  sprite atlases, a J2D screen renderer that emulates the GameCube's TEV stages, J3D models and JPA particles.
+- `packages/input` turns keyboards, gamepads and the on-screen touch controls into the sim's buttons, remappable.
 - `packages/audio` plays the game's music and effects: ADPCM decoding, the BMS sequencer and a software synth that runs
   in an AudioWorklet.
 - `packages/web` holds the browser-only pieces: the store that loads the game files over HTTP (a manifest, then each
   file under its content hash), and a worker-driven 60 Hz ticker.
 - `tools/bundle` prepares those files for a server (`pnpm bundle`) and serves them from `extracted/` in dev.
-- `apps/site` builds every app's page into one site (`apps/site/pages.ts`), with the home page.
+- `apps/site` builds the playable pages (Shadow Battle, online, the adventure) into one site with the home page
+  (`apps/site/pages.ts`). The development tools (`apps/viewer`, `apps/screens`, `apps/sound-test`) and `apps/netplay`
+  (Lake Hylia online) run from their own dev servers.
 
 Docs: `docs/formats.md` (what we know about the game's files), `docs/measurements.md` (Dolphin measurements),
 `docs/netcode.md`, `docs/deploy.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md` (what's left); `docs/README.md` is the
@@ -136,8 +145,8 @@ index, `docs/apps.md`, `docs/tools.md`, `docs/e2e.md` and `docs/dolphin.md` the 
 ## Credits
 
 - [noclip.website](https://github.com/magcius/noclip.website) (MIT): its GameCube and JSystem format code (RARC, Yaz0,
-  BTI/GX textures, J3D) is our reference and the planned source for J3D/GX ports. Files ported from it carry its MIT
-  notice and attribution; none are vendored at the moment.
+  BTI/GX textures, J3D, JPA) is our reference; our J3D model, GX shader and JPA particle code is ported from it, and
+  those files carry its MIT notice and attribution.
 - [three.js](https://threejs.org/) (MIT) for rendering; Vite, Vitest, puppeteer-core and playwright-core for building
   and testing.
 - [Dolphin](https://dolphin-emu.org/) (GPL-2.0+), used as an external reference tool only (frame dumps, RAM traces
