@@ -12,9 +12,25 @@
 //   edge) he moves 3.3 px on and 2.2 down, then 2.4 / 3.1, 2.0 / 4.0, then walking speed on (with the stick) and 4 down;
 // - off a ladder sideways (room 7's area 5, halfway down its ladder): he walks off at walking speed and hangs on while
 //   his body (±7 px) is still over the ladder's column, then falls 4 px/tick, no arc.
+// The followers (traced in room 7's area 5 and room 6's area 5, docs/measurements/adventure-lake-hylia.md "Adventure:
+// the followers in a side view"): they have no gravity of their own.
+// - On the ground and on ladders they walk the trail as on the TV (formation.ts: 18 px behind, standing when the Link
+//   ahead stands); in the water they swim it at up to 1.3 px/tick (the leader's stroke and sinking).
+// - Off the ground (the trail walked off a ledge, shot from a cannon) a follower is where the Link ahead was 13 ticks
+//   before (the second Link; the third and fourth 12 ticks behind the Link ahead: SIDE_DELAYS), moving at most 6.5
+//   px/tick toward it (SIDE_CHASE_SPEED), and keeps on so, landed or not, the spacing forgotten, until he's on that Link:
+//   down a ledge the three fall the leader's fall 13, 25 and 37 ticks after him and end stacked on him.
+// - The leader in a cannon: they get in with him. From the ground each is put on him (the third Link first, then the
+//   second, then the fourth, a tick apart: CANNON_BOARD), dashing at 6.5 px/tick toward him meanwhile; from the air
+//   (back in it after a shot) they dash onto him at 6.5 px/tick. In it they stay on him (bobbing with him in the game);
+//   shot, they stay in its mouth until the delay brings his flight to them, then fly his path behind him (6 px the first
+//   tick in the game, not modelled) and land where he landed.
 import { stepLink } from "../actions.ts";
+import { velocityAlong } from "../entities.ts";
 import { Button, moveAxis, SUBPX, WALK_SPEED, type PlayerState } from "../player.ts";
 import { isSolidAt, surfaceAt, type World } from "../world.ts";
+import type { AdventureGame } from "./adventure.ts";
+import { recordTrail } from "./formation.ts";
 import { DIAGONAL, type LinkMotion } from "./motion.ts";
 
 export const SIDE_FALL_SPEED = 4 * SUBPX;
@@ -23,6 +39,14 @@ export const SIDE_SINK = 77; // 0.3 px/tick
 export const SIDE_SWIM_SPEED = SUBPX;
 /** How far under the surface a swimmer's head stays (px). */
 export const SIDE_SWIM_HEAD = 12.5;
+/** A follower's swim along the trail, per axis (traced: 1.3 px/tick diving behind the leader). */
+export const SIDE_SWIM_FOLLOW_SPEED = SIDE_SWIM_SPEED + SIDE_SINK;
+/** Per Link but the last, the ticks the follower behind it off the ground plays it late (traced: 13, 12, 12). */
+export const SIDE_DELAYS: readonly number[] = [13, 12, 12];
+/** A follower's most per tick off the ground (traced: 6.5 px/tick, the gathering dash's speed). */
+export const SIDE_CHASE_SPEED = 1664;
+/** Per Link, the ticks after the leader got into a cannon that a follower on the ground is put on him (traced). */
+export const CANNON_BOARD: readonly number[] = [0, 1, 0, 2];
 
 const ladderAt = (world: World, x: number, y: number) => surfaceAt(world, Math.floor(x / SUBPX), Math.floor(y / SUBPX)) === "ladder";
 /** On a ladder: his anchor or his feet (his bottom sensor) on a ladder tile, or his body's side over one (traced: he
@@ -111,3 +135,56 @@ function sideSwim(m: LinkMotion, p: PlayerState, buttons: number, world: World):
 
 
 
+
+/** On something solid or a ladder (a follower off both plays the Link ahead's track: stepSideFollower). */
+export const footing = (world: World, p: PlayerState) => standing(world, p) || onLadder(world, p);
+
+/** Notes where each Link but the last stands this tick on its track (a side view's, kept SIDE_DELAYS ticks). */
+export function recordTracks(game: AdventureGame): void {
+  const a = game.adventure;
+  for (let k = 0; k < game.players.length - 1; k++) {
+    const p = game.players[k]!, t = (a.tracks[k] ??= []);
+    t.push(p.x, p.y);
+    const n = (SIDE_DELAYS[k] ?? SIDE_DELAYS[SIDE_DELAYS.length - 1]!) * 2;
+    if (t.length > n) t.splice(0, t.length - n);
+  }
+}
+
+/**
+ * A trailing follower's tick in a side view, when the leader is in a cannon or the follower is off the ground (true:
+ * it moved him; false: he walks or swims the trail).
+ */
+export function stepSideFollower(game: AdventureGame, i: number, world: World): boolean {
+  const a = game.adventure, m = a.links[i]!, p = game.players[i]!, l = game.players[0]!, lm = a.links[0]!;
+  if (lm.mode === "cannon") {
+    const board = !m.chase && lm.tick >= (CANNON_BOARD[i] ?? 0);
+    chaseTo(p, l.x, l.y, board ? Infinity : SIDE_CHASE_SPEED);
+    if (p.x === l.x && p.y === l.y) m.chase = true;
+    recordTrail(game, i);
+    return true;
+  }
+  if (!m.chase) {
+    if (footing(world, p) || inWater(world, p.x / SUBPX, p.y / SUBPX)) return false;
+    m.chase = true;
+  }
+  const t = a.tracks[i - 1], ahead = game.players[i - 1]!;
+  if (t?.length) chaseTo(p, t[0]!, t[1]!, SIDE_CHASE_SPEED);
+  recordTrail(game, i);
+  // On the Link ahead: the trail again, from where they stand.
+  if (p.x === ahead.x && p.y === ahead.y) {
+    m.chase = false;
+    a.trails[i - 1] = [ahead.x, ahead.y];
+  }
+  return true;
+}
+
+/** A follower's move toward (x, y), at most `speed` (1/256 px) along the line, walking left or right. */
+function chaseTo(p: PlayerState, x: number, y: number, speed: number): void {
+  const dx = x - p.x, dy = y - p.y;
+  const [vx, vy] = speed === Infinity || dx * dx + dy * dy <= speed * speed ? [dx, dy] : velocityAlong(dx, dy, speed);
+  p.x += vx;
+  p.y += vy;
+  if (vx) p.facing = vx > 0 ? "right" : "left";
+  p.moving = vx !== 0 || vy !== 0;
+  p.walkTicks = p.moving ? p.walkTicks + 1 : 0;
+}

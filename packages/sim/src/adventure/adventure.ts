@@ -17,7 +17,7 @@ import { createFighter, HEART, hurtFighter, KNOCK_SLOW, makeInvincible, stepFigh
 import { battleWorld, entityById, isRemoved, spawnEntity, type Entity } from "../entities.ts";
 import type { GameState } from "../game.ts";
 import { moveHook } from "../moves.ts";
-import { Button, createPlayer, moveAxis, SUBPX, type Facing, type PlayerState } from "../player.ts";
+import { Button, createPlayer, moveAxis, SUBPX, WALK_SPEED, type Facing, type PlayerState } from "../player.ts";
 import { useItem } from "../items.ts";
 import { ROOM_EDGE, ROOM_WALK_DIVISOR, ROOM_WALK_LEAD, ROOM_WALK_TICKS, stepRoomTransition, type RoomTransition } from "../rooms.ts";
 import { stepArena, stepStrikes } from "../arenastep.ts";
@@ -28,7 +28,7 @@ import { fallsWaiting, startFallsDrop, stepFallsDrop, stepFallsTop, stepTileFall
 import { BUSH_DEBRIS, dropFromBush, spawnEnemies, stepEnemies, type Enemy, type Score } from "./enemies.ts";
 import { spawnGenerators, stepGenerators, type Generator } from "./generators.ts";
 import { newSlots, type SoldierSlots } from "./soldiers.ts";
-import { FORMATION_BUTTONS, gatherDone, gatherOnLeader, holdFormation, pickApart, pickFormation, recordTrail, resetTrails, shareHearts, stepFollower, stepFormationFollower, type FormationKind } from "./formation.ts";
+import { FORMATION_BUTTONS, gatherDone, gatherOnLeader, holdFormation, pickApart, pickFormation, recordTrail, resetTrails, shareHearts, stepFollower, stepFormationFollower, SWIM_FOLLOW_SPEED, type FormationKind } from "./formation.ts";
 import { openChest, stepReveal } from "./chests.ts";
 import { startOwlTalk, startTalk, stepGet, stepTalk, type GetPose, type Talk } from "./dialogue.ts";
 import { arrowWorld, stepArrows } from "./bow.ts";
@@ -50,7 +50,7 @@ import type { AdventureStage, Area, Door } from "./stage.ts";
 import { flyLinks, sideLiftLink, stepSideCarry } from "./sidecarry.ts";
 import { pullHandle, spawnPulls, stepPulls } from "./pullswitch.ts";
 import { holdLever, spawnLevers, stepLevers, type Lever } from "./lever.ts";
-import { stepSideView } from "./sideview.ts";
+import { recordTracks, SIDE_SWIM_FOLLOW_SPEED, stepSideFollower, stepSideView } from "./sideview.ts";
 import { anchorInDeepWater, enterWater, stepSwim, STONE_DAMAGE, SWIM_ANIMATION_TICKS } from "./swim.ts";
 import { startCrossSpin, stepCrossSpin, stepCrossSpinFollower, type CrossSpin } from "./whirl.ts";
 
@@ -181,6 +181,9 @@ export interface AdventureState {
   rains: Rain[];
   /** Per Link but the last, the points it passed that the Link behind it is still to walk (formation.ts), 1/256 px. */
   trails: number[][];
+  /** In a side view, per Link but the last, where it stood the last ticks (x, y, … oldest first, 1/256 px): what a
+   *  follower off the ground plays (sideview.ts stepSideFollower). */
+  tracks: number[][];
   /** The leader's push (push.ts): ticks walking without progress, pushing, its animation tick, ticks since the stick
    *  was released, the standing tick after a turned push. */
   push: { ticks: number; on: boolean; tick: number; release: number; idle: number };
@@ -350,6 +353,7 @@ export function createAdventure(stage: AdventureStage, opts: AdventureStart = {}
     pickups: [],
     rains: [],
     trails: [],
+    tracks: [],
     push: { ticks: 0, on: false, tick: 0, release: 0, idle: 0 },
     rocks: [],
     heavy: null,
@@ -552,6 +556,7 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
     stepPulls(game, stage);
     stepHeavy(game, inputs[0] ?? 0, pressedNow);
     recordTrail(game, 0);
+    if (area.sideView) recordTracks(game);
     landSlams(game);
     swordOnCrystals(game);
     friendlyFire(game);
@@ -671,7 +676,12 @@ function stepOther(game: AdventureGame, i: number, view: World, sideView: boolea
       else stepFormationFollower(game, i, view);
       recordTrail(game, i);
       if (game.adventure.formation in FORMATION_BUTTONS) mirrorSword(game, i);
-    } else stepFollower(game, i, m.mode === "swim" || m.mode === "wade");
+    } else if (!sideView || !stepSideFollower(game, i, view)) {
+      // In water a follower swims at 1 px/tick (traced; its diagonals assumed alike), in a side view's at 1.3 (its
+      // swimmers' stroke and sinking: traced in Lake Hylia room 6's area 5).
+      const swimming = m.mode === "swim" || m.mode === "wade";
+      stepFollower(game, i, !swimming ? WALK_SPEED : sideView ? SIDE_SWIM_FOLLOW_SPEED : SWIM_FOLLOW_SPEED);
+    }
     if (followHop(game, i)) return;
   } else stepFighter(p, f, 0, view);
   if (sideView) {
@@ -1145,6 +1155,7 @@ export function cloneAdventure(game: AdventureGame): AdventureGame {
       pickups: a.pickups.map((p) => ({ ...p })),
       rains: a.rains.map((r) => ({ ...r })),
       trails: a.trails.map((t) => [...t]),
+      tracks: a.tracks.map((t) => [...t]),
       colors: [...a.colors],
       falls: a.falls,
       push: { ...a.push },

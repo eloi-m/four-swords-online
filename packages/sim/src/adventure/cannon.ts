@@ -1,7 +1,7 @@
 // The cannons of side-view areas (CNON; traced in Lake Hylia room 7's area 5, docs/measurements/adventure-lake-hylia.md "Adventure:
 // cannons and side-view doors"): a leader falling onto one gets in, the Item button (the pad's A) shoots him up, and he
 // can be steered left and right while he flies, onto a ledge or into the next cannon, or through a door in the area's
-// top edge. The followers walk his trail meanwhile.
+// top edge. The followers get in with him and fly his shot behind him (sideview.ts stepSideFollower).
 // - In: falling (4 px/tick) within 11 px of its anchor sideways and below CANNON_RIDE px over it, he is in it the
 //   next tick, 16 px over its anchor (state 76, sprite 976; the game bobs him 4.5 px down and back over 18 ticks: not
 //   modelled).

@@ -196,7 +196,10 @@ clear (`#route`, `window.fso.route`).
   jumped down (0x10-0x13), side-view areas (falls, ladders, side swimming), water warps under room 5's bridge and room
   6's whirlpool, side views' wall doors (Up) and cannons (in, the shot, steering, the top edge), waterfalls (`SEV2`),
   side views' walk off a ledge (its arc) and off a ladder (hanging on while over its column), out of the water onto a
-  ladder.
+  ladder; the side views' followers (no gravity of their own: off the ground each plays the Link ahead 13 or 12 ticks
+  late, so they fall his falls and fly his cannon shots behind him and end on him; they get into his cannon with him).
+  Left: the cannon firing by itself after 300 ticks, and the followers' 12-17 px spacing in a side view's water (the
+  sim keeps 18), traced, not applied.
 - **M5 done: Lake Hylia by its route, from its start to its goal.** `lakehylia.ts` plays the stage by the sim's rules
   (the same in node and in the browser), 14 milestones, 21,439 ticks (6.0 minutes), 2,280 Force Gems, the stage cleared,
   and no Link out of hearts at any tick (the realdisc test counts it: 0). 9 hits taken in all, 12 quarter hearts (3 of the

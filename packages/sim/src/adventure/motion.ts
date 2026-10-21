@@ -37,13 +37,16 @@ export interface LinkMotion {
   ledge: number;
   /** In a side view, ticks since he walked off a ledge (sideview.ts WALK_OFF; 0 on the ground). */
   air: number;
+  /** A follower in a side view off the ground: he plays the Link ahead's last ticks instead of the trail, until he's on
+   *  him (sideview.ts stepSideFollower). */
+  chase: boolean;
   /** Swimming: the water's current carrying him (swim.ts stepCurrent), SWIM_UNIT per px/tick. */
   cx: number;
   cy: number;
 }
 
 export function createMotion(): LinkMotion {
-  return { mode: "walk", tick: 0, speed: 0, dir: -1, vx: 0, vy: 0, ox: 0, oy: 0, span: 1, side: false, ledge: 0, air: 0, cx: 0, cy: 0 };
+  return { mode: "walk", tick: 0, speed: 0, dir: -1, vx: 0, vy: 0, ox: 0, oy: 0, span: 1, side: false, ledge: 0, air: 0, chase: false, cx: 0, cy: 0 };
 }
 
 /** The 8 directions clockwise from right (y down), as unit steps per axis (diagonals 1/√2: 181/256). */

@@ -20,7 +20,11 @@ export const TRAIL_POINTS = 64;
 
 /** Starts the trails: each follower heads for where the Link ahead stands. */
 export function resetTrails(game: AdventureGame): void {
-  game.adventure.trails = game.players.slice(0, -1).map((p) => [p.x, p.y]);
+  const a = game.adventure;
+  a.trails = game.players.slice(0, -1).map((p) => [p.x, p.y]);
+  // (And a side view's tracks: sideview.ts stepSideFollower.)
+  a.tracks = [];
+  for (let i = 1; i < a.links.length; i++) a.links[i]!.chase = false;
 }
 
 /**
@@ -48,18 +52,16 @@ function remaining(f: PlayerState, a: PlayerState, t: readonly number[]): number
 }
 
 /**
- * One follower's tick: a step toward the next point of the trail of the Link ahead, up to walking speed on each axis,
- * if it keeps FOLLOW_SPACING (measured: past the leader's last half step at a corner, the second Link went 0.5 across
+ * One follower's tick: a step toward the next point of the trail of the Link ahead, up to `speed` on each axis
+ * (walking speed; swimming slower: adventure.ts stepOther), if it keeps FOLLOW_SPACING (measured: past the leader's last half step at a corner, the second Link went 0.5 across
  * and 1.5 up in one tick, onto the leader's first step round the corner).
  */
-export function stepFollower(game: AdventureGame, i: number, swimming = false): void {
+export function stepFollower(game: AdventureGame, i: number, speed = WALK_SPEED): void {
   const p = game.players[i]!, ahead = game.players[i - 1]!, t = game.adventure.trails[i - 1];
   if (!t?.length) return;
   // The trail keeps its last point (where the next one is noted from); points reached are dropped.
   while (t.length > 2 && p.x === t[0] && p.y === t[1]) t.splice(0, 2);
   const tx = t[0]!, ty = t[1]!;
-  // In water a follower swims at 1 px/tick (traced; its diagonals assumed alike).
-  const speed = swimming ? SWIM_FOLLOW_SPEED : WALK_SPEED;
   const mx = Math.max(-speed, Math.min(speed, tx - p.x)), my = Math.max(-speed, Math.min(speed, ty - p.y));
   if ((!mx && !my) || remaining(p, ahead, t) - dist(0, 0, mx, my) < FOLLOW_SPACING) {
     p.moving = false;

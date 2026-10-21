@@ -265,7 +265,8 @@ top, at y 309.96 under its bottom).
 ## Adventure: cannons and side-view doors
 Traced 2026-10-02 (`ref/dolphin-user-adventure`) from `ref/adv/room7-area5.sav` (Lake Hylia room 7's lower cave, area
 5, seen from the side; made from `room5-river.sav` with `--tele` up room 6's steps and onto room 7's door), traces
-`r7a`…`r7g`. Positions are area px. The sim follows them (`packages/sim/src/adventure/cannon.ts`, `adventure.ts`).
+`r7a`…`r7g`. Positions are area px. The sim follows them (`packages/sim/src/adventure/cannon.ts`, `adventure.ts`). Only the leader
+was traced there; the followers: "Adventure: the followers in a side view" below.
 - **Doors in a side view's walls** (`WARP` style 0x15): walked into from the TV as any door (0.5 px/frame up, state 28,
   39 frames), he arrives standing in the door's box middle (32, 360) (state 29 with a 0.03 px/frame drift for 70
   frames, then gravity settles him). In the side view walking past a door does nothing (`r7f`: left from 43 to the
@@ -283,6 +284,45 @@ Traced 2026-10-02 (`ref/dolphin-user-adventure`) from `ref/adv/room7-area5.sav` 
   the top-left ledge (y 104.8, the ledge's top at 112) he stands the frame after (state 0) and walks on. Room 7's upper
   cave (area 6) chains two cannons up through its top edge (style 0x16) into a hole in room 7's top; how the game shows
   that exit wasn't traced (the sim plays Shadow Battle's measured one: siderooms.ts).
+
+## Adventure: the followers in a side view
+Traced 2026-10-21 (`ref/dolphin-user-adventure-side`, GDB port 2410) from `ref/adv/room7-area5.sav` (the four stacked
+at the door, (32, 360)), traces `s1`…`s7`, and `ref/adv/room6-area5.sav` (under the whirlpool, the four at
+(280, 152)), `w1`. Positions are area px; "13 ticks late" means a follower stands where the Link ahead stood 13 ticks
+before. The sim follows them (`packages/sim/src/adventure/sideview.ts` stepSideFollower, `apart.realdisc.test.ts`).
+- **No gravity of their own.** The followers are drawn walking (state 3) wherever the trail takes them, in the air
+  too; standing on a floor their y stays put, where the leader's flickers 0.1-0.4 px a frame (his gravity against
+  the ground).
+- **On the ground and on ladders** they walk the trail as on the TV: the second Link starts 13 frames after the
+  leader, the third and fourth 12 after the Link ahead, and they stop when the Link ahead stops: 18-20 px behind on
+  the ledge (`s4`: the leader at 56.3 on the ladder's top, the second at 36.5, the others still at the door 4.5 px
+  behind him; `s6`: the leader stopped 13.5 px from the door after 10 frames, nobody moved), 18-18.5 px apart down
+  the ladder (`s4`: 424.7, 406.2, 388.2, 370.2; and back up, 361.7, 379.7, 397.7, 415.7).
+- **Off the ground** a follower plays the Link ahead 13 ticks late (the second Link; the third and fourth 12 ticks
+  behind the Link ahead), at most 6.5 px a frame along the straight line to that spot, and goes on so, the spacing
+  forgotten, until he's on that Link. `s5` (right off the ledge, the stick let go 2 frames after): the leader landed at
+  (104.5, 424.8) on frame 59; the second Link walked the ledge at walking speed, then, his anchor over the pit,
+  6.5 px a frame (frame 59: (101.55, 365.07) → (103.63, 371.22), toward the leader's spot of frame 46), then the
+  leader's fall 4 px a frame, landing on frame 72, the third on 84, the fourth on 96: all four stacked on (104.5,
+  424.6-424.9). `s3` (left in the air against the ledge's face, then let go): the same, the three falling his fall
+  13, 25 and 37 frames after him. `s7` after a shot landed on the top-left ledge: the leader walked left 13 frames and
+  stopped at 32.1; the second and third walked on onto him, the fourth stopped 3 px short, all still in state 3
+  until frame 280, then standing.
+- **The cannon** (`s1`, `s2`, `s7`). The leader falling into it from the ledge's walk (in it on frame 111 in `s7`):
+  the third Link was put on him the same frame, the second the frame after (after a 6.5 px step toward him), the
+  fourth the frame after that (after two), from (86.3, 360.5), (68.3, 360.9) and (50.3, 362.7). In it they bob with
+  him. Shot (`s7`: A on frame 152, out on 154), they stand in its mouth (120, 384) (state 0, sprite 60), the second
+  until 13 frames after him (6 px up the first frame, then 6.5 a frame), the third 12 frames after the second, the
+  fourth 12 after the third; the second caught the leader's 13-frames-late spot near the top of the arc (where he's
+  slow) and from there flew his path 13 frames late, the third and fourth the second's 12 late; all landed on the
+  top-left ledge where he did. Back into the cannon from a shot (`s2`, frame 474), the followers in the air dashed
+  straight onto him at 6.5 px a frame (not his path), and rode with him once there.
+- **The cannon fires by itself**: left idle in it, the leader was shot out 300 frames after he got in (`s1`, `s2`: in
+  on frame 50, out on 350, the same arc as A's), the cannon wobbling him (382-386) from about frame 232. Not in the sim
+  (the leader's own motion; the routes press A).
+- **Swimming** (`w1`, room 6's area 5: down, then left, then let go): the followers swim the trail 13 / 12 / 12
+  frames late, at the leader's pace (1.3 px a frame diving: his 1 + 0.3 sinking), without sinking; once he glided to
+  a stop they stopped 16.7, 12.9 and 12.5 px apart (on the TV: 18; the sim keeps 18).
 
 ## Adventure: the Links apart, waterfalls
 Traced 2026-10-02 (`ref/dolphin-user-adventure`). Positions are world px in `free*` (room 3 from
@@ -340,5 +380,5 @@ px. The sim follows them (`apart.realdisc.test.ts`, `lakehylia.realdisc.test.ts`
   climbed to y 97 on its right-hand ladder (288-303), walking left he hung to x 281.5, fell from 280 (1.5 left, 4 down
   a frame) and landed on the passage at (266.5, 137): the way across. Coming in through the garden's hole (style 4)
   he stood at (280, 8) about 55 frames (state 31), then fell 4 px a frame to the floor (216.7) (the sim walks him out
-  20 px first).
+  20 px first). The followers: "Adventure: the followers in a side view".
 - **Bushes**: two cut by a spin in room 1 dropped nothing (gems 4 → 4); the drop rule wasn't looked into further.
