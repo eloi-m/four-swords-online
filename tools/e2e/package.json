@@ -1,0 +1,34 @@
+{
+  "name": "@fso/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./browsers": "./src/browsers.ts"
+  },
+  "scripts": {
+    "viewer": "node src/viewer.ts",
+    "sound": "node src/sound.ts",
+    "tilemap": "node src/tilemap.ts",
+    "typecheck": "tsc -p .",
+    "netplay": "node src/netplay.ts",
+    "battle-online": "node src/battle-online.ts",
+    "free-play": "node src/free-play.ts",
+    "site": "node src/site.ts",
+    "perf": "node src/perf.ts",
+    "mobile": "node src/mobile.ts"
+  },
+  "dependencies": {
+    "@fso/formats": "workspace:*",
+    "@fso/net": "workspace:*",
+    "@fso/render": "workspace:*",
+    "@fso/signal": "workspace:*",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "playwright-core": "1.59.1",
+    "puppeteer-core": "^25.12.0",
+    "vite": "^8.3.1"
+  }
+}

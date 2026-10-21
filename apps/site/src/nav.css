@@ -1,0 +1,21 @@
+/* The home link on the app pages (nav.ts), in the site's colors; the theme's tokens where the page has them. */
+.fso-home.floating {
+  position: fixed;
+  left: max(10px, env(safe-area-inset-left));
+  top: max(8px, env(safe-area-inset-top));
+  z-index: 20;
+  padding: 5px 11px;
+  border-radius: 6px;
+  font: 700 12px/1.2 var(--display, Palatino, Georgia, serif);
+  letter-spacing: 0.05em;
+  color: var(--text, #f3ecd8);
+  text-decoration: none;
+  background: rgba(8, 12, 30, 0.8);
+  border: 1px solid var(--gold-lo, #8a6a26);
+  transition: opacity 0.25s, color 0.12s, border-color 0.12s;
+}
+.fso-home::before { content: "\2190\00a0"; color: var(--gold, #e2b84f); }
+.fso-home.floating:hover, .fso-home.floating:focus-visible { color: var(--gold-hi, #ffe38f); border-color: var(--gold, #e2b84f); outline: none; }
+.fso-home.away { opacity: 0; pointer-events: none; }
+/* In the page's own slot: one of its buttons (the theme's .btn). */
+.fso-home.in-slot { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }

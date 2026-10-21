@@ -1,0 +1,45 @@
+# The whole service on one machine (docs/deploy.md): Caddy serves the site over HTTPS and forwards /signal to the
+# lobby, which isn't reachable any other way. From the repo root, with deploy/.env filled in (see .env.example):
+#   docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  signal:
+    build:
+      context: ..
+      dockerfile: deploy/signal.Dockerfile
+    restart: unless-stopped
+    environment:
+      # Only pages of this site may use the lobby and its relay.
+      ALLOWED_ORIGINS: https://${SITE_ADDRESS:?set SITE_ADDRESS in deploy/.env}
+      # Caddy is the only way in, so its X-Forwarded-For is trustworthy (per-address caps).
+      TRUST_PROXY: "1"
+      MAX_ROOMS: ${MAX_ROOMS:-10000}
+      MAX_CONNECTIONS: ${MAX_CONNECTIONS:-5000}
+      MAX_CONNECTIONS_PER_ADDRESS: ${MAX_CONNECTIONS_PER_ADDRESS:-32}
+    expose:
+      - "5185"
+
+  site:
+    build:
+      context: ..
+      dockerfile: deploy/site.Dockerfile
+      args:
+        VITE_SOURCE_URL: ${SOURCE_URL:-}
+    restart: unless-stopped
+    depends_on:
+      - signal
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+      SIGNAL_UPSTREAM: signal:5185
+      CADDY_OPTIONS: ${CADDY_OPTIONS:-}
+    volumes:
+      # Certificates and ACME account: keep them across restarts (Let's Encrypt rate-limits new ones).
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

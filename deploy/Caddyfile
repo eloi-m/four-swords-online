@@ -1,0 +1,42 @@
+# Four Swords Online: the static site plus the lobby's WebSocket on one origin (docs/deploy.md).
+# Environment:
+#   SITE_ADDRESS     your domain (fso.example.org): Caddy gets and renews its certificate; default localhost
+#   SITE_ROOT        the built site (apps/site/dist); default /srv/site (deploy/site.Dockerfile puts it there)
+#   SIGNAL_UPSTREAM  the signaling server; default signal:5185 (the docker-compose service)
+#   CADDY_OPTIONS    extra global options, e.g. "email you@example.org" (certificate notices)
+{
+	{$CADDY_OPTIONS}
+}
+
+{$SITE_ADDRESS:localhost} {
+	root * {$SITE_ROOT:/srv/site}
+	encode zstd gzip
+
+	# The lobby: the pages connect to wss://<this host>/signal (apps/battle/src/online.ts defaultServer).
+	# reverse_proxy passes the WebSocket upgrade through and appends the client to X-Forwarded-For (TRUST_PROXY=1).
+	handle /signal {
+		rewrite * /
+		reverse_proxy {$SIGNAL_UPSTREAM:signal:5185}
+	}
+
+	handle {
+		file_server
+	}
+
+	# Hashed build output never changes: cache it for a year. Pages (and the icon) revalidate, so a deploy shows at once.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+	@pages not path /assets/* /signal
+	header @pages Cache-Control "no-cache"
+
+	# No cross-origin isolation (COOP/COEP) is needed: nothing uses SharedArrayBuffer. Workers and the AudioWorklet
+	# load from this origin; the 60 Hz ticker is a blob: worker; the lobby is a same-origin WebSocket (wss: also
+	# allows a lobby on another host, VITE_SIGNAL_URL). The pages set a few inline style attributes.
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; worker-src 'self' blob:; connect-src 'self' wss:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+}

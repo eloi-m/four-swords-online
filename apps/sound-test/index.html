@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Four Swords Online · Sound test</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <aside id="panel">
+      <h1>Four Swords Online <span>sound test</span></h1>
+
+      <section id="data">
+        <p id="data-status">Loading the game files…</p>
+      </section>
+
+      <section id="controls" hidden>
+        <div class="buttons">
+          <button id="play" type="button">Play</button>
+          <button id="stop" type="button">Stop</button>
+        </div>
+        <label><span>Volume</span><input id="volume" type="range" min="0" max="1.5" step="0.05" value="1" /></label>
+        <label class="row"><input id="port0" type="checkbox" /> Port 0 = 1 (the game's variant switch)</label>
+        <label class="row"><input id="muffle" type="checkbox" /> Muffle (every track's port 0, while playing)</label>
+        <label><span>Sound effect</span><select id="se"></select></label>
+        <div class="buttons"><button id="play-se" type="button">Play sound effect</button></div>
+        <p class="note">
+          Software synth in an AudioWorklet at 32 kHz: BMS sequencer, IBNK instruments, looped ADPCM samples,
+          envelopes, pitch bend, pan, vibrato, the IIR filter (muffle), the reverb and the DSP's built-in
+          waveforms (programs 0xF0+).
+        </p>
+        <pre id="stats"></pre>
+      </section>
+    </aside>
+    <main>
+      <table id="bgm" hidden>
+        <thead>
+          <tr><th>#</th><th>Sound</th><th>Sequence</th><th>Stages</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

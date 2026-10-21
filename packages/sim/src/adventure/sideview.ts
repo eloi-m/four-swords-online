@@ -1,0 +1,113 @@
+// GBA-screen areas seen from the side (those whose layers use the side views' background tile type 0x02 or their
+// water 0x3B: the stage loader marks them so, props.ts SIDE_VIEW_TYPES): the Links walk left and right, fall where
+// there's nothing under them, climb ladders and swim in the water. Measured in Dolphin (docs/measurements/adventure-lake-hylia.md
+// "Adventure: swimming, ledges, formations"; Lake Hylia room 6's area 5, under the whirlpool):
+// - falling 4 px/tick (the battle side rooms', siderooms.ts SIDE_FALL_SPEED);
+// - a ladder (tile type 0x61) is climbed like walking: 1.5 px/tick with the up-walk frames (state 2);
+// - in the water (state 75) a Link sinks 0.3 px/tick and the stick moves him 1 px/tick on top of it (0.707 per axis on
+//   diagonals): down 1.3, up 0.7; he can't rise out of it (his head stays 12.5 px under the surface) except onto a
+//   ladder beside him; frames left 532-535, down and still 540-543, up 548-551 (right assumed 528-531);
+// - the sword swings left and right as on the TV (the up and down of the stick don't turn him);
+// - walking off a ledge (traced in room 7's area 5): the tick his next step leaves the ground (his anchor over the
+//   edge) he moves 3.3 px on and 2.2 down, then 2.4 / 3.1, 2.0 / 4.0, then walking speed on (with the stick) and 4 down;
+// - off a ladder sideways (room 7's area 5, halfway down its ladder): he walks off at walking speed and hangs on while
+//   his body (±7 px) is still over the ladder's column, then falls 4 px/tick, no arc.
+import { stepLink } from "../actions.ts";
+import { Button, moveAxis, SUBPX, WALK_SPEED, type PlayerState } from "../player.ts";
+import { isSolidAt, surfaceAt, type World } from "../world.ts";
+import { DIAGONAL, type LinkMotion } from "./motion.ts";
+
+export const SIDE_FALL_SPEED = 4 * SUBPX;
+export const SIDE_CLIMB_SPEED = WALK_SPEED;
+export const SIDE_SINK = 77; // 0.3 px/tick
+export const SIDE_SWIM_SPEED = SUBPX;
+/** How far under the surface a swimmer's head stays (px). */
+export const SIDE_SWIM_HEAD = 12.5;
+
+const ladderAt = (world: World, x: number, y: number) => surfaceAt(world, Math.floor(x / SUBPX), Math.floor(y / SUBPX)) === "ladder";
+/** On a ladder: his anchor or his feet (his bottom sensor) on a ladder tile, or his body's side over one (traced: he
+ *  hangs on stepping off sideways). */
+const onLadder = (world: World, p: PlayerState) =>
+  ladderAt(world, p.x, p.y) || ladderAt(world, p.x, p.y + FEET) || ladderAt(world, p.x - BODY, p.y) || ladderAt(world, p.x + BODY, p.y);
+const BODY = 7 * SUBPX;
+/** Walking off a ledge: each tick's (along, down) of the first three (1/256 px, traced: 3.3 / 2.2, 2.4 / 3.1, 2.0 / 4.0). */
+export const WALK_OFF: readonly (readonly [number, number])[] = [[845, 563], [614, 794], [512, 1024]];
+/** Standing: on something solid, or on a ladder's top (TODO(measure): the game's ladder tops). */
+const standing = (world: World, p: PlayerState) => isSolidAt(world, Math.floor(p.x / SUBPX), Math.floor((p.y + FEET) / SUBPX) + 1) || ladderAt(world, p.x, p.y + FEET + SUBPX);
+const inWater = (world: World, x: number, y: number) => surfaceAt(world, Math.floor(x), Math.floor(y)) === "deep";
+const FEET = 7 * SUBPX;
+
+/** One tick of a Link on his own in a side-view area. */
+export function stepSideView(m: LinkMotion, p: PlayerState, buttons: number, world: World): void {
+  const x = p.x / SUBPX, y = p.y / SUBPX;
+  if (inWater(world, x, y)) {
+    sideSwim(m, p, buttons, world);
+    return;
+  }
+  if (m.mode === "swim") {
+    m.mode = "walk";
+    m.side = false;
+  }
+  const way = p.action === "none" ? (buttons & Button.Down ? 1 : 0) - (buttons & Button.Up ? 1 : 0) : 0;
+  // Climbing: up while his feet are still on the ladder (he ends standing on its top), down onto or along it.
+  // Out of the water onto a ladder's foot, his feet still in the water: up it too (traced in Lake Hylia room 6's area 5:
+  // standing at the surface, y 92, then climbing).
+  const fromWater = ladderAt(world, p.x, p.y) && inWater(world, x, y + FEET / SUBPX);
+  const climb = way < 0 ? ladderAt(world, p.x, p.y + FEET - SIDE_CLIMB_SPEED) || fromWater : way > 0 ? onLadder(world, p) || ladderAt(world, p.x, p.y + FEET + SUBPX) : false;
+  if (climb) {
+    p.facing = way < 0 ? "up" : "down";
+    p.moving = true;
+    p.walkTicks++;
+    p.held = buttons;
+    moveAxis(p, world, way * SIDE_CLIMB_SPEED, "y");
+    return;
+  }
+  // Walking off a ledge: the arc's first ticks (WALK_OFF), the stick doing nothing meanwhile (TODO(measure)).
+  if (m.air > 0 && m.air <= WALK_OFF.length) {
+    const [along, down] = WALK_OFF[m.air - 1]!;
+    moveAxis(p, world, (p.facing === "left" ? -1 : 1) * along, "x");
+    moveAxis(p, world, down, "y");
+    p.walkTicks++;
+    m.air = standing(world, p) ? 0 : m.air + 1;
+    return;
+  }
+  const grounded = standing(world, p), x0 = p.x;
+  stepLink(p, buttons & ~(Button.Up | Button.Down), world);
+  if (onLadder(world, p) || standing(world, p)) {
+    m.air = 0;
+    return;
+  }
+  // Off the ground: walked off a ledge (its arc, from where he stood), or falling.
+  if (grounded && !m.air && (p.facing === "left" || p.facing === "right") && p.x !== x0) {
+    p.x = x0;
+    m.air = 1;
+    stepSideView(m, p, buttons, world);
+    return;
+  }
+  moveAxis(p, world, SIDE_FALL_SPEED, "y");
+  m.air = Math.max(m.air, WALK_OFF.length + 1);
+}
+
+function sideSwim(m: LinkMotion, p: PlayerState, buttons: number, world: World): void {
+  m.mode = "swim";
+  m.side = true;
+  p.held = buttons;
+  const dx = (buttons & Button.Right ? 1 : 0) - (buttons & Button.Left ? 1 : 0);
+  const dy = (buttons & Button.Down ? 1 : 0) - (buttons & Button.Up ? 1 : 0);
+  const unit = dx && dy ? DIAGONAL : SIDE_SWIM_SPEED;
+  if (dx) p.facing = dx > 0 ? "right" : "left";
+  else if (dy) p.facing = dy > 0 ? "down" : "up";
+  moveAxis(p, world, dx * unit, "x");
+  let vy = dy * unit + SIDE_SINK;
+  if (vy < 0) {
+    // Not out of the water upward (TODO(measure): the game's own check).
+    const head = (p.y + vy) / SUBPX - SIDE_SWIM_HEAD;
+    if (!inWater(world, p.x / SUBPX, head) && !onLadder(world, p)) vy = 0;
+  }
+  moveAxis(p, world, vy, "y");
+  m.tick = (m.tick + 1) % 24;
+  p.moving = dx !== 0 || dy !== 0;
+}
+
+
+

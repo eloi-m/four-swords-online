@@ -1,0 +1,43 @@
+:root {
+  color-scheme: dark;
+  --bg: #14161a;
+  --panel: #1d2026;
+  --line: #2e333b;
+  --text: #e6e8eb;
+  --muted: #9aa1ab;
+  --accent: #6cc070;
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+body { display: flex; }
+#panel {
+  width: 280px; flex: none; display: flex; flex-direction: column; gap: 16px;
+  padding: 16px; background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto;
+}
+h1 { margin: 0; font-size: 16px; }
+h1 span { color: var(--muted); font-weight: 400; }
+section { display: flex; flex-direction: column; gap: 10px; }
+label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
+fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+fieldset label { flex-direction: row; align-items: center; gap: 6px; color: var(--text); }
+legend { color: var(--muted); padding: 0 4px; }
+select, button {
+  font: inherit; color: var(--text); background: #262a31; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+}
+button { cursor: pointer; }
+button:hover, select:hover { border-color: #465061; }
+.note { margin: 0; color: var(--muted); font-size: 12px; }
+.error { color: #ff8a80; }
+.zoom { display: flex; gap: 6px; align-items: center; color: var(--muted); }
+#actor-info { font: 12px ui-monospace, monospace; white-space: pre-wrap; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+#hover { margin-top: auto; font: 12px ui-monospace, monospace; color: var(--muted); min-height: 3em; }
+main { flex: 1; min-width: 0; position: relative; }
+#view { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#view:active { cursor: grabbing; }
+fieldset label.sub { padding-left: 20px; font-size: 0.95em; }
+#jpa .jpa-row { display: flex; gap: 6px; align-items: center; }
+#jpa input[type="number"] { width: 70px; font: inherit; color: var(--text); background: #262a31; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+#jpa select { width: 100%; }
+#jpa-info { font: 12px ui-monospace, monospace; white-space: pre-wrap; color: var(--text); }

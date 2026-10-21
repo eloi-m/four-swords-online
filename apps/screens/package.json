@@ -1,0 +1,22 @@
+{
+  "name": "@fso/screens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@fso/formats": "workspace:*",
+    "@fso/render": "workspace:*",
+    "@fso/web": "workspace:*",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@fso/bundle": "workspace:*",
+    "@types/three": "^0.186.0",
+    "vite": "^8.3.1"
+  }
+}

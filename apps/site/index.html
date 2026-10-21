@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#070b1d" />
+    <title>Four Swords Online</title>
+    <meta name="description" content="Shadow Battle, the multiplayer mode of a 2004 GameCube game, rebuilt for the browser. A private fan project." />
+    <link rel="icon" href="/site/src/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/site/src/home.css" />
+  </head>
+  <body>
+    <div class="sky" data-art-bg="sky" aria-hidden="true"></div>
+
+    <main class="title-screen">
+      <header class="brand">
+        <h1 class="art-slot logo">
+          <img class="logo-art" data-art="logo" alt="" />
+          <span class="art-text gold-title">Four Swords Online</span>
+        </h1>
+        <p class="art-slot plate">
+          <img class="plate-art" data-art="battlePlate" alt="" />
+          <span class="art-text">Shadow Battle</span>
+        </p>
+        <p class="site-name">Four Swords Online</p>
+      </header>
+
+      <nav class="modes" aria-label="Play">
+        <a class="mode" href="battle/#vs=cpu" data-page="battle-cpu">
+          <span class="link-icon" data-art-bg="link1" style="--color: var(--p1)"></span>
+          <span><strong>Vs. Computer</strong><small>You against one to three CPU Links</small></span>
+        </a>
+        <a class="mode" href="battle/#vs=local" data-page="battle">
+          <span class="link-icon" data-art-bg="link2" style="--color: var(--p2)"></span>
+          <span><strong>Local Battle</strong><small>2–4 players here: keyboards and gamepads</small></span>
+        </a>
+        <a class="mode" href="online/" data-page="online">
+          <span class="link-icon" data-art-bg="link3" style="--color: var(--p3)"></span>
+          <span><strong>Online Battle</strong><small>Create a room and share its code, or join one</small></span>
+        </a>
+        <a class="mode" href="battle/#free" data-page="free">
+          <span class="link-icon" data-art-bg="link4" style="--color: var(--p4)"></span>
+          <span><strong>Free Play</strong><small>One big field, up to 8 online: roam, then battle</small></span>
+        </a>
+        <a class="mode" href="adventure/" data-page="adventure">
+          <span class="link-icon" data-art-bg="heart" style="--color: var(--gold)"></span>
+          <span><strong>Adventure</strong><small>Lake Hylia with the four Links, in progress</small></span>
+        </a>
+      </nav>
+
+      <p id="data-status" class="status" hidden></p>
+
+      <footer class="extras">
+        <button data-open="controls-dialog">Controls</button>
+        <button data-open="about-dialog">About</button>
+      </footer>
+    </main>
+
+    <dialog id="controls-dialog" class="frame" aria-labelledby="controls-title">
+      <div class="dialog-body" tabindex="-1" autofocus>
+        <h2 id="controls-title" class="frame-title">Controls</h2>
+        <div class="table">
+          <table class="keys">
+            <thead><tr><th></th><th>Move</th><th>Sword</th><th>Action</th><th>Item</th></tr></thead>
+            <tbody>
+              <tr><th>P1</th><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td><kbd>J</kbd></td><td><kbd>K</kbd></td><td><kbd>L</kbd></td></tr>
+              <tr><th>P2</th><td>arrows</td><td><kbd>,</kbd> <kbd>Num0</kbd></td><td><kbd>.</kbd> <kbd>Num.</kbd></td><td><kbd>/</kbd> <kbd>NumEnter</kbd></td></tr>
+              <tr><th>Pads</th><td>stick, D-pad</td><td><kbd>A</kbd></td><td><kbd>X</kbd> <kbd>RB</kbd> <kbd>RT</kbd></td><td><kbd>B</kbd></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>On a touch screen: a stick under your left thumb, <b>Sword</b>, <b>Item</b> and <b>Action</b> under your right, and a pause button.</p>
+        <p class="note">
+          Hold the sword to charge a spin; Action lifts, throws and rolls. These are the defaults: change them in Shadow
+          Battle's menu (<i>Controls</i>). Online, each browser plays keyboard 1, its first gamepad or the touch controls.
+        </p>
+        <form method="dialog" class="dialog-buttons"><button class="primary">Close</button></form>
+      </div>
+    </dialog>
+
+    <dialog id="about-dialog" class="frame" aria-labelledby="about-title">
+      <div class="dialog-body" tabindex="-1" autofocus>
+        <h2 id="about-title" class="frame-title">About</h2>
+        <p>
+          Shadow Battle, the 2–4 player arena mode of <em>The Legend of Zelda: Four Swords Adventures</em> (GameCube,
+          2004), rebuilt for the browser: on one keyboard with gamepads, against the computer, or online with rollback
+          netcode.
+        </p>
+        <div class="about-columns">
+          <section>
+            <h3>Game files</h3>
+            <p id="data-info" class="note">Checking…</p>
+            <h3>Your browser</h3>
+            <ul id="checks" class="checks"></ul>
+          </section>
+          <section>
+            <h3>Also here</h3>
+            <p><a href="adventure/" data-page="adventure">The Hyrulean Adventure</a>, a work in progress: Lake Hylia from its start to its goal with the four Links, and every other stage to walk around (Esc or the pause button opens the stage list).</p>
+            <h3>Credits</h3>
+            <p class="note">
+              Built with <a href="https://threejs.org/">three.js</a> (MIT). Thanks to
+              <a href="https://github.com/magcius/noclip.website">noclip.website</a> (MIT), the
+              <a href="https://dolphin-emu.org/">Dolphin</a> emulator and the game's modding community, whose
+              documentation and tools made the format research possible. Titles set in Cinzel (SIL Open Font License).
+              <span id="source"></span>
+            </p>
+          </section>
+        </div>
+        <p class="note legal">
+          A private, non-commercial fan project, not affiliated with or endorsed by Nintendo. <em>The Legend of Zelda</em>
+          and <em>Four Swords Adventures</em> are trademarks of Nintendo. The code is our own, written from file-format
+          documentation and from watching the game run; the game files it reads, the art on these pages included, come
+          from the site operator's copy of the game.
+        </p>
+        <form method="dialog" class="dialog-buttons"><button class="primary">Close</button></form>
+      </div>
+    </dialog>
+    <script type="module" src="/site/src/home.ts"></script>
+  </body>
+</html>

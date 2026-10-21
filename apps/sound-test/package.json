@@ -1,0 +1,20 @@
+{
+  "name": "@fso/sound-test",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@fso/audio": "workspace:*",
+    "@fso/formats": "workspace:*",
+    "@fso/web": "workspace:*"
+  },
+  "devDependencies": {
+    "@fso/bundle": "workspace:*",
+    "vite": "^8.3.1"
+  }
+}

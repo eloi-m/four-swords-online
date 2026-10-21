@@ -1,0 +1,13 @@
+{
+  "name": "@fso/dol-tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dol": "node src/cli.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@fso/formats": "workspace:*"
+  }
+}

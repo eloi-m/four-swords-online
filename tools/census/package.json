@@ -1,0 +1,13 @@
+{
+  "name": "@fso/census",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "census": "node src/census.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@fso/formats": "workspace:*"
+  }
+}

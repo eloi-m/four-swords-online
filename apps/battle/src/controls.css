@@ -1,0 +1,92 @@
+/* The Controls dialog (controls.ts), in the site's theme (theme.css: .frame, .frame-title, buttons, kbd). Builds on
+   style.css: .screen, .overlay, .note, .buttons. */
+#controls-dialog { z-index: 10; justify-content: flex-start; }
+/* margin-block: auto centers the panel, and a panel taller than the window scrolls from its top (a phone in landscape). */
+.controls-panel { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-block: auto; padding: 12px 26px 18px; max-width: min(820px, 94vw); }
+.controls-panel > .controls-title { align-self: stretch; font-size: 15px; }
+.controls-panel .note { max-width: 70ch; text-align: center; }
+.controls-sub { margin: 0; font: 700 12px var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text); }
+.controls-keys { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 100%; overflow-x: auto; }
+
+/* The bindings: one row per action, a column per keyboard layout and the gamepads. */
+.bindings { border-collapse: collapse; font-size: 13px; }
+.bindings th, .bindings td { padding: 4px 8px; text-align: left; border-bottom: 1px solid rgba(42, 56, 104, 0.75); white-space: nowrap; }
+.bindings thead th { font: 700 11px var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); border-bottom-color: var(--gold-lo); }
+.bindings tbody th { font-weight: 600; color: var(--text); }
+.bindings tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
+.bindings td > button { vertical-align: middle; }
+.bindings td > button + button { margin-left: 4px; }
+.bindings button.binding {
+  font: 13px var(--ui); letter-spacing: 0; padding: 3px 8px; min-width: 88px; text-align: left;
+  color: var(--text); background: var(--night-2); border: 1px solid var(--line); border-radius: 5px; box-shadow: none;
+}
+.bindings button.binding:hover, .bindings button.binding:focus-visible { border-color: var(--gold); color: var(--text); box-shadow: 0 0 0 1px rgba(226, 184, 79, 0.35); }
+.bindings button.binding.add { min-width: 0; padding: 3px 8px; font-weight: 700; color: var(--muted); }
+.bindings button.binding.add:hover { color: var(--gold-hi); }
+.bindings button.binding.waiting {
+  border-color: var(--gold); color: var(--gold-hi);
+  background: radial-gradient(ellipse at 50% 100%, rgba(170, 120, 240, 0.45), rgba(20, 28, 64, 0.9) 70%);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 14px rgba(226, 184, 79, 0.35);
+  animation: binding-wait 0.9s ease-in-out infinite alternate;
+}
+@keyframes binding-wait { to { box-shadow: 0 0 0 1px var(--gold-hi), 0 0 20px rgba(226, 184, 79, 0.6); } }
+.bindings .none { color: var(--muted); font-style: italic; opacity: 0.75; }
+.bindings kbd { margin-right: 2px; }
+#controls-hint { color: var(--gold-hi); min-height: 1.45em; }
+
+/* The on-screen controls: when to show them (checked = gold edge and the menus' purple glow), size, opacity, vibration. */
+.controls-touch { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; padding-top: 12px; border-top: 1px solid rgba(138, 106, 38, 0.35); }
+.touch-modes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.touch-modes label {
+  display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 10px; cursor: pointer; font-weight: 600;
+  border: 1px solid var(--line); border-radius: 6px; background: rgba(6, 10, 26, 0.7);
+  transition: border-color 0.12s, box-shadow 0.12s, color 0.12s;
+}
+.touch-modes label:hover { border-color: var(--gold-lo); }
+.touch-modes label:has(input:checked) {
+  color: var(--gold-hi); border-color: var(--gold);
+  background: radial-gradient(ellipse at 50% 100%, rgba(170, 120, 240, 0.45), rgba(20, 28, 64, 0.9) 70%);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 16px rgba(226, 184, 79, 0.35);
+}
+.touch-modes input[type="radio"] {
+  appearance: none; -webkit-appearance: none; flex: none; margin: 0; width: 16px; height: 16px; cursor: pointer;
+  border-radius: 50%; border: 2px solid var(--gold-lo); background: var(--night);
+}
+.touch-modes input[type="radio"]:checked { border-color: var(--gold); background: radial-gradient(circle, var(--gold-hi) 0 2.5px, var(--gold) 3px 3.5px, var(--night) 4px); }
+.touch-modes input[type="radio"]:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+.touch-sliders { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; justify-content: center; color: var(--muted); }
+.touch-sliders label { display: flex; align-items: center; gap: 8px; }
+.touch-sliders input[type="range"] { width: 150px; }
+.touch-sliders input[type="checkbox"] { width: 18px; height: 18px; margin: 0; }
+.touch-sliders .check { color: var(--text); }
+
+/* Touch screens: 44 px targets, the on-screen controls' settings first, Done always in reach (a bar that sticks to
+   the bottom of the window, over the table, clear of the home indicator). */
+@media (pointer: coarse) {
+  #controls-dialog { padding-bottom: 0; }
+  #controls-dialog kbd { display: inline-block; } /* (style.css hides key hints on touch screens: here they're the bindings) */
+  .controls-panel { padding: 10px 14px 0; gap: 10px; }
+  .controls-panel > .controls-title { order: -2; }
+  .controls-touch { order: -1; padding: 0 0 12px; border-top: none; border-bottom: 1px solid rgba(138, 106, 38, 0.35); }
+  .controls-panel button, .touch-modes label, .touch-sliders label { min-height: 44px; box-sizing: border-box; }
+  .bindings button.binding { min-height: 44px; min-width: 64px; }
+  .bindings button.binding.add { min-width: 44px; }
+  .touch-modes input[type="radio"] { width: 20px; height: 20px; }
+  .touch-modes input[type="radio"]:checked { background: radial-gradient(circle, var(--gold-hi) 0 3.5px, var(--gold) 4px 4.5px, var(--night) 5px); }
+  .touch-sliders input[type="range"] { height: 44px; width: 170px; }
+  .touch-sliders input[type="checkbox"] { width: 24px; height: 24px; }
+  .controls-panel > .buttons {
+    position: sticky; bottom: 0; z-index: 1; align-self: stretch; justify-content: center;
+    margin: 0 -14px; padding: 8px 14px max(12px, env(safe-area-inset-bottom)); border-radius: 0 0 6px 6px;
+    background: #090e23; border-top: 1px solid rgba(138, 106, 38, 0.35);
+  }
+}
+
+/* Narrow windows (a phone held upright): each action's keys stacked in their cell, so the table fits the width. */
+@media (max-width: 540px) {
+  .controls-panel { padding-inline: 10px; }
+  .bindings th, .bindings td { padding: 4px; white-space: normal; }
+  .bindings td > button { display: block; width: 100%; }
+  .bindings td > button + button { margin: 4px 0 0; }
+  .bindings button.binding, .bindings button.binding.add { min-width: 0; }
+}

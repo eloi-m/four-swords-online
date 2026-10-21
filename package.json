@@ -1,0 +1,28 @@
+{
+  "name": "four-swords-online",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "pnpm -r typecheck",
+    "bundle": "node tools/bundle/src/main.ts",
+    "signal": "node tools/signal/src/main.ts",
+    "battle:online": "node tools/signal/src/main.ts -- pnpm --filter @fso/battle dev",
+    "build:site": "pnpm --filter @fso/site build",
+    "site:dev": "node tools/signal/src/main.ts -- pnpm --filter @fso/site dev",
+    "site:preview": "node tools/signal/src/main.ts -- pnpm --filter @fso/site preview",
+    "capture:replay": "node tools/capture/src/replay.ts",
+    "capture:shot": "node tools/capture/src/shot.ts",
+    "playtest:bent": "node tools/playtest/src/bent.ts",
+    "playtest:actors": "node tools/playtest/src/actors.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  }
+}

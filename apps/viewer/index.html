@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Four Swords Online · Viewer</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <aside id="panel">
+      <h1>Four Swords Online <span>viewer</span></h1>
+
+      <section id="data">
+        <p id="data-status">Loading the game files…</p>
+      </section>
+
+      <section id="controls" hidden>
+        <label>Stage <select id="stage"></select></label>
+        <fieldset>
+          <legend>Layers</legend>
+          <label><input id="base" type="checkbox" checked /> Base (below actors)</label>
+          <label><input id="top" type="checkbox" checked /> Top (above actors)</label>
+          <label><input id="overlay" type="checkbox" checked /> <span id="overlay-label">Ground overlay</span></label>
+          <label><input id="animate" type="checkbox" checked /> Animated tiles</label>
+          <label><input id="collision" type="checkbox" /> Collision (from main.dol)</label>
+          <label><input id="actors" type="checkbox" /> Actors (click one for details)</label>
+          <label class="sub"><input id="actor-sprites" type="checkbox" checked /> as sprites (markers: unmapped only)</label>
+          <label><input id="grid" type="checkbox" checked /> Room grid</label>
+          <label><input id="effects" type="checkbox" /> 3D effects (waterfalls, clouds, particles…)</label>
+          <label><input id="jpa-on" type="checkbox" /> Particle effect browser</label>
+        </fieldset>
+        <fieldset id="jpa" hidden>
+          <legend>Particle effect (JPA)</legend>
+          <div class="jpa-row">
+            <button id="jpa-prev" title="Previous">◀</button>
+            <input id="jpa-id" type="number" min="0" value="0" />
+            <button id="jpa-next" title="Next">▶</button>
+            <button id="jpa-restart">Restart</button>
+          </div>
+          <select id="jpa-list" size="8"></select>
+          <label><input id="jpa-play" type="checkbox" checked /> Play</label>
+          <label><input id="jpa-loop" type="checkbox" checked /> Loop</label>
+          <label><input id="jpa-fsa" type="checkbox" checked /> Placed as the game places it</label>
+          <pre id="jpa-info" class="note"></pre>
+        </fieldset>
+        <label>Screen
+          <select id="sublayer">
+            <option value="0">TV</option>
+            <option value="1">GBA area 1</option><option value="2">GBA area 2</option><option value="3">GBA area 3</option>
+            <option value="4">GBA area 4</option><option value="5">GBA area 5</option><option value="6">GBA area 6</option>
+            <option value="7">GBA area 7</option>
+          </select>
+        </label>
+        <label>Palette
+          <select id="palette">
+            <option value="tv">TV</option>
+            <option value="gba">GBA</option>
+            <option value="dark">Dark World</option>
+          </select>
+        </label>
+        <div class="zoom">Zoom <button data-zoom="1">1×</button><button data-zoom="2">2×</button><button data-zoom="3">3×</button><button data-zoom="fit">Fit</button></div>
+        <p id="stage-info" class="note"></p>
+        <p id="effects-info" class="note"></p>
+        <pre id="actor-info" class="note" hidden></pre>
+      </section>
+
+      <footer id="hover">&nbsp;</footer>
+    </aside>
+    <main><canvas id="view"></canvas></main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

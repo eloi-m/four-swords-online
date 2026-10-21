@@ -1,0 +1,19 @@
+{
+  "name": "@fso/input",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./touch": "./src/touch-controls.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@fso/sim": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^8.3.1"
+  }
+}

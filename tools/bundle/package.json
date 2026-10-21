@@ -1,0 +1,21 @@
+{
+  "name": "@fso/bundle",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/data.ts",
+    "./vite": "./src/vite.ts"
+  },
+  "scripts": {
+    "bundle": "node src/main.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@fso/formats": "workspace:*",
+    "@fso/web": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^8.3.1"
+  }
+}

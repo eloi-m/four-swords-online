@@ -1,0 +1,13 @@
+{
+  "name": "@fso/dolphin-tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ram": "node src/ram.ts",
+    "trace": "node src/trace.ts",
+    "trace-print": "node src/trace-print.ts",
+    "fixture": "node src/fixture.ts",
+    "typecheck": "tsc -p ."
+  }
+}

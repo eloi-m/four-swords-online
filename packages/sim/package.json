@@ -1,0 +1,17 @@
+{
+  "name": "@fso/sim",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./adventure": "./src/adventure/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "bench": "node src/bench.ts"
+  },
+  "dependencies": {
+    "@fso/formats": "workspace:*"
+  }
+}

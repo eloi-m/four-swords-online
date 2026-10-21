@@ -1,0 +1,24 @@
+{
+  "name": "@fso/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./capture": "./src/capture.ts",
+    "./protocol": "./src/protocol.ts",
+    "./audio": "./src/audio/synth-audio.ts",
+    "./theme.css": "./src/theme.css"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "vite": "^8.3.1"
+  },
+  "dependencies": {
+    "@fontsource-variable/cinzel": "^5.3.0",
+    "@fso/audio": "workspace:*",
+    "@fso/formats": "workspace:*"
+  }
+}

@@ -1,0 +1,20 @@
+/* The on-screen controls (touch-controls.ts). Positions are set in CSS px from the window's top left by layoutControls;
+   the button colors are the GameCube pad's: red B (Sword), green A (Item), grey R (Action). */
+.fso-touch { position: fixed; inset: 0; pointer-events: none; opacity: var(--fso-touch-opacity, 0.6); color: #fff; font: 600 13px system-ui, -apple-system, "Segoe UI", sans-serif; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.fso-touch[hidden], .fso-touch [hidden] { display: none !important; }
+.fso-touch-zone { position: absolute; pointer-events: auto; touch-action: none; }
+.fso-touch-base { position: absolute; left: 0; top: 0; box-sizing: border-box; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.55); background: rgba(12, 14, 18, 0.4); display: flex; align-items: center; justify-content: center; }
+.fso-touch-base.active { border-color: rgba(255, 255, 255, 0.9); }
+.fso-touch-knob { width: 46%; height: 46%; border-radius: 50%; background: rgba(232, 234, 238, 0.8); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
+.fso-touch-button { position: absolute; box-sizing: border-box; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.55); display: flex; align-items: center; justify-content: center; text-shadow: 0 1px 2px #000; transition: transform 40ms; }
+.fso-touch-button[data-action="Sword"] { background: rgba(190, 48, 48, 0.62); }
+.fso-touch-button[data-action="Item"] { background: rgba(38, 146, 86, 0.62); }
+.fso-touch-button[data-action="Action"] { background: rgba(118, 122, 132, 0.62); }
+.fso-touch-button.pressed { border-color: #fff; filter: brightness(1.55); transform: scale(0.93); }
+.fso-touch-pause { position: absolute; pointer-events: auto; touch-action: manipulation; box-sizing: border-box; padding: 0; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.55); background: rgba(12, 14, 18, 0.5); box-shadow: none; cursor: pointer; }
+/* (pages that style every button, like the site's theme, mustn't restyle this one on hover, focus or press) */
+.fso-touch .fso-touch-pause:is(:hover, :focus-visible, :active) { border-color: rgba(255, 255, 255, 0.55); box-shadow: none; outline: none; transform: none; filter: none; }
+.fso-touch-pause::before, .fso-touch-pause::after { content: ""; position: absolute; top: 30%; width: 14%; height: 40%; border-radius: 2px; background: #fff; }
+.fso-touch-pause::before { left: 30%; }
+.fso-touch-pause::after { right: 30%; }
+.fso-touch-insets { position: fixed; left: 0; top: 0; visibility: hidden; pointer-events: none; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }

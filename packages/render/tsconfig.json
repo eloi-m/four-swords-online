@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": ["src"],
+  // Tests read the disc with node:fs; the package itself must not see node globals.
+  "exclude": ["src/**/*.test.ts"]
+}

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Four Swords Online · netplay</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="screen"></canvas>
+    <div id="hud"></div>
+    <div id="banner" hidden></div>
+    <div id="boot">
+      <h1>Four Swords Online · netplay</h1>
+      <p id="boot-status">Loading…</p>
+      <progress id="progress" max="1" value="0" hidden></progress>
+    </div>
+    <div id="lobby" hidden>
+      <h1>Four Swords Online · netplay</h1>
+      <div class="row">
+        <label>Name <input id="name" size="12" maxlength="24" /></label>
+        <label>Server <input id="server" size="28" /></label>
+      </div>
+      <div class="row" id="choose">
+        <button id="create">Create a room</button>
+        <span class="note">or</span>
+        <input id="code" size="7" placeholder="WORD" aria-label="Room word" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+        <button id="join">Join</button>
+        <label class="note"><input id="spectate" type="checkbox" /> as a spectator</label>
+      </div>
+      <div id="room" hidden>
+        <p>Room <strong id="room-code"></strong> · <a id="room-link" target="_blank"></a></p>
+        <ul id="members"></ul>
+        <button id="start" hidden>Start</button>
+      </div>
+      <p id="lobby-status" class="note"></p>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

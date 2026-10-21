@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#070b1d" />
+    <title>Shadow Battle · Four Swords Online</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="screen"></canvas>
+    <div id="hud" hidden></div>
+    <div id="audio" class="audio" hidden>
+      <button id="mute" title="Mute (M)">Sound on</button>
+      <input id="volume" type="range" min="0" max="1" step="0.05" value="0.8" aria-label="Volume" />
+    </div>
+
+    <div id="boot" class="screen">
+      <h1 class="gold-title">Shadow Battle</h1>
+      <p id="boot-status">Loading…</p>
+      <progress id="progress" max="1" value="0" hidden></progress>
+    </div>
+
+    <div id="menu" class="screen" hidden>
+      <h1 class="art-slot plate">
+        <img class="plate-art" data-art="battlePlate" alt="" />
+        <span id="menu-title" class="art-text gold-title">Shadow Battle</span>
+      </h1>
+      <section class="frame arena-panel">
+        <h2 class="frame-title">Arena<span id="arena-name" class="arena-name"></span></h2>
+        <div id="arenas" class="arenas"></div>
+      </section>
+      <section class="frame fighters-panel">
+        <div class="panel-head">
+          <h2 class="frame-title">Fighters</h2>
+          <select id="opt-players" aria-label="Players"><option value="2">2 players</option><option value="3">3 players</option><option value="4">4 players</option></select>
+        </div>
+        <ol id="controls" class="controls"></ol>
+      </section>
+      <section class="frame rules-panel">
+        <h2 id="rules-title" class="frame-title">Rules</h2>
+        <div class="options">
+          <label><span class="rule-icon heart" data-art-bg="heart"></span><span class="rule-name">Hearts</span> <select id="opt-hearts"><option>2</option><option selected>3</option><option>4</option><option>6</option></select></label>
+          <label><span class="rule-icon clock"></span><span class="rule-name">Time limit</span>
+            <select id="opt-time">
+              <option value="0">Off</option><option value="60">1:00</option><option value="120">2:00</option>
+              <option value="180">3:00</option><option value="300">5:00</option>
+            </select>
+          </label>
+          <label><span class="rule-icon star won"></span><span class="rule-name">Wins</span> <select id="opt-wins"><option>1</option><option>2</option><option>3</option><option>5</option></select></label>
+          <label class="check"><input id="opt-pads-first" type="checkbox" /> Gamepads first</label>
+        </div>
+      </section>
+      <div class="buttons menu-buttons">
+        <button id="start" class="primary" data-fullscreen><span id="start-label">START!</span> <kbd>Enter</kbd></button>
+        <div class="buttons more-buttons">
+          <button id="play-online">Play online</button>
+          <button id="controls-open">Controls</button>
+          <span data-home-slot hidden></span>
+        </div>
+      </div>
+      <p class="note keys">In a match: <kbd>Esc</kbd> pause · <kbd>V</kbd> zoom to fit / whole arena · <kbd>M</kbd> mute</p>
+    </div>
+
+    <div id="results" class="screen overlay" hidden>
+      <h1 id="results-title"></h1>
+      <ol id="standings" class="standings"></ol>
+      <div class="buttons">
+        <button id="rematch" class="primary" data-fullscreen><span id="rematch-label">Continue</span> <kbd>Enter</kbd></button>
+        <button id="to-menu"><span id="to-menu-label">Quit</span> <kbd>Esc</kbd></button>
+      </div>
+    </div>
+
+    <!-- The pause (pause.ts): see-through on the game's pause screen and question box, and the Controls button. -->
+    <div id="pause" hidden>
+      <button data-pause="continue" id="pause-continue">Continue</button>
+      <button data-pause="area" id="pause-area">Choose an Area</button>
+      <button data-pause="game" id="pause-game">Choose a Game</button>
+      <button data-pause="yes" id="pause-yes">Yes</button>
+      <button data-pause="no" id="pause-no">No</button>
+      <button id="pause-controls" class="pause-extra">Controls</button>
+    </div>
+
+    <div id="rotate" class="rotate">
+      <div class="phone" aria-hidden="true"></div>
+      <p><strong>Turn your phone sideways</strong></p>
+      <p class="note">Shadow Battle plays in landscape.</p>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

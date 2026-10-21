@@ -1,0 +1,164 @@
+/* The site's look, shared by its pages (the home page, Shadow Battle): the night sky of the game's title screen,
+   gold-framed panels, the four tunic colors, and Cinzel (SIL Open Font License, bundled: no font server) for titles
+   and buttons. The game's own art (the logo, the mode plate, the Link icons) is drawn from the game files at runtime
+   (art.ts), never shipped in the build; without it every page still looks right with these styles alone.
+   Pages import this first, then their own CSS. */
+@import "@fontsource-variable/cinzel/wght.css";
+
+:root {
+  color-scheme: dark;
+  --night: #060a1a;
+  --night-2: #0d1531;
+  --night-3: #18244d;
+  --panel: rgba(9, 14, 34, 0.92);
+  --raised: #152049;
+  --raised-hi: #1f2d61;
+  --line: #2a3868;
+  --gold: #e2b84f;
+  --gold-hi: #ffe38f;
+  --gold-lo: #8a6a26;
+  --text: #f3ecd8;
+  --muted: #a7afca;
+  --cursor: #8a5fd0; /* the mode menu's purple highlight */
+  --good: #8fdc7f;
+  --bad: #ff8a80;
+  --p1: #3fbf4f;
+  --p2: #e0443c;
+  --p3: #3f7fe8;
+  --p4: #a05ad8;
+  --display: "Cinzel Variable", "Cinzel", Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sky: radial-gradient(ellipse 120% 90% at 50% 18%, #22336b 0%, #111b40 42%, #070b1d 78%, #04060f 100%);
+  font: 14px/1.45 var(--ui);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+[hidden] { display: none !important; }
+
+/* --- Buttons: navy with a gold edge; the main one is a gold plate --- */
+button, .btn {
+  font: 650 14px/1.2 var(--display);
+  letter-spacing: 0.04em;
+  color: var(--text);
+  background: linear-gradient(180deg, var(--raised-hi), var(--raised));
+  border: 1px solid var(--gold-lo);
+  border-radius: 6px;
+  padding: 8px 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 2px 0 rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: border-color 0.12s, box-shadow 0.12s, color 0.12s, filter 0.12s;
+}
+button:hover, .btn:hover, button:focus-visible, .btn:focus-visible {
+  border-color: var(--gold);
+  color: var(--gold-hi);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(226, 184, 79, 0.35), 0 0 14px rgba(226, 184, 79, 0.25);
+  outline: none;
+}
+button.primary, .btn.primary {
+  font-weight: 800;
+  color: #2a1903;
+  background: linear-gradient(180deg, #fff0b0 0%, #eec45e 45%, #c08e32 100%);
+  border-color: #fff3c8;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 -2px 0 rgba(90, 55, 5, 0.45), 0 0 0 1px #6b4c14, 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+button.primary:hover, .btn.primary:hover, button.primary:focus-visible, .btn.primary:focus-visible {
+  color: #2a1903;
+  filter: brightness(1.08);
+  box-shadow: inset 0 -2px 0 rgba(90, 55, 5, 0.45), 0 0 0 1px #6b4c14, 0 0 18px rgba(255, 220, 120, 0.55);
+}
+button:active:not(:disabled), .btn:active { transform: translateY(1px); }
+button:disabled { opacity: 0.45; cursor: default; filter: none; }
+button:disabled:hover { border-color: var(--gold-lo); color: var(--text); box-shadow: none; }
+
+/* --- Fields --- */
+select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  font: 14px var(--ui);
+  color: var(--text);
+  background-color: var(--night-2);
+  border: 1px solid var(--gold-lo);
+  border-radius: 5px;
+  padding: 4px 8px;
+}
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 24px;
+  cursor: pointer;
+  /* (a small gold chevron, drawn with two gradients) */
+  background-image: linear-gradient(45deg, transparent 50%, var(--gold) 50%), linear-gradient(135deg, var(--gold) 50%, transparent 50%);
+  background-position: calc(100% - 13px) 55%, calc(100% - 8px) 55%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+select:hover, select:focus-visible, input:focus-visible { border-color: var(--gold); outline: none; box-shadow: 0 0 0 1px rgba(226, 184, 79, 0.35); }
+select:disabled { cursor: default; opacity: 0.8; }
+select:disabled:hover { border-color: var(--gold-lo); box-shadow: none; }
+input[type="checkbox"], input[type="radio"], input[type="range"], progress { accent-color: var(--gold); }
+kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 5px; border: 1px solid #5d6790; border-radius: 4px; color: #cfd5ea; }
+button.primary kbd, .btn.primary kbd { color: #4a3208; border-color: rgba(74, 50, 8, 0.45); }
+
+/* --- A gold-framed panel, with rivets in its corners --- */
+.frame {
+  position: relative;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(24, 36, 80, 0.94), rgba(8, 13, 32, 0.95));
+  border: 2px solid var(--gold-lo);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65), inset 0 0 0 3px rgba(226, 184, 79, 0.16), 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+.frame::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  pointer-events: none;
+  --rivet: radial-gradient(circle, var(--gold-hi) 0 1.5px, var(--gold) 2px 2.5px, #3b2a08 3px 3.5px, transparent 4px);
+  background: var(--rivet) top left / 10px 10px no-repeat, var(--rivet) top right / 10px 10px no-repeat,
+    var(--rivet) bottom left / 10px 10px no-repeat, var(--rivet) bottom right / 10px 10px no-repeat;
+}
+/* A panel's heading, between two gold rules. */
+.frame-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font: 700 13px/1.2 var(--display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.frame-title::before, .frame-title::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-lo)); }
+.frame-title::after { background: linear-gradient(90deg, var(--gold-lo), transparent); }
+
+/* A big gold title (the words the game's plates show when its art isn't there). */
+.gold-title {
+  margin: 0;
+  font: 800 28px/1.1 var(--display);
+  letter-spacing: 0.05em;
+  color: var(--gold-hi);
+  background: linear-gradient(180deg, #fff6cf 10%, #eec45e 55%, #a67a26 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 10px rgba(0, 0, 0, 0.6));
+}
+
+/* The game's art in the page (art.ts): an image that replaces its text once it arrives; the text stays for screen
+   readers. */
+.art-slot > img:not([src]) { display: none; }
+.art-slot.has-art > .art-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* The four players' colors and their Link icons (a colored dot until the art arrives). */
+.link-icon { display: inline-block; flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--color, var(--p1)) center / contain no-repeat; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5); image-rendering: pixelated; }
+.link-icon.art-ready { border-radius: 0; box-shadow: none; background-color: transparent; background-image: var(--art); filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7)); }
+
+@media (pointer: coarse) {
+  button, .btn { min-height: 44px; min-width: 44px; padding: 10px 18px; }
+  select { min-height: 44px; min-width: 44px; font-size: 16px; padding: 8px 28px 8px 10px; } /* (16 px: iOS zooms into smaller fields) */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) { min-height: 44px; font-size: 16px; box-sizing: border-box; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

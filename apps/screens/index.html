@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Four Swords Online · Screens</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <aside id="panel">
+      <h1>Four Swords Online <span>screens</span></h1>
+
+      <section id="data">
+        <p id="data-status">Loading the game files…</p>
+      </section>
+
+      <section id="controls" hidden>
+        <label>Archive <select id="archive"></select></label>
+        <label>Screen <select id="screen"></select></label>
+        <div class="row">
+          <label class="inline">Background
+            <select id="background">
+              <option value="checker">checker</option>
+              <option value="screen">screen color</option>
+              <option value="black">black</option>
+              <option value="gray">gray</option>
+              <option value="none">none (transparent capture)</option>
+            </select>
+          </label>
+          <div class="zoom"><button data-zoom="1">1×</button><button data-zoom="2">2×</button><button data-zoom="fit">Fit</button></div>
+        </div>
+        <p id="screen-info" class="note"></p>
+        <details id="messages">
+          <summary>Messages (BMG)</summary>
+          <div class="row">
+            <select id="msg-file" title="Message file">
+              <option value="e">US (TV)</option>
+              <option value="ek">US (GBA)</option>
+              <option value="jp">Japanese (TV)</option>
+              <option value="jpk">Japanese (GBA)</option>
+            </select>
+            <select id="msg-box" title="Box to show the message in">
+              <option value="main_message_window.blo">message window</option>
+              <option value="hukidashi.blo">balloon</option>
+              <option value="hukidashi_wood.blo">wood sign</option>
+              <option value="hukidashi_stone.blo">stone sign</option>
+              <option value="op_zelda.blo">Zelda</option>
+              <option value="warning_window.blo">warning</option>
+            </select>
+          </div>
+          <input id="msg-search" type="search" placeholder="Search text, or an id (0xc8, 200)" />
+          <select id="msg-list" size="8"></select>
+          <div class="row">
+            <button id="msg-prev" type="button">◀ Page</button>
+            <span id="msg-page" class="note"></span>
+            <button id="msg-next" type="button">Page ▶</button>
+          </div>
+          <pre id="msg-text" class="note"></pre>
+        </details>
+        <section id="anims" hidden>
+          <div id="anim-list" class="anim-list"></div>
+          <div class="row">
+            <button id="anim-play" type="button">Play</button>
+            <button id="anim-step" type="button">Step</button>
+            <input id="anim-frame" type="range" min="0" max="1" step="1" value="0" />
+            <span id="anim-frame-label" class="note">0</span>
+          </div>
+          <p id="anim-info" class="note"></p>
+        </section>
+        <div class="row">
+          <button id="show-all" type="button">Show all</button>
+          <button id="defaults" type="button">Defaults</button>
+          <button id="hide-all" type="button">Hide all</button>
+          <button id="expand" type="button">Expand</button>
+        </div>
+        <ul id="tree" class="tree"></ul>
+      </section>
+
+      <footer id="details">&nbsp;</footer>
+    </aside>
+    <main><canvas id="view"></canvas></main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

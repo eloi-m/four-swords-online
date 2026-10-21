@@ -1,0 +1,14 @@
+{
+  "name": "@fso/audio-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "audio": "node src/audio.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@fso/audio": "workspace:*",
+    "@fso/formats": "workspace:*"
+  }
+}

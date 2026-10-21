@@ -1,0 +1,16 @@
+{
+  "name": "@fso/signal",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/server.ts"
+  },
+  "scripts": {
+    "start": "node src/main.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@fso/net": "workspace:*"
+  }
+}

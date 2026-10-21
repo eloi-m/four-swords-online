@@ -1,0 +1,13 @@
+{
+  "name": "@fso/extract",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "extract": "node src/extract.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@fso/disc": "workspace:*"
+  }
+}

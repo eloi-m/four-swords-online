@@ -1,0 +1,13 @@
+{
+  "name": "@fso/render-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "room": "node src/room.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@fso/formats": "workspace:*"
+  }
+}

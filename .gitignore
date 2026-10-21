@@ -1,0 +1,36 @@
+# Nintendo data: never commit disc images, extracted files, BIOS dumps or derived caches
+/disc
+/extracted
+/cache
+*.rvz
+*.iso
+*.gcm
+*.nkit.*
+*.bin
+*.gba
+*.sav
+*.s[0-9][0-9]
+*.dtm
+*.gci
+
+# Reference captures from Dolphin (savestates, frame dumps, RAM traces)
+/ref
+
+# Generated tool output
+/out
+
+# The apps' F8 captures in dev (frames of the game's graphics, sim states: tools/capture)
+/captures
+
+# Node / tooling
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# OS
+.DS_Store
+
+# Deployment secrets
+/deploy/.env
