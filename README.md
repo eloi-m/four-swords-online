@@ -1,12 +1,15 @@
 # Four Swords Online
 
-A fan-made browser reimplementation of **Shadow Battle**, the 2–4 player arena mode of *The Legend of Zelda: Four
-Swords Adventures* (GameCube, 2004), playable on one keyboard with gamepads or **online** with rollback netcode.
-It reads the arenas, sprites, HUD, music and sound effects from the game's own files, which the server hosts next to
-the pages (whoever runs the server supplies them from their own disc; they are never part of this repository). The code is our own TypeScript,
-tuned against the original running in the Dolphin emulator.
+A fan-made version of **Shadow Battle**, the 2–4 player arena mode of *The Legend of Zelda: Four Swords Adventures*
+(GameCube, 2004), that runs in the browser.
 
-Also here: a small slice of the adventure (Lake Hylia), a map viewer, a 2D screen (HUD/menu) viewer and a sound test.
+- Play on one keyboard (plus gamepads), or **online** with rollback netcode, meaning each browser guesses the others'
+  inputs and corrects itself when the real ones arrive, so nobody waits on the network
+- Arenas, sprites, HUD, music and sound effects come from the game's own files, which the server hosts next to the pages
+- Those files are never in this repo: whoever runs the server extracts them from their own disc
+- The code is our own TypeScript, tuned against the original game running in the Dolphin emulator
+
+Also in here: a small slice of the adventure (Lake Hylia), a map viewer, a 2D screen (HUD/menu) viewer and a sound test.
 
 ## Legal
 
