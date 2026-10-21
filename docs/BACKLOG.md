@@ -171,7 +171,8 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   pots and orbs ignore it. The fireball (or the held stream, up to 384 ticks) sets a Link alight: 2 life, he runs
   300 ticks steered by the stick, into pits, put out by shallow water, setting alight whom he meets; fire meeting a
   wall leaves a `BLZE` flame (2 life, the slow knockback, any Link: a burning Link grazing a wall is hurt by his own),
-  fireballs and the stream burn bushes. CPUs use them since 2026-10-11 (B4; they don't avoid `BLZE` flames yet). Left
+  fireballs and the stream burn bushes. CPUs use them since 2026-10-11, and steer a burning run, keep off `BLZE` flames,
+  burning Links and fireballs since 2026-10-21 (B4). Left
   (TODO(measure)): fire on pots, orbs and soldiers, the hammer's Action-button lock while flat, why the charged pound
   sets no `DOSN` switch, Above the Clouds' outer pits (a burning Link fell into one: state 30, back on the edge 58
   ticks later with 2 life less, not the sim's jump-out of the Tower of Flames' hole), the effects' look. `DOSN` thud
@@ -260,8 +261,8 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
     or behind) and away from pit edges, swings, stabs, lunges, charges a spin from afar, lifts and throws (into a pit
     when one is in range), rolls in, uses items (aimed shots, cooked bombs, cucco, Epona), breaks orbs and picks up
     items, keeps away when low on hearts, swats soldiers and bees, mashes free, steers
-    round hazards every tick (fire bars foreseen 16 ticks ahead, jets, flames, explosions, bombs, the trick floor;
-    shots and charged rivals for normal and hard).
+    round hazards every tick (fire bars foreseen 16 ticks ahead, jets, flames, `BLZE` flames, burning rivals,
+    explosions, bombs, the trick floor; shots, fireballs and charged rivals for normal and hard).
   - Levels easy / normal / hard (`TUNING`): reaction time, reach misjudgement, flanking, tricks, dodging, placement.
 - **Where:** local slots in `apps/battle` (menu rows, `#cpu=`), online rooms (`MatchConfig.cpus`, `ONLINE_VERSION`
   4; `battleGame` plays them inside the step, so peers and spectators agree and nothing is sent).
@@ -305,8 +306,23 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   hands. Self-play doesn't change (71-49 hard vs easy, 4 walk-ins, before and after): in 4-CPU matches on the 10 arenas
   no CPU ever held one (The Field's generator didn't hand out boots in 4 seeds, and nobody fetches from the castle's
   side rooms). Duels on the 10 arenas with one side given the item (6 seeds, both ways, 120 a cell; the same CPU with
-  no item: 50%): boots normal 90%, hard 95%; hammer 66%, 54%; Fire Rod 97%, 98%. Left: a burning CPU doesn't steer
-  its run (it runs straight, into pits too); the Fire Rod's stream isn't used.
+  no item: 50%): boots normal 90%, hard 95%; hammer 66%, 54%; Fire Rod 97%, 98%.
+- **Fire** (2026-10-21, `ONLINE_VERSION` 29): a burning CPU steers its run (cpu.ts `burning`): each tick (easy: every
+  4) it plays each of the four ways' runs out straight ahead (60 ticks hard, 40 normal, 12 easy; the sim's own wall
+  moves) and takes the best: into shallow water within reach along the cells (200 px hard, 120 normal), into a rival
+  close by (90 / 60 px) whose back or side is to it or who is busy, else the run that stays clear longest of pits,
+  hazards, `BLZE` flames, walls its flame would burst on (its `BLZE` hurts it) and the reach of rivals' swords, as far
+  from them as it can. Easy does neither water nor rivals. Every CPU keeps off `BLZE` flames (going round a flame that
+  stays put on the side of it it's on, rather than turning one way then the other) and burning Links; normal and hard
+  also off fireballs (foreseen 16 ticks at full speed). Item duels re-run after the trace (`ONLINE_VERSION` 28, the
+  same harness: 10 arenas, 6 seeds, both ways, 120 a cell), before → after: boots normal 85% → 85%, hard 88% → 88%;
+  hammer 61% → 61%, 52% → 52% (unchanged: no fire in them); Fire Rod normal 89% → 82%, hard 87% → 74%; burns ending
+  in a pit 33 → 0 (normal), 28 → 3 (hard), burns 391 → 284 and 400 → 272 (fireballs dodged). Most burns still end by
+  the shooter's sword during the hop (172 and 184 of them): the 24-tick hop takes no stick, and the shooter walks up
+  meanwhile. Self-play is unchanged (71-49 hard vs easy, 4 walk-ins, 60/60 against a Link doing nothing). A burning CPU
+  costs about 55 µs a tick (two CPUs, one running alight; p99 130 µs, from 140 / 300 before the search was narrowed).
+  Bench after (`pnpm --filter @fso/sim bench`, a busy machine; no fire in it): 4 CPUs 3.3-10.5 µs a tick (3.4-9.7
+  before, same run), p99 10.6-106 µs (11.3-105). Left: the Fire Rod's stream isn't used; a burning CPU in side view (not seen in the game) is left running.
 
 ### B5. Online robustness
 - **Rejoining** (done 2026-10-09, `docs/netcode.md` "Rejoining"): a reload or a lost lobby connection brings a player

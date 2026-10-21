@@ -1,16 +1,18 @@
-// CPU opponents (cpu.ts): they win against a Link who does nothing, walk round pits, stay deterministic through
-// clones, JSON snapshots and rollbacks, and (with extracted/) finish 4-CPU matches on every real arena, rarely walk
-// into a pit, and rank by level.
+// CPU opponents (cpu.ts): they win against a Link who does nothing, walk round pits, steer a burning run (off pits,
+// into water) and round BLZE flames, stay deterministic through clones, JSON snapshots and rollbacks, and (with
+// extracted/) finish 4-CPU matches on every real arena, rarely walk into a pit, and rank by level.
 import { existsSync, readFileSync } from "node:fs";
 import { decompressYaz0, Dol, parseRarc, readTileTypes, Stage } from "@fso/formats";
 import { describe, expect, it } from "vitest";
 import { ARENA_ROOMS, arenaName, arenaSpawns, buildArenaWorld } from "./arena.ts";
 import { COUNTDOWN_TICKS, createBattle, restartBattle, type BattleRules, type Spawn } from "./battle.ts";
 import { addCpus, cpuInputs, cpuLevel, type CpuLevel } from "./cpu.ts";
+import { spawnEntity } from "./entities.ts";
 import { startRide } from "./epona.ts";
 import { navGrid, region, nearestWalkable } from "./cpunav.ts";
 import { switchTriggers } from "./cpuswitches.ts";
 import { cloneGame, stepGame, type GameState } from "./game.ts";
+import { BLAZE, BURNING, setAlight } from "./firerod.ts";
 import { hashGame } from "./hash.ts";
 import { giveItem } from "./orbs.ts";
 import { Button, SUBPX } from "./player.ts";
@@ -18,7 +20,7 @@ import { arenaProps, NO_PROPS, type ArenaProps } from "./props.ts";
 import { decodeWarps, launchFlying, screenAt, sideRoomY } from "./siderooms.ts";
 import { ownSwitch, switchOn } from "./switches.ts";
 import { arena, worldFrom } from "./testarena.ts";
-import type { World } from "./world.ts";
+import { SURFACE_CODES, surfaceAt, type World } from "./world.ts";
 
 /** Plays a battle with CPUs (and `human` for the other players) until the match is over or `max` ticks. */
 function play(game: GameState, world: World, max: number, human: (game: GameState) => number[] = () => [], each?: (game: GameState) => void): number {
@@ -116,6 +118,64 @@ describe("CPU players", () => {
         expect(hits, `${level} with the ${item}`).toBeGreaterThan(0);
         expect(game.battle!, `${level} with the ${item}`).toMatchObject({ phase: "matchOver", matchWinner: 1 });
       }
+    }
+  });
+
+  /** A CPU (P2, `level`) set alight by fire from (fx, fy) px once the match is on, a Link doing nothing at `idle`. */
+  const alight = (world: World, level: CpuLevel, at: Spawn, fx: number, fy: number, idle: Spawn, seed: number) => {
+    const game = addCpus(createBattle(0, [idle, at], RULES, NO_PROPS, seed), [{ player: 1, level }]);
+    play(game, world, COUNTDOWN_TICKS);
+    expect(setAlight(game, 1, fx * SUBPX, fy * SUBPX, 0)).not.toBeNull();
+    return game;
+  };
+
+  it("burning, normal and hard steer their run off a pit they're set running at (easy: clumsier)", () => {
+    // A pit from x 160 to the right wall; the CPU 12-40 px from its edge, the fire on its left: it hops, then runs right.
+    const world = arena([20, 1, 19, 28, "O"]);
+    for (const level of ["normal", "hard", "easy"] as const) {
+      let falls = 0, runs = 0;
+      for (const [gap, y, seed] of [[12, 40, 1], [20, 120, 2], [28, 200, 3], [40, 90, 4], [16, 160, 5], [24, 60, 6]] as const) {
+        const game = alight(world, level, { x: 160 - gap, y, facing: "up" }, 160 - gap - 20, y, { x: 30, y: 220 - y, facing: "right" }, seed);
+        play(game, world, BURNING.ticks + 40, undefined, (g) => (falls += g.battle!.fighters[1]!.mode === "falling" ? 1 : 0));
+        runs++;
+      }
+      console.log(`${level}: ${runs} burning runs set off at a pit, ${falls} ticks falling`);
+      if (level !== "easy") expect(falls, level).toBe(0);
+    }
+  });
+
+  it("burning, normal and hard make for shallow water close by, which puts them out", () => {
+    // A pool down-left of the CPU (x 32-79, y 176-223), not on its run (to the right).
+    const world = arena();
+    const shallow = SURFACE_CODES.indexOf("shallow");
+    for (let y = 22; y < 28; y++) for (let x = 4; x < 10; x++) world.surface[y * world.widthCells + x] = shallow;
+    for (const level of ["normal", "hard"] as const) {
+      for (const seed of [1, 2, 3]) {
+        const game = alight(world, level, { x: 100 + seed * 8, y: 120, facing: "up" }, 80 + seed * 8, 120, { x: 290, y: 30, facing: "left" }, seed);
+        const f = game.battle!.fighters[1]!, hearts = f.hearts;
+        let ticks = 0;
+        while (f.move === "burning" && ticks++ < BURNING.ticks) stepGame(game, cpuInputs(game, world, []), world);
+        const p = game.players[1]!;
+        expect([f.move, f.hearts, surfaceAt(world, p.x / SUBPX, p.y / SUBPX)], `${level} seed ${seed}`).toEqual(["none", hearts, "shallow"]);
+        expect(ticks, `${level} seed ${seed}`).toBeLessThan(120);
+      }
+    }
+  });
+
+  it("step round a BLZE flame on their way to a rival", () => {
+    // A flame kept burning at (150, 120), right between them.
+    const world = arena();
+    for (const level of ["easy", "normal", "hard"] as const) {
+      const game = addCpus(createBattle(0, [{ x: 260, y: 120, facing: "left" }, { x: 60, y: 120, facing: "right" }], RULES, NO_PROPS, 4), [{ player: 1, level }]);
+      const blaze = spawnEntity(game.battle!, "blaze", 150 * SUBPX, 120 * SUBPX, { owner: 0, timer: BLAZE.ticks });
+      let burnt = 0;
+      const ticks = play(game, world, COUNTDOWN_TICKS + 1500, undefined, (g) => {
+        [blaze.tick, blaze.timer] = [0, BLAZE.ticks];
+        burnt += g.battle!.hits.filter((h) => h.victim === 1 && h.cause === "fire").length;
+        if (g.players[1]!.x > 200 * SUBPX) g.battle!.phase = "matchOver"; // (past it: done)
+      });
+      expect(burnt, level).toBe(0);
+      expect(ticks, level).toBeLessThan(COUNTDOWN_TICKS + 600);
     }
   });
 

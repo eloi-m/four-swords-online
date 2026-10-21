@@ -12,8 +12,10 @@
 // nobody in it, or into the Tower of Winds' gallery while the giant bomb burns on the TV ("warp" plan). On a side-view
 // screen it walks, climbs ladders and drops off ledges (cpunav.ts's side-view moves), steering clear of cannons as it
 // falls. Between decisions it walks its plan (straight when the way is
-// clear, else down a distance field), steers around pits and hazards every tick (fire bars, jets, flames, explosions,
-// bombs about to go off, a trick floor about to open; for the better levels also shots, and rivals about to spin),
+// clear, else down a distance field), steers around pits and hazards every tick (fire bars, jets, flames, BLZE flames,
+// burning Links, explosions, bombs about to go off, a trick floor about to open; for the better levels also shots,
+// fireballs, and rivals about to spin), steers its run when set alight (off pits, walls and swords, into water or a
+// rival),
 // swats soldiers and bees in its way, and plays out what it started: turning to face a rival before the swing, holding a charge until the spin can reach, cooking a bomb
 // before throwing it, mashing free when held. Its attacks: the swing (a press while walking), stab, lunge, charge and
 // spin, lift and throw (into a pit when one is in range), rolling in, and the items (bow, slingshot and boomerang along
@@ -33,23 +35,24 @@ import type { BattleState } from "./battle.ts";
 import { LUNGE, SPIN, STAB, SWING, SWORD_BOXES } from "./animations.ts";
 import { BOMBCHU_HALF, bombchuArmed } from "./bombchus.ts";
 import { BLAST_GIANT, BLAST_HALF, blastTicks, BOMB_FUSE } from "./bombs.ts";
-import { BOOTS } from "./attacks.ts";
+import { BODY_HALF, BOOTS } from "./attacks.ts";
 import { isCarrying, LIFT_REACH, LIFT_TICKS, liftTarget } from "./carry.ts";
 import { AWAY, HEART, HURTBOX, PIT_PROBE, shieldBlocks, shieldUp, type Fighter, type PixelBox } from "./combat.ts";
-import { cellAt, cellX, cellY, fieldGoal, flowField, lineClear, NAV, navGrid, nearestInRegion, nearestWalkable, nextStep, openSpots, region, runClear, safeCell, sideStep, solidGround, UNREACHABLE, walkable, type NavGrid } from "./cpunav.ts";
+import { cellAt, cellX, cellY, fieldGoal, flowField, lineClear, NAV, navGrid, nearestInRegion, nearestWalkable, nextStep, openSpots, pitAt, region, runClear, safeCell, sideStep, solidGround, UNREACHABLE, walkable, type NavGrid } from "./cpunav.ts";
 import { battleWorld, cos4096, entityById, FACING_STEP, isqrt, isRemoved, ROOM_TILES_X, sin4096, TILE, TRAPDOOR_TILES, TRIG_ONE, type Entity } from "./entities.ts";
 import type { GameState } from "./game.ts";
-import { HAMMER, hammerCharged, POUND_AT } from "./itemframes.ts";
+import { FIRE_ROD, HAMMER, hammerCharged, POUND_AT } from "./itemframes.ts";
+import { BLAZE, BURNING } from "./firerod.ts";
 import { FIREBALL_HALF, FIREBAR_RING, firebarSpeed, FLAME_HALF, flameLit, jetBox, JET_HURT_SIZE, switchCovered } from "./hazards.ts";
 import { BOMB_PLACE_DISTANCE, MAX_BOMBS } from "./items.ts";
 import { takenByHand, takeTarget } from "./orbs.ts";
-import { Button, SUBPX, WALK_SPEED, WALK_SPEED_DIAGONAL, type Facing, type PlayerState } from "./player.ts";
+import { Button, moveAxis, SUBPX, WALK_SPEED, WALK_SPEED_DIAGONAL, type Facing, type PlayerState } from "./player.ts";
 import { PANEL_DEFAULT_PERIOD, PANEL_PERIOD_UNIT } from "./panels.ts";
 import { BIG_BOMB } from "./giantbomb.ts";
 import { battleWarps, DOOR_STYLES, GATE_STYLES, HOLE_STYLE, inWarp, launchFlying, sameScreen, screenAt, sideViewAt, SPOT_STYLE, type Warp } from "./siderooms.ts";
 import { caughtBy, switchTriggers, volleyOf, type BlastSpot, type SwitchAttack, type Trigger, type Volley } from "./cpuswitches.ts";
 import { ownSwitch, switchOn } from "./switches.ts";
-import { CELL, isSolidAt, type World } from "./world.ts";
+import { CELL, isSolidAt, surfaceAt, type World } from "./world.ts";
 
 export const CPU_LEVELS = ["easy", "normal", "hard"] as const;
 export type CpuLevel = (typeof CPU_LEVELS)[number];
@@ -110,12 +113,16 @@ interface Tuning {
   switches: number; // ‰ per decision: look for a floor switch or crystal that sets off an attack on rivals (cpuswitches.ts)
   trips: number; // ‰ of those: also into a side room for one whose attack reaches the whole TV (bombchus, the giant bomb)
   tosses: number; // ‰ per decision: throw a load into a side room at a rival in it (nobody on the TV), from by its door
+  burnLook: number; // burning (firerod.ts): ticks of each way's run it looks ahead…
+  burnEvery: number; // …and how often (ticks) it steers
+  burnWater: number; // …px of walking within which it makes for shallow water (it puts him out), 0 = never
+  spread: number; // …px within which it runs into a rival to set him alight too, 0 = never
 }
 
 export const TUNING: Readonly<Record<CpuLevel, Tuning>> = {
-  easy: { think: 20, jitter: 14, slack: 6, whiff: 250, flank: 250, charge: 40, lunge: 30, roll: 0, dodge: 0, lift: 40, mash: 9, hesitate: 200, cautious: 0, predict: 0, item: 250, bombFuse: 95, orbs: 400, placement: 0, switches: 0, trips: 0, tosses: 0 },
-  normal: { think: 10, jitter: 8, slack: 2, whiff: 50, flank: 550, charge: 120, lunge: 70, roll: 60, dodge: 450, lift: 120, mash: 5, hesitate: 40, cautious: HEART, predict: 2, item: 600, bombFuse: 65, orbs: 700, placement: 500, switches: 120, trips: 0, tosses: 400 },
-  hard: { think: 4, jitter: 4, slack: 2, whiff: 0, flank: 850, charge: 150, lunge: 110, roll: 140, dodge: 900, lift: 220, mash: 3, hesitate: 0, cautious: HEART, predict: 4, item: 900, bombFuse: 48, orbs: 900, placement: 1000, switches: 450, trips: 500, tosses: 800 },
+  easy: { think: 20, jitter: 14, slack: 6, whiff: 250, flank: 250, charge: 40, lunge: 30, roll: 0, dodge: 0, lift: 40, mash: 9, hesitate: 200, cautious: 0, predict: 0, item: 250, bombFuse: 95, orbs: 400, placement: 0, switches: 0, trips: 0, tosses: 0, burnLook: 12, burnEvery: 4, burnWater: 0, spread: 0 },
+  normal: { think: 10, jitter: 8, slack: 2, whiff: 50, flank: 550, charge: 120, lunge: 70, roll: 60, dodge: 450, lift: 120, mash: 5, hesitate: 40, cautious: HEART, predict: 2, item: 600, bombFuse: 65, orbs: 700, placement: 500, switches: 120, trips: 0, tosses: 400, burnLook: 40, burnEvery: 1, burnWater: 120, spread: 60 },
+  hard: { think: 4, jitter: 4, slack: 2, whiff: 0, flank: 850, charge: 150, lunge: 110, roll: 140, dodge: 900, lift: 220, mash: 3, hesitate: 0, cautious: HEART, predict: 4, item: 900, bombFuse: 48, orbs: 900, placement: 1000, switches: 450, trips: 500, tosses: 800, burnLook: 60, burnEvery: 1, burnWater: 200, spread: 90 },
 };
 
 const DIRS = Button.Up | Button.Down | Button.Left | Button.Right;
@@ -259,7 +266,7 @@ interface Ctx {
   y: number;
   world: World; // the battle's view of the arena (cut bushes, open trapdoors)
   nav: NavGrid;
-  danger: PixelBox[]; // anchor positions (px) that get hurt now or within a few ticks
+  danger: Danger[]; // anchor positions (px) that get hurt now or within a few ticks
 }
 
 /** The buttons CPU `brain` presses this tick (updating its memory). */
@@ -269,7 +276,7 @@ export function cpuButtons(state: GameState, world: World, brain: CpuBrain): num
 }
 
 /** cpuButtons on the battle's view of the arena, with the arena's hazard boxes (hazardBoxes) worked out already. */
-function think(state: GameState, view: World, hazards: readonly PixelBox[], brain: CpuBrain): number {
+function think(state: GameState, view: World, hazards: readonly Danger[], brain: CpuBrain): number {
   const b = state.battle, i = brain.player, p = state.players[i], f = b?.fighters[i];
   if (!b || !p || !f) return 0;
   if (b.phase !== "play") {
@@ -341,6 +348,8 @@ function tick(ctx: Ctx): number {
       return dashing(ctx);
     case "hammer":
       return hammering(ctx);
+    case "burning":
+      return burning(ctx);
     case "none":
       break;
     default:
@@ -759,6 +768,176 @@ function hammering(ctx: Ctx): number {
   return Button.Item | FACING_BUTTON[facingOf(rx, ry)];
 }
 
+// --- burning ---
+
+/** What a burning run straight one way comes to (the higher, the better; a run that ends badly is below 0). */
+const RUN = { water: 50_000, spread: 30_000, clear: 10_000, blocked: 5_000, hurt: -20_000, pit: -50_000 } as const;
+/** px (Manhattan): rivals farther than this from a burning run don't matter to it (nearer, it keeps off them)… */
+const BURN_KEEP = 80;
+/** …and how much each px of it is worth. */
+const BURN_KEEP_WORTH = 20;
+/** px (Chebyshev) from a rival within which his sword can reach a burning Link (a swing, a stab: about 24 px ahead). */
+const RIVAL_REACH = 28;
+/** px (Chebyshev) between two anchors at which a burning Link's ±7 px flame meets the other's ±7 px body. */
+const FLAME_MEETS = 2 * BODY_HALF;
+
+/**
+ * Burning (firerod.ts): he runs 2 px a tick the way he faces for 300 ticks, the stick turning him (the next tick's
+ * step goes the new way). Each of the four ways' runs is played out straight ahead (burnLook ticks, through the sim's
+ * own walls): the best one stays clear of pits, hazards and BLZE flames, and of walls his flame would burst on (its
+ * BLZE hurts him), keeping off rivals who could hit him; better still, it makes for shallow water close by (it puts
+ * him out: the nearest along the cells, burnWater px) or runs into a rival close by (spread px), whose body his flame
+ * sets alight. Easy looks less far ahead, steers every few ticks, and does neither.
+ */
+function burning(ctx: Ctx): number {
+  const { brain, f, p, t } = ctx;
+  brain.charge = 0;
+  brain.act = "";
+  brain.think = Math.min(brain.think, 1);
+  // (The hop: the stick does nothing until he lands. Side view: not seen in the game, left running.)
+  if (f.z > 0 || f.vz > 0 || f.moveTick < 0 || ctx.nav.side || ctx.state.tick % t.burnEvery) return 0;
+  const left = BURNING.ticks - f.charge;
+  const water = t.burnWater ? waterWay(ctx, Math.min(t.burnWater, left * (BURNING.speed / SUBPX))) : null;
+  const rivals = burnRivals(ctx);
+  let best = p.facing, bestScore = -Infinity;
+  for (const face of [p.facing, ...FACINGS.filter((d) => d !== p.facing)]) {
+    const run = burnRun(ctx, face, Math.min(left, t.burnLook), rivals);
+    let score = run.score;
+    // Toward the water: unless the run goes wrong before the way there turns.
+    if (water && water.face === face && (score >= 0 || run.at * (BURNING.speed / SUBPX) > water.straight + CELL)) score = Math.max(score, RUN.water - water.length);
+    if (score > bestScore) (best = face), (bestScore = score);
+  }
+  return FACING_BUTTON[best];
+}
+
+/** A rival as a burning run sees him: where he is (px), and whether it may run into him (else it keeps off his sword). */
+interface Burnt {
+  rx: number;
+  ry: number;
+  open: boolean;
+}
+
+/**
+ * The rivals who could hit a burning CPU (not burning too); those within `spread` px with their back or side to him,
+ * or busy, he can run into (his flame sets them alight).
+ */
+function burnRivals(ctx: Ctx): Burnt[] {
+  const { state, b, p, t } = ctx;
+  return state.players.flatMap((r, j) => {
+    const g = b.fighters[j]!;
+    if (j === ctx.i || !hittable(g) || g.move === "burning" || !sameScreen(r, p)) return [];
+    const rx = px(r.x), ry = px(r.y), [fx, fy] = FACING_STEP[r.facing];
+    const open = (r.action !== "none" || g.move !== "none" || fx * (ctx.x - rx) + fy * (ctx.y - ry) <= 0) && Math.abs(rx - ctx.x) + Math.abs(ry - ctx.y) <= t.spread;
+    return [{ rx, ry, open }];
+  });
+}
+
+/**
+ * A burning run from here, turned to `face` (this tick's step still goes the way he faced), played out for `ticks`
+ * ticks: its RUN score, and the tick it ends at (put out, fallen, hurt, meeting a rival, stopped by a wall).
+ */
+function burnRun(ctx: Ctx, face: Facing, ticks: number, rivals: readonly Burnt[]): { score: number; at: number } {
+  const { f, p, nav, world } = ctx;
+  const q = { x: p.x, y: p.y }, [sx, sy] = FACING_STEP[face];
+  let vx = f.flyX, vy = f.flyY, keep = BURN_KEEP;
+  const flame = f.fireWait >= 0; // (once burst on a wall, his flame is out: firerod.ts stepFire)
+  // (Only the hazards along the way: the run, a corner's slide and this tick's step aside.)
+  const reach = ticks * (BURNING.speed / SUBPX) + RUN_SLACK;
+  const lane = { left: ctx.x - (sx < 0 ? reach : RUN_SLACK), right: ctx.x + (sx > 0 ? reach : RUN_SLACK), top: ctx.y - (sy < 0 ? reach : RUN_SLACK), bottom: ctx.y + (sy > 0 ? reach : RUN_SLACK) };
+  const danger = ctx.danger.filter((d) => d.right >= lane.left && d.left <= lane.right && d.bottom >= lane.top && d.top <= lane.bottom);
+  for (let k = 1; k <= ticks; k++) {
+    const x0 = q.x, y0 = q.y;
+    // As firerod.ts stepBurning, then stepFire and the pit check (combat.ts) on the tick's end. (Corners slide him, as
+    // walking does, but that's costly to play out: the first few ticks only.)
+    if (surfaceAt(world, px(x0), px(y0)) === "shallow") return { score: RUN.water - k, at: k };
+    moveAxis(q, world, vx, "x", k <= RUN_SLIDES);
+    moveAxis(q, world, vy, "y", k <= RUN_SLIDES);
+    [vx, vy] = [sx * BURNING.speed, sy * BURNING.speed];
+    const x = px(q.x), y = px(q.y);
+    if (pitAt(nav, x, y)) return { score: RUN.pit + k, at: k };
+    if (flame && flameBursts(ctx, x0, y0)) return { score: RUN.hurt + k, at: k };
+    for (const d of danger) if (inBox(d, x, y)) return { score: RUN.hurt + k, at: k };
+    for (const { rx, ry, open } of rivals) {
+      if (open && flame && Math.abs(px(x0) - rx) <= FLAME_MEETS && Math.abs(px(y0) - ry) <= FLAME_MEETS) return { score: RUN.spread - k, at: k };
+      if (!open && Math.abs(x - rx) <= RIVAL_REACH && Math.abs(y - ry) <= RIVAL_REACH) return { score: RUN.hurt + k, at: k };
+      keep = Math.min(keep, Math.abs(x - rx) + Math.abs(y - ry));
+    }
+    if (q.x === x0 && q.y === y0) return { score: RUN.blocked + k * 10 + keep * BURN_KEEP_WORTH, at: k };
+  }
+  return { score: RUN.clear + keep * BURN_KEEP_WORTH, at: ticks };
+}
+/** Ticks of a burning run played out with the walls' corner slides (player.ts moveAxis), and px they may take him aside. */
+const RUN_SLIDES = 6;
+const RUN_SLACK = 8;
+
+/** Does a burning Link's flame at (x, y) (1/256 px: his ±7 px body) meet a wall, bursting into a BLZE (firerod.ts)? */
+function flameBursts(ctx: Ctx, x: number, y: number): boolean {
+  const c = cellAt(ctx.nav, px(x), px(y));
+  if (c >= 0 && ctx.nav.flags[c]! & NAV.open) return false; // (no wall in the cells around)
+  const world = ctx.world, h = BODY_HALF * SUBPX, cell = CELL * SUBPX;
+  for (let cy = Math.floor((y - h) / cell); cy <= Math.floor((y + h) / cell); cy++) {
+    for (let cx = Math.floor((x - h) / cell); cx <= Math.floor((x + h) / cell); cx++) if (isSolidAt(world, cx * CELL, cy * CELL)) return true;
+  }
+  return false;
+}
+
+/**
+ * The nearest shallow water (firerod.ts: it puts a burning Link out) within `range` px of walking along the cells
+ * (4 ways, as a burning Link runs; off pits' edges and hazards): the way to set off, the way's length and how far it
+ * goes straight first (px). Null when there's none.
+ */
+function waterWay(ctx: Ctx, range: number): { face: Facing; length: number; straight: number } | null {
+  const { nav, world } = ctx, start = cellAt(nav, ctx.x, ctx.y);
+  if (start < 0 || !waterCells(nav, world).some((c) => Math.abs(cellX(nav, c) - ctx.x) + Math.abs(cellY(nav, c) - ctx.y) <= range + CELL)) return null;
+  const danger = ctx.danger.filter((d) => d.right >= ctx.x - range && d.left <= ctx.x + range && d.bottom >= ctx.y - range && d.top <= ctx.y + range);
+  const size = nav.w * nav.h, max = Math.floor(range / CELL);
+  if (waterFrom.length < size) (waterFrom = new Int32Array(size)), (waterSteps = new Int32Array(size));
+  waterFrom.fill(-1, 0, size);
+  const queue = [start];
+  waterFrom[start] = start;
+  waterSteps[start] = 0;
+  for (let head = 0; head < queue.length; head++) {
+    const c = queue[head]!, x = cellX(nav, c), y = cellY(nav, c);
+    if (surfaceAt(world, x, y) === "shallow") return c === start ? null : wayTo(nav, c, start);
+    if (waterSteps[c]! >= max) continue;
+    for (const face of FACINGS) {
+      const [dx, dy] = FACING_STEP[face], cx = (c % nav.w) + dx, cy = Math.floor(c / nav.w) + dy;
+      if (cx < 0 || cy < 0 || cx >= nav.w || cy >= nav.h) continue;
+      const n = cy * nav.w + cx;
+      if (waterFrom[n]! >= 0 || !walkable(nav, n) || nav.flags[n]! & NAV.edge || danger.some((d) => inBox(d, cellX(nav, n), cellY(nav, n)))) continue;
+      waterFrom[n] = c;
+      waterSteps[n] = waterSteps[c]! + 1;
+      queue.push(n);
+    }
+  }
+  return null;
+}
+let waterFrom = new Int32Array(0), waterSteps = new Int32Array(0);
+
+/** waterWay's answer, walking back from the water's cell `c` to `start`. */
+function wayTo(nav: NavGrid, c: number, start: number): { face: Facing; length: number; straight: number } {
+  const cells = [c];
+  while (waterFrom[cells.at(-1)!] !== start) cells.push(waterFrom[cells.at(-1)!]!);
+  cells.reverse(); // the first step's cell first
+  const step = (a: number, z: number) => (z === a + 1 ? "right" : z === a - 1 ? "left" : z > a ? "down" : "up") as Facing;
+  const face = step(start, cells[0]!);
+  let straight = 1;
+  while (straight < cells.length && step(cells[straight - 1]!, cells[straight]!) === face) straight++;
+  return { face, length: cells.length * CELL, straight: straight * CELL };
+}
+
+/** The shallow water's cells on this grid's screen (memoized: no search far from any). */
+function waterCells(nav: NavGrid, world: World): readonly number[] {
+  let cells = watered.get(nav);
+  if (!cells) {
+    cells = [];
+    for (let c = 0; c < nav.w * nav.h; c++) if (surfaceAt(world, cellX(nav, c), cellY(nav, c)) === "shallow") cells.push(c);
+    watered.set(nav, cells);
+  }
+  return cells;
+}
+const watered = new WeakMap<NavGrid, number[]>();
+
 // --- following a plan ---
 
 /** This tick's walk for the current plan (before steering round trouble). */
@@ -1036,9 +1215,11 @@ const stepOf = (buttons: number): [number, number] => [(buttons & Button.Right ?
 
 /** Would a Link at (x, y) px get hurt (or be in a hazard's way)? */
 function inDanger(ctx: Ctx, x: number, y: number): boolean {
-  for (const d of ctx.danger) if (x >= d.left && x <= d.right && y >= d.top && y <= d.bottom) return true;
+  for (const d of ctx.danger) if (inBox(d, x, y)) return true;
   return false;
 }
+
+const inBox = (d: PixelBox, x: number, y: number) => x >= d.left && x <= d.right && y >= d.top && y <= d.bottom;
 
 /** Is the point `look` px along `buttons` pit-safe ground, out of harm's way? */
 function clearAt(ctx: Ctx, buttons: number, look: number): boolean {
@@ -1057,10 +1238,19 @@ function avoid(ctx: Ctx, buttons: number, look: number): number {
   if (!dirs || clearAt(ctx, dirs, look)) return buttons;
   const k = ROSE.indexOf(dirs as (typeof ROSE)[number]);
   if (k < 0) return rest;
-  for (const turn of [1, -1, 2, -2]) {
-    const alt = ROSE[(k + turn + 8) % 8]!;
-    if (clearAt(ctx, alt, look)) return alt | rest;
+  // A flame in the way: round it on the side of it he's on, still on along the other axis if he can (a walk at a goal
+  // beyond it would otherwise turn one way, then the other, as its diagonal flips). (Not a moving one: a fire bar's
+  // balls are best let by.)
+  const [sx, sy] = stepOf(dirs), box = ctx.danger.find((d) => inBox(d, ctx.x + sx * look, ctx.y + sy * look));
+  const alts = [1, -1, 2, -2].map((turn) => ROSE[(k + turn + 8) % 8]! as number);
+  if (box?.still) {
+    const bx = (box.left + box.right) >> 1, by = (box.top + box.bottom) >> 1;
+    const across = Math.abs(bx - ctx.x) >= Math.abs(by - ctx.y);
+    const slide = across ? (ctx.y >= by ? Button.Down : Button.Up) : ctx.x >= bx ? Button.Right : Button.Left;
+    const on = dirs & (across ? Button.Left | Button.Right : Button.Up | Button.Down);
+    alts.unshift(...(on ? [on | slide, slide] : [slide]));
   }
+  for (const alt of alts) if (clearAt(ctx, alt, look)) return alt | rest;
   return rest; // stop rather than step into it
 }
 
@@ -1109,6 +1299,11 @@ function runAhead(ctx: Ctx, face: Facing, length: number): boolean {
 /** Fire-bar balls are foreseen this many ticks ahead (every FIREBAR_STEP): a bar sweeps under 1 px a tick. */
 const FIREBAR_AHEAD = 16;
 const FIREBAR_STEP = 4;
+/** Ticks ahead a burning rival's run is foreseen (2 px a tick) by CPUs that dodge. */
+const BURN_AHEAD = 12;
+/** Where a Link gets hurt (anchorBox); `still`: a flame that stays put (one to go round). */
+type Danger = PixelBox & { still?: boolean };
+
 /** Only hazards this close (px) matter for a CPU's next steps (runs of up to 66 px, a margin). */
 const NEAR = 90;
 
@@ -1119,13 +1314,13 @@ function anchorBox(box: PixelBox, margin: number): PixelBox {
 const around = (x: number, y: number, half: number, margin: number) => anchorBox({ left: px(x) - half, top: px(y) - half, right: px(x) + half - 1, bottom: px(y) + half - 1 }, margin);
 
 /**
- * Anchor positions (px) where any Link gets hurt now or within a few ticks: burning flames and jets, fire-bar balls
- * where they'll be, explosions, bombs about to go off, a trick floor about to open (soldiers and bees get swatted
- * instead: decide()). The same for every CPU: worked out once a tick.
+ * Anchor positions (px) where any Link gets hurt now or within a few ticks: burning flames (BLZE too) and jets,
+ * fire-bar balls where they'll be, explosions, bombs about to go off, a trick floor about to open (soldiers and bees
+ * get swatted instead: decide()). The same for every CPU: worked out once a tick.
  */
-function hazardBoxes(state: GameState): PixelBox[] {
+function hazardBoxes(state: GameState): Danger[] {
   const b = state.battle!;
-  const out: PixelBox[] = [];
+  const out: Danger[] = [];
   for (const e of b.entities) {
     if (isRemoved(e)) continue;
     switch (e.kind) {
@@ -1137,7 +1332,11 @@ function hazardBoxes(state: GameState): PixelBox[] {
         }
         break;
       case "flame":
-        if (flameLit(b, e)) out.push(around(e.x, e.y, FLAME_HALF, 3));
+        if (flameLit(b, e)) out.push({ ...around(e.x, e.y, FLAME_HALF, 3), still: true });
+        break;
+      case "blaze":
+        // A BLZE (firerod.ts): its ±6 px box hurts while it's young (stepFire counts the tick up first).
+        if (e.tick < BLAZE.hurtTicks) out.push({ ...around(e.x, e.y, BLAZE.half + 1, 3), still: true });
         break;
       case "jet":
         if (e.phase === "active" || e.timer > JET_HURT_SIZE / 2) out.push(anchorBox(jetBox(e), 4));
@@ -1184,16 +1383,26 @@ function trapdoorTrodden(state: GameState, n: number): boolean {
 }
 
 /**
- * The anchor positions near a CPU where it would get hurt: the arena's hazards close by, and, for CPUs that mind them,
- * shots on their way and rivals about to spin.
+ * The anchor positions near a CPU where it would get hurt: the arena's hazards close by, burning rivals (their flame
+ * sets it alight), and, for CPUs that mind them, where those run next, shots on their way and rivals about to spin.
  */
-function threats(ctx: Ctx, hazards: readonly PixelBox[]): PixelBox[] {
+function threats(ctx: Ctx, hazards: readonly Danger[]): Danger[] {
   const { b, state, t, i, x, y } = ctx;
   const out = hazards.filter((d) => d.right >= x - NEAR && d.left <= x + NEAR && d.bottom >= y - NEAR && d.top <= y + NEAR);
+  const alight = ctx.f.move === "burning"; // (fire can't set him alight again)
+  state.players.forEach((q, j) => {
+    const g = b.fighters[j]!;
+    if (alight || j === i || g.move !== "burning" || g.fireWait < 0 || !sameScreen(q, ctx.p) || Math.abs(px(q.x) - x) + Math.abs(px(q.y) - y) > NEAR) return;
+    for (let k = 0; k <= (t.dodge > 0 ? BURN_AHEAD : 0); k += 4) out.push(around(q.x + g.flyX * k, q.y + g.flyY * k, BODY_HALF + 1, 3));
+  });
   if (t.dodge <= 0) return out;
   for (const e of b.entities) {
     if (isRemoved(e) || e.owner === i) continue;
-    if ((e.kind === "arrow" || e.kind === "seed") && e.phase === "flying") {
+    if (e.kind === "fireball" && e.phase === "flying" && !alight) {
+      // Slow at first (firerod.ts: it eases up to 2 px a tick): where it'll be at that speed.
+      const [sx, sy] = FACING_STEP[e.facing];
+      for (let k = 0; k <= 16; k += 4) out.push(around(e.x + sx * FIRE_ROD.speed * k, e.y + sy * FIRE_ROD.speed * k, FIRE_ROD.half + 1, 2));
+    } else if ((e.kind === "arrow" || e.kind === "seed") && e.phase === "flying") {
       for (let k = 2; k <= 12; k += 5) out.push(around(e.x + e.vx * k, e.y + e.vy * k, 4, 1));
     } else if (e.kind === "boomerang") for (let k = 2; k <= 10; k += 4) out.push(around(e.x + e.vx * k, e.y + e.vy * k, 5, 1));
   }

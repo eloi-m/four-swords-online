@@ -32,6 +32,8 @@ export const NAV = {
   panel: 32,
   /** Side view: a ladder's cell (he stands on it as on the ground, and climbs it). */
   ladder: 64,
+  /** A pit (or another Link's colored panel) itself: a Link whose anchor is in the cell falls (combat.ts PIT_PROBE). */
+  pit: 128,
 } as const;
 const WALKABLE = NAV.stand | NAV.safe;
 
@@ -192,6 +194,7 @@ function buildNav(world: World, props: ArenaProps, panels: boolean, screen: numb
         if (clear) f |= NAV.stand | NAV.open;
         else if (room) f |= NAV.stand;
         if (!hole[c] && !hole[c + P]) f |= NAV.safe;
+        if (hole[c]) f |= NAV.pit;
         // The probe (the cell and the one below) with a cell's margin all round.
         let near = 0;
         for (let dy = -1; dy <= 2; dy++) near |= hole[c + dy * P - 1]! | hole[c + dy * P]! | hole[c + dy * P + 1]!;
@@ -288,6 +291,12 @@ export function walkable(nav: NavGrid, cell: number): boolean {
 /** The pit probe of a Link anywhere in this cell is on solid ground (walls don't matter). */
 export function safeCell(nav: NavGrid, cell: number): boolean {
   return cell >= 0 && (nav.flags[cell]! & NAV.safe) !== 0;
+}
+
+/** Is (x, y) px over a pit (or another Link's colored panel)? Off the grid: no. */
+export function pitAt(nav: NavGrid, x: number, y: number): boolean {
+  const cell = cellAt(nav, x, y);
+  return cell >= 0 && (nav.flags[cell]! & NAV.pit) !== 0;
 }
 
 /** Walkable, away from pits and off the panels: somewhere to stand and fight. */

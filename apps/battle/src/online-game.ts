@@ -80,8 +80,10 @@ import {
  * 28: the Fire Rod and the hammer traced: a 13-tick rod pose, the fireball from 0 px/tick, flames trailing their Link by
  *    a tick, BLZE flames where fire meets a wall or burns a bush, shallow water puts a burning Link out, the stream back
  *    60 ticks after a wall; a charged pound sets no thud switch and doesn't jolt a flattened Link.
+ * 29: CPUs and fire: a burning CPU steers its run (off pits, hazards and walls, to shallow water, into a rival); CPUs
+ *    keep off BLZE flames (round them) and burning Links, and the better ones off fireballs.
  */
-export const ONLINE_VERSION = 28;
+export const ONLINE_VERSION = 29;
 
 /** A free room's match: free play on the free map, or a Shadow Battle for everyone who was on it. */
 export type MatchMode = "free" | "battle";
