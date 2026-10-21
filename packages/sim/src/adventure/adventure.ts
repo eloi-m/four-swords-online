@@ -37,7 +37,7 @@ import { gateWorld, startStairs, stepGates, stepStairs, type StairsTrip } from "
 import { blockWorld, ringWorld, stepBlocks, stepPoints, type MovedBlock } from "./tileblocks.ts";
 import { colorBlockWorld, stepColorBlocks } from "./colorblocks.ts";
 import { spawnGanon, stepGanon, type Ganon } from "./phantomganon.ts";
-import { carryingKey, doorWorld, keyThrowHolds, liftKey, shutDoors, stepDoors, stepKeyLift, stepKeyThrow, throwKey, type CarriedKey, type KeyThrow } from "./doors.ts";
+import { carryingKey, doorWorld, keyThrowHolds, knockKeyOut, liftKey, shutDoors, stepDoors, stepKeyLift, stepKeyThrow, throwKey, type CarriedKey, type KeyThrow } from "./doors.ts";
 import { rewriteWorld, rewrittenTiles, savedSwitches, saveSwitches, stepLogic } from "./logic.ts";
 import { barrierWorld, stepZoras, type Escort } from "./zoras.ts";
 import { spawnPickups, stepPickups, stepRains, type Pickup, type Rain } from "./pickups.ts";
@@ -574,6 +574,8 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
     stepPickups(game);
     stepStrikes(game);
     bushDrops(game);
+    // (A hit on the leader carrying a key knocks it out of his hands: doors.ts.)
+    knockKeyOut(game);
     shareHearts(b.fighters, hearts, b.rules.hearts * HEART);
     revive(game);
     // Apart, the one in control leaves the area alone (traced through a door; room changes assumed alike).

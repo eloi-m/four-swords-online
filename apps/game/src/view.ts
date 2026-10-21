@@ -33,7 +33,7 @@ import {
   opaqueFrame,
 } from "@fso/render";
 import { fighterFrame, fighterHeight, fighterVisible, HURTBOX, linkDisplayFrame, SUBPX, switchOn, type PixelBox } from "@fso/sim";
-import { adventureFrame, arrowBurning, barrierUp, colorBlocks, doorLookTiles, drawnRewrites, ENEMY_TYPES, goneDoorwayFigures, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
+import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, doorLookTiles, drawnRewrites, ENEMY_TYPES, goneDoorwayFigures, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { CloudShadow, cloudShadowLevel } from "../../battle/src/cloudshadow.ts";
 import { EntityView } from "../../battle/src/entities.ts";
@@ -54,6 +54,8 @@ export const VIEW_H = TV_H / 2.1408;
 const ROOM_W = 512, ROOM_H = 384;
 // Depths: base layer (1) < floor decals (1.5) < actors and Links (2 + y / 1024) < top layer (3) < debug (3.5+).
 const DEPTH_PER_PIXEL = 1 / 1024;
+/** Ticks a blade trap's sparks stay listed (one-shot: they play out meanwhile). */
+const SPARKS_LISTED = 60;
 /** Actor types the view doesn't draw as static sprites: the player starts, and what the sim animates (the escort Zoras
  *  only show where the sim has them: EnemyView). */
 const NOT_STATIC = new Set(["PLAS", "HBMB", "BLZ2", "BEEE", "FAZR", "FZRA", ...ENEMY_TYPES, ...PICKUP_TYPES]);
@@ -410,7 +412,7 @@ export class AdventureView {
       this.near = this.stageEffects.filter((e) => rooms.has(e.room));
     }
     const specs = this.near.filter((e) => e.actor !== "TRCH" || this.torchFlame(game, e)).map((e) => e.spec);
-    this.particles.sync(game.tick, [...specs, ...this.burningArrows(game), ...this.barriers(game), ...this.minorShadows(game)]);
+    this.particles.sync(game.tick, [...specs, ...this.burningArrows(game), ...this.barriers(game), ...this.minorShadows(game), ...this.traps(game)]);
   }
 
   /**
@@ -432,6 +434,34 @@ export class AdventureView {
     this.drawnMinorShadowEffects = out.length;
     return out;
   }
+
+  /**
+   * The traps' effects (sim traps.ts): a fireball trap's shot is JPA 656 (FBAL's init 0x80220274 makes it at its spot,
+   * layer 0, its update moves it along), stopping as the shot goes (assumed: its particles play out); a blade trap
+   * stopped dead throws sparks (1185, 8 px ahead of it: one-shot, listed a second). TV areas only (on a GBA screen the
+   * game makes sprite actors instead).
+   */
+  private traps(game: AdventureGame): JpaEffectSpec[] {
+    const out: JpaEffectSpec[] = [];
+    const room = this.rooms.get(game.adventure.room);
+    if (!room || game.adventure.area !== 0) return out;
+    for (const e of game.adventure.enemies) {
+      if (e.type === "OKTM" && e.kind === FIRE_TRAP_KIND) {
+        const placement = fsaParticlePlacement(FIRE_TRAP_EFFECT, room.origin.x + e.x / SUBPX, room.origin.y + e.y / SUBPX, e.z / SUBPX, { layer: 0, sublayer: 0 });
+        if (placement) out.push({ key: `fbal:${e.id}`, start: game.tick - e.tick, placement });
+      }
+      const sparks = e.type === "TRAP" ? bladeSparks(e) : null;
+      if (sparks && game.tick - sparks.start < SPARKS_LISTED) {
+        const placement = fsaParticlePlacement(BLADE_TRAP.sparks, room.origin.x + sparks.x, room.origin.y + sparks.y, 0);
+        if (placement) out.push({ key: `trap:${e.id}:${sparks.start}`, start: sparks.start, placement });
+      }
+    }
+    this.drawnTrapEffects = out.length;
+    return out;
+  }
+
+  /** The traps' effects synced in the last frame (for tests). */
+  drawnTrapEffects = 0;
 
   /** The minor Shadow Link's effects synced in the last frame (for tests). */
   drawnMinorShadowEffects = 0;

@@ -16,13 +16,14 @@
 // - LWSW (draw 0x802BE8F8): its candle's light at its anchor + (8, 8), strength 128, the radius easing 4 px a tick to 70
 //   while lit, back to 0;
 // - ARRW (draw 0x8016545C): a burning arrow (+0x94 2 or 4) 32 px, strength 128;
+// - FBAL (draw 0x802201D8): a fireball trap's shot (sim traps.ts) 24 px, strength 128;
 // - the arena's lights apps/battle lights.ts has (crystals while lit, flames, fire bars).
 // The stage light is the stage's, kept from room to room: a room's LTEV starts from the light the last room left, a
 // room without one keeps it (the Cave's room 12, the start, has none: lit).
 // Assumed: the light full at the stage's start (0x801594E8 makes its tint white; the level wasn't looked for), each
 // Link's light at his own place (the game draws it at +0x338).
 import { fighterHeight, SUBPX, switchOn } from "@fso/sim";
-import { arrowBurning, currentArea, torchLit, type AdventureGame, type AdventureStage } from "@fso/sim/adventure";
+import { arrowBurning, currentArea, FIRE_TRAP_KIND, FIRE_TRAP_LIGHT, torchLit, type AdventureGame, type AdventureStage } from "@fso/sim/adventure";
 import type { Stage } from "@fso/formats";
 import { LTEV_KINDS, lightSources, type LightSource, type RoomLight } from "../../battle/src/lights.ts";
 
@@ -118,6 +119,10 @@ export class AdventureLight {
     }
     for (const e of game.battle.entities) {
       if (e.kind === "arrow" && arrowBurning(e)) out.push({ x: Math.floor(e.x / SUBPX), y: Math.floor((e.y - e.z) / SUBPX), ...ARROW_LIGHT });
+    }
+    // A fireball trap's shot (FBAL's draw 0x802201D8).
+    for (const e of a.enemies) {
+      if (e.type === "OKTM" && e.kind === FIRE_TRAP_KIND) out.push({ x: Math.floor(e.x / SUBPX), y: Math.floor((e.y - e.z) / SUBPX), ...FIRE_TRAP_LIGHT });
     }
     // The arena's own (crystals, flames, fire bars): apps/battle's, without its Links' (multiplayer) lights.
     out.push(...lightSources({ ...game, players: [] }));

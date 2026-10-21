@@ -41,6 +41,8 @@ export const WORLD_1_EXPECTED: Readonly<Record<string, string>> = {
   "cave-big-block-down / long formation": "rule: as box formation (the column held on the way to the block, at (377.1, 200.9))",
   "cave-big-block-down / cross formation": "rule (b): a BLCK moves only with (p & 3) + 1 Links pushing its face (main.dol); the cross puts too few on it (how the game counts them in a diamond: unchecked)",
   "cave-key-pot / away and back": "unfair (c): room 1's pots come back when the Links leave and come in again (the room reloads), and the variant doesn't lift the ones by the chest again: the way to the switch's pot is shut",
+  "cave-key-pot / idle 120 ticks":
+    "unfair (c): standing idle at the switch's pot, the leader is in the fireball trap above's reach (248, 40: traps.ts) and its shot pushes him off the spot (stopped by his shield) or knocks him back: the route's lift then takes the Link beside him, and the pot keeps the way to the chest's switch (the route waits for the shot before it goes on)",
   "cave-throw / from another side": "unfair (c): coming round from the island's side, the Link behind isn't where the route's lift (facing east) and its turn west expect: nobody is thrown",
   "cave-lever / from another side": PATH_GRID,
   "cave-lever / let go 60 ticks in": "unfair (c): letting go of R lets go of the chain (traced), and the variant holds Down without grabbing again: he walks away",
@@ -51,6 +53,8 @@ export const WORLD_1_EXPECTED: Readonly<Record<string, string>> = {
   // Tingle's Tower.
   "tower-passage / let go 120 ticks in":
     "unfair (c): the let-go puts the leader in the fish's way (PUKU, a heart a hit) three times; with the 11 quarters left by then (room 2's and room 4's stones, room 4's Zora) they're struck out of hearts and get up at the area's entry, where the swim goal can't go on (a player would swim the passage again): the route's roll, not the puzzle",
+  "tower-falls / idle 120 ticks":
+    "unfair (c): idle in the current the four drift east onto the stone at x 128-144 (it hurts: swim.ts), and the route's hold Down from there bumps them back up for good (it ended before only because they ran out of hearts there and got up at the way in): the route's, not the falls'",
   // Hyrule Castle.
   "castle-rock / wide formation": "rule (b): a two-Link rock needs a second Link's lift point (16 px ahead) in its box: the wide formation puts none there (as Lake Hylia's)",
   "castle-gap-throw / x -1 px":

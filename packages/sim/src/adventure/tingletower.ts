@@ -117,7 +117,16 @@ export const TINGLE_TOWER_MILESTONES: readonly { name: string; goals: readonly G
   },
   {
     name: "room 2: its three winged Force Gems, down the river into room 3",
-    goals: [collect("room 2's gems", (it) => it.type === "gem", 3600, true), travelTo(100, 360, { swim: true }), goTo(Down, 3)],
+    goals: [
+      collect("room 2's gems in the middle and up the west side", (it) => it.type === "gem" && it.x < 360 * SUBPX, 3600, true),
+      // Down the west side, out of the blade traps' lanes (traps.ts: the one at (104, 232) slides right from there, the
+      // one at (184, 296) left to the pillar at x 80-95: whoever is in a lane sets it off), then along the bottom, below
+      // them, to the east gem and back.
+      travelTo(70, 330, { swim: true }),
+      collect("room 2's east gem", (it) => it.type === "gem", 3600, true),
+      travelTo(100, 360, { swim: true }),
+      goTo(Down, 3),
+    ],
   },
   {
     name: "room 3: over the waterfall, its two winged Force Gems, east into room 4",

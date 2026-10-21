@@ -249,13 +249,16 @@ clear (`#route`, `window.fso.route`).
   Not done: villagers that talk by themselves when touched, the balloon placed over a speaker, a press while typing,
   the flows of `branch` 2.10 and 2.2C, `ifGems`, `ifItem` and a text's `then`.
 - **The Cave of No Return (boss011), by its route from its start to its goal.** `cavenoreturn.ts`, 12 milestones,
-  ~28,700 ticks, 2,007 Force Gems, in node (`cavenoreturn.realdisc.test.ts`) and the browser (`#stage=boss011&route`, game.ts): room 12's
+  ~28,200 ticks, 2,116 Force Gems, in node (`cavenoreturn.realdisc.test.ts`) and the browser (`#stage=boss011&route`, game.ts): room 12's
   rising door and spiral staircase; room 6's lamp from its pedestal and its two candles; room 7's movable block tiles,
   the fence's gate, four blocks onto their points (the ring of fire out), the chest's key and the locked door; room
   13's five `BLCK` blocks (their rules from main.dol, the decisive one measured), pots, the key's chest from below and
   the door; room 0's color blocks (`BCK2`, main.dol: the Links apart, each pushing his tunic's, eight in the one order
   a search found), its two candles, east alone, the others called; room 2's ten
-  Mozos (both doors open); room 1's floor switch among the pots (the chest's heart) and the pot over the key; room 9's
+  Mozos (both doors open); room 1's floor switch among the pots (the chest's heart) and the pot over the key, past its
+  five fireball traps (`traps.ts`: the first one's shot taken on the shield before the chest, the others left apart
+  out of every trap's reach while the leader alone lifts the pots and carries the key out by the room's west side,
+  where none reaches); room 9's
   cell, played alone as room 8: its locked door, a Link thrown over the pit onto the island takes the bow from its
   pedestal and strikes the crystal (the bridge), the others left by the door; room 3 alone with the bow (`bow.ts`): arrows shot up through the near ledge's
   lit torches light its four candles across the pit, one lights the crystal (the bridge), its fifty Keese beaten (the
@@ -264,12 +267,13 @@ clear (`#route`, `window.fso.route`).
   shield, his swing, his jump over a Link of another color, his forms and the roulette); room 5's goal. The Force Gems on the way (below). Measured in Dolphin up to room 3:
   docs/measurements/adventure-world1.md "Adventure: the Cave of No Return"; from room 3 on it isn't.
   Drawn in apps/game: the rooms' darkness and their lights (`light.ts`), the burning arrows' flames, the chain levers
-  and Shadow Link (below, "The Cave of No Return (boss011)" "Drawn"). Not simulated on the way: room 1's fireball
-  traps (`FBGE`), the rings of fire, rising door and sliding tile blocks drawn (their tiles change at once), Mozos'
-  darkness.
+  and Shadow Link (below, "The Cave of No Return (boss011)" "Drawn"), room 1's fireball traps' shots (an effect and a
+  light). Not simulated on the way: the rings of fire, rising door and sliding tile blocks drawn (their tiles change at
+  once), Mozos' darkness.
 - **Tingle's Tower (boss012) by its route.** `tingletower.ts`, 12 milestones, ~12,200 ticks, 2,020 Force Gems, the
   stage cleared (`tingletower.realdisc.test.ts`, `#stage=boss012&route`, game.ts): room 11's owl and bushes and the Zora
-  house's two doors (its garden fenced off), room 0's ladder into the river, west through rooms 1-2 (their winged gems),
+  house's two doors (its garden fenced off), room 0's ladder into the river, west through rooms 1-2 (their winged gems;
+  room 2's two blade traps (`traps.ts`) kept off by swimming down its west side and back along the bottom, below them),
   down to room 3, over its falls, its whirlpool into the underwater passage (a winged gem), up into the tree house (its
   chest, two red gems), off the ledge into the east pool, room 4 (over the north end of its stone chain to the island's
   red gem: below), room 5's falls and gem, room 6's whirl (its gem in the middle), up room 7's ladder out of the stream,
@@ -283,7 +287,7 @@ clear (`#route`, `window.fso.route`).
   ridden along a level (`ride`). Assumed on the way: the hole under a bush (style 4, out going down), pots beside a Link
   in a side view lifted away at once, a Link struck in a side view getting up as on the TV (dying there too). Struck
   on the way (the four's 16 quarters): room 2's stones twice, room 4's Zora (2) and the chain's north stone, room 7's
-  fish once (4): 7 left at the goal. Not simulated: the Great Fairy's area, `FLYO` flying floor tiles at the goal
+  fish once (4). Not simulated: the Great Fairy's area, `FLYO` flying floor tiles at the goal
   (static), the river's villagers' talk. Room 10's winged gem (472, 208) is in the fast current down its east channel:
   out of reach (the quota is met by 20 without it; room 7's passage gem is taken instead).
 - **Hyrule Castle (boss013): surveyed.** In Dolphin (loaded by the stage pokes, stage 3): room 0's owl (`KEPO`) flies
@@ -376,7 +380,7 @@ only the leader there (a follower walks its trail without collision): all four n
   crystal from (232, 226) facing down lays the bridge on the swing's first tick: the route's sequence holds.
   Taking an item swaps it with the one held (frame dumps: the lamp left on room 8's pedestal; holding nothing leaves
   it empty, assumed); the Links hold the item got up (apps/game `heldUpLook`), the HUD's item box shows the item held.
-- **Done** (`cavenoreturn.ts`, 12 milestones, ~28,700 ticks, 2,007 Force Gems for the 2000; measured in Dolphin up to
+- **Done** (`cavenoreturn.ts`, 12 milestones, ~28,200 ticks, 2,116 Force Gems for the 2000; measured in Dolphin up to
   room 3: measurements/adventure-world1.md "Adventure: the Cave of No Return"). Its Force Gems, in route order: room 6's
   two pots over floor points (`PONT` kind 3, 40), room 7's two candles (330) and its corner chest (a block pushed up,
   the one beside it right; 100), room 13's top chest (20), room 0's three chests (400; the third after two more color
@@ -498,8 +502,15 @@ only the leader there (a follower walks its trail without collision): all four n
     played twice over his 16 ticks, standing, springing back = the knockback's first frame, jumping = a stride raised
     by his height, knocked back, down = the death's last frame, spinning once beaten). Not drawn: his shield apart
     from the Link frames' own, his fades, a shadow.
-- **Not simulated on the way:** room 1's fireball traps (`FBGE`), rings of fire, the rising door and sliding tiles
-  drawn; the lights in GBA-screen areas (the window shows no darkness), Mozos' darkness.
+- **Room 1's fireball traps** (`FBGE` ×5, `traps.ts`; traced, measurements/adventure-world1.md "The fireball traps"):
+  invisible; each shoots at the nearest Link within 112 px every 120 ticks (`FBAL`: 1.5 px/tick straight at him over
+  the pots, 2 damage, hit type 1, a shield stops it), drawn as JPA 656 and a light. A hit on the leader carrying a key
+  knocks it out of his hands (`doors.ts` `knockKeyOut`, traced: thrown on along his facing from 18 px up), in every
+  stage. The route: the shot from (248, 40) taken on the shield before the chest; the others left apart by (190, 205),
+  out of every trap's reach; the leader alone lifts the pots (four hits), takes the key and comes back to them; out
+  by the west side (x 56) and its row 136, out of the traps above and below (no hit carrying the key).
+- **Not simulated on the way:** rings of fire, the rising door and sliding tiles drawn; the lights in GBA-screen areas
+  (the window shows no darkness), Mozos' darkness.
 - **Savestates:** `w1-boss011-start` (room 12), `w1-011-lamp`, `w1-011-room7`, `w1-011-room7-blocks`,
   `w1-011-room13` (b, c: in room 13; d: its rats parked by RAM writes, the Links at (382, 110) above the east
   column's block), `w1-011-room0` (in room 0, the key used), `w1-011-room2` (in room 2), `w1-011-room1` (in room 1),
@@ -677,8 +688,11 @@ Dolphin script; the probes replayed in the sim from the same spot.
   `PNPC`s turn its tiles (x 112-143, y 208-256) to floor: up through it into the walled yard, the door (120, 80) →
   area 2; its stairs up to the four pedestals (drawn: fire rod (64, 64), boomerang (64, 96), bombs (176, 64), bow
   (176, 96)): the bombs; area 2's top door → area 3 (the throne room); a bomb put down at its cracked east wall
-  (`DOOR` kind 2 (192, 64), side 3) opens it → area 5 (a side view), where the route stops. Not simulated: area 2's
-  `TRAP`s (blade traps), the tower's other-layer `PNPC`s (p >> 16 = 1, its top drawn). Its `ZSLH` is Lake Hylia's (`minorshadow.ts`, leaving left).
+  (`DOOR` kind 2 (192, 64), side 3) opens it → area 5 (a side view), where the route stops. Area 2's two blade
+  traps (`TRAP` 0x4 at (72, 184) and (184, 184), `traps.ts`, read from main.dol): each turns toward the nearest Link
+  within 22 px of its row and slides at him, and they stop where they meet, in the middle; the route sets them off
+  from (128, 200) (going up; (128, 168) coming down), clear of where they meet, and goes through while they ease home.
+  Not simulated: the tower's other-layer `PNPC`s (p >> 16 = 1, its top drawn). Its `ZSLH` is Lake Hylia's (`minorshadow.ts`, leaving left).
 - **Room 9's area 5 and room 58** (milestones 20-24; `zoras.ts`, the rule below, assumed where marked): a bomb put
   down in the side view (items.ts' bomb; the sim had no item in side views) breaks the fragile blocks, the Zora met
   goes with the Links (no collision, 1.5 px a tick, 16 px behind the last Link), through areas 3 and 2, the tower and
@@ -807,7 +821,7 @@ Dolphin script; the probes replayed in the sim from the same spot.
   3. Phantom Ganon's early get-up, colours, 2-4 player rules: **not started** (`w1-013-room11`, pokes in the
      measurements' Phantom Ganon section).
   4. Room 11's staircase and room 12's goal in Dolphin: **not started**.
-  The castle route: 2,801 Force Gems, no Link out of hearts, 38,486 ticks (the 39 milestones played on; the whirl
+  The castle route: 2,816 Force Gems (2,801 before room 9's blade traps), no Link out of hearts, 38,486 ticks (the 39 milestones played on; the whirl
   added a tick). Its gems are rolled (pickups.ts: the rain's colours, the soldiers' drops): the 2,883 of the test's
   old comment was before the route's changes since moved the random generator (room 2 then 48 fewer, room 6's rain
   135 more).

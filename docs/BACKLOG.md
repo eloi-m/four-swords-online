@@ -508,15 +508,19 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
       wants the box), the two-Link rock not the wide formation, the side view's pot lift after a thrown Link bounces
       off a pot (`castle-gap-throw / x -1 px`), the pot lift by room 58's switch from 1.4 px left of the route's stop.
   11. The Cave's kind-0 south doors (rooms 4, 6, 11) forced open look shut (b): whether they ever open in play. S.
+  The traps are done (`traps.ts`, drawn): the Cave's room 1 fireball traps (`FBGE` ×5, traced in Dolphin: the shots,
+  the hit, the key knocked out of the Link's hands, now any hit's) and the blade traps (`TRAP`, Tingle's Tower room 2
+  ×2, Hyrule Castle room 9 area 2 ×2: read from main.dol, untraced, no savestate reaches them); the routes go round
+  them. Left of them: a blade trap's run in Dolphin, the sword's clank sound on it, the big one's size (none in World
+  1), their sparks on a GBA screen (the game's sprite actors).
   Not simulated at all, by whether a player would notice (`actors.ts --census`): **the Cave** — `ZSLJ` (6 above),
-  `FBGE` ×5 (room 1's fireballs, measured knocking a Link back and the key out of his hands: invisible, the hazard
-  missing), `VWMD` (rooms 4-6's dark areas lit), `BGMN` (music changes), `SKUL` ×2 (room 2 area 5: a light source in
+  `VWMD` (rooms 4-6's dark areas lit), `BGMN` (music changes), `SKUL` ×2 (room 2 area 5: a light source in
   main.dol's light table, r 30), `ZOMO` (room 3), `STGN` (room 12; both unread, hidden), the hidden controllers (`TINB`,
-  `LTEV`, `SWEV`, `SWNP`, `GLWP`, `RAIL`); `YAJI` arrow signs are drawn (decor). **Tingle's Tower** — `TRAP` ×2 (room 2's
-  blade traps), `WDRY` (room 4 area 1, wooden gems: not there to take), `BFRY` (room 4 area 5's Great Fairy), `FLYO` ×17
+  `LTEV`, `SWEV`, `SWNP`, `GLWP`, `RAIL`); `YAJI` arrow signs are drawn (decor). **Tingle's Tower** — `WDRY` (room 4
+  area 1, wooden gems: not there to take), `BFRY` (room 4 area 5's Great Fairy), `FLYO` ×17
   (room 10's flying floor tiles, static), `MJGR` (room 4, unread, hidden), `SWEV` (`VWMD`'s top mode, the underwater
   areas' water seen through, is drawn: sim logic.ts). **Hyrule Castle** —
-  `ZSLJ` (6 above), `TRAP` ×2 (room 9 area 2), `GFBS` ×3 (rooms 3, 6, 10), room 12's story demo (`DMCT`, `DMCR`) and
+  `ZSLJ` (6 above), `GFBS` ×3 (rooms 3, 6, 10), room 12's story demo (`DMCT`, `DMCR`) and
   `GOAL`, room 11's `BTIN` ×2 and `PRTC`, `AGBW` (room 5), `SZSC` (room 10; both unread, hidden), `BGMN`, `VWMD` (room
   58's dark areas 2-3), `ZOOM`, `SWNP`, `SWEV`, `RAIL`, `TINB`, `LTEV`, `GLWP`.
   The rest of the known results are the driver's (the path finder's grid lacks some actors' boxes; the route's holds

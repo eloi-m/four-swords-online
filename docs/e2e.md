@@ -23,7 +23,9 @@ Index of the docs: [README.md](README.md).
   the same stone in flight (still drawn as a stone), room 2's cave door shut then open and room 3's house door open, read back from the drawn base layer as the game's open
   tiles; Hyrule Castle room 1's area 6, a Link held overhead and thrown with the held frames, the bridge's tiles; the
   cracked walls shut then bombed open, base and top layer (Hyrule Castle room 5's and room 9's area 3's on the route,
-  Tingle's Tower room 4's area 5's marked opened by hand);
+  Tingle's Tower room 4's area 5's marked opened by hand; the traps: Hyrule Castle room 9's area 2's blade traps at
+  rest and set off on the route, the Cave's room 1 fireball trap's shot (the Links put in its reach), Tingle's Tower
+  room 2's blade traps at rest and one set off);
   `looks-*.png`) and
   `node tools/e2e/src/viewer.ts [url]` drive system Chrome headless (puppeteer-core) against the
   running dev server: load the game files, check the reload (HTTP cache, nothing in OPFS) and take screenshots into

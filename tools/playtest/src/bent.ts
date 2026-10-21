@@ -31,6 +31,8 @@ const RAFT_FORMATION = "rule: the raft goes with the four Links on it (the box f
  *  formation.ts holdFormation). The driver's walk, made for the route's formation, stands there. */
 const FORMATION_HELD = "rule: in a C-stick formation a follower against a wall holds the leader (traced, holdFormation): the bent walk stands there";
 export const EXPECTED: Readonly<Record<string, string>> = {
+  "key-lift / away and back":
+    "rule: back in room 3 the Octoroks are there again and strike the leader carrying the key: the hit knocks it out of his hands (traced in the Cave of No Return, doors.ts knockKeyOut); the variant walks on to the door without it",
   "boomerang-key / y -3 px": "route: the leader's walk to the spot stops 1.6 px east of it (walkToward's still watch), after the room 3 Octoroks fight's gather; the key drops where he stands, 22 px from the lift point (400, 219): past its reach",
   "boulder / from another side": "route: coming round from the west the followers step on room 2's floor switch 17 (the gems at (216, 280) and (152, 344))",
   "boulder / box formation": PUSH_FORMATION,

@@ -69,7 +69,8 @@ export interface CarriedKey {
 }
 
 /** A key being thrown: the key (as CarriedKey), ticks since the press, its pickup's id once released, where it is (1/256
- *  px), its unit step, and whether a wall has stopped it (then it drifts back). */
+ *  px), its unit step, whether a wall has stopped it (then it drifts back), the height it leaves from (px), and whether
+ *  a hit knocked it out of the Link's hands (knockKeyOut: no wind-up, nobody held). */
 export interface KeyThrow extends CarriedKey {
   tick: number;
   id: number;
@@ -78,6 +79,8 @@ export interface KeyThrow extends CarriedKey {
   dx: number;
   dy: number;
   back: boolean;
+  height: number;
+  dropped: boolean;
 }
 
 const TOWARD: Readonly<Record<Facing, readonly [number, number]>> = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] };
@@ -118,8 +121,8 @@ export const carryingKey = (game: AdventureGame, buttons: number): number => (ga
 /** The leader's frame lifting, carrying or throwing a key (player_sob), or -1. */
 export function keyFrame(game: AdventureGame): number {
   const a = game.adventure, p = game.players[0]!;
-  if (a.keyThrow) return THROW.frames[p.facing][frameAt(THROW.ticks, a.keyThrow.tick)]!;
-  if (a.keys <= 0) return -1;
+  if (a.keyThrow && !a.keyThrow.dropped) return THROW.frames[p.facing][frameAt(THROW.ticks, a.keyThrow.tick)]!;
+  if (a.keys <= 0 || a.keyThrow) return -1;
   if (a.keyLift > 0) return LIFT.frames[p.facing][Math.min(3, Math.floor(((KEY_LIFT_TICKS - a.keyLift) * 4) / KEY_LIFT_TICKS))]!;
   return p.moving ? CARRY.walk[p.facing][Math.floor(p.walkTicks / 3) % 8]! : CARRY.stand[p.facing];
 }
@@ -127,19 +130,19 @@ export function keyFrame(game: AdventureGame): number {
 /** The carried key's height over the leader now (px; rising while he lifts it, dipping in the wind-up). */
 export const keyHeight = (game: AdventureGame): number => {
   const a = game.adventure;
-  if (a.keyThrow) return KEY_WINDUP_Z[a.keyThrow.tick] ?? 0;
+  if (a.keyThrow) return a.keyThrow.dropped ? KEY_HEIGHT : (KEY_WINDUP_Z[a.keyThrow.tick] ?? 0);
   return a.keys > 0 ? Math.round((KEY_HEIGHT * (KEY_LIFT_TICKS - a.keyLift)) / KEY_LIFT_TICKS) : 0;
 };
 
 /** The Links hold still while a key is thrown (the wind-up and the flight: the throw states hold until it lands). */
-export const keyThrowHolds = (game: AdventureGame): boolean => game.adventure.keyThrow !== null;
+export const keyThrowHolds = (game: AdventureGame): boolean => game.adventure.keyThrow !== null && !game.adventure.keyThrow.dropped;
 
 /** The Action press with a key carried, on his feet, facing no one: the throw starts (true: the press is used). */
 export function throwKey(game: AdventureGame, buttons: number): boolean {
   const a = game.adventure, l = game.players[0]!, f = game.battle.fighters[0]!;
   if (a.keys <= 0 || a.keyThrow || a.keyLift || !(buttons & ~l.held & Button.Action) || f.mode !== "active" || f.move !== "none" || l.action !== "none") return false;
   const [dx, dy] = TOWARD[l.facing], c = a.carried ?? { key: -1, actor: -1, kind: 0 };
-  a.keyThrow = { ...c, tick: 0, id: 0, x: l.x, y: l.y, dx, dy, back: false };
+  a.keyThrow = { ...c, tick: 0, id: 0, x: l.x, y: l.y, dx, dy, back: false, height: KEY_THROW_HEIGHT, dropped: false };
   a.carried = null;
   a.ignore |= Button.Action;
   Object.assign(l, { moving: false, walkTicks: 0 });
@@ -169,7 +172,7 @@ export function stepKeyThrow(game: AdventureGame, world: World): void {
   if (t.tick < KEY_WINDUP_TICKS) return;
   if (t.tick === KEY_WINDUP_TICKS) {
     a.keys--;
-    const it: Pickup = { id: a.nextId++, type: "key", from: "KEY0", actor: t.actor, x: t.x, y: t.y, z: KEY_THROW_HEIGHT * SUBPX, kind: t.kind, gate: 0, tick: 0, vz: 0 };
+    const it: Pickup = { id: a.nextId++, type: "key", from: "KEY0", actor: t.actor, x: t.x, y: t.y, z: t.height * SUBPX, kind: t.kind, gate: 0, tick: 0, vz: 0 };
     a.pickups.push(it);
     t.id = it.id;
   }
@@ -189,7 +192,7 @@ export function stepKeyThrow(game: AdventureGame, world: World): void {
     t.y += t.dy * s;
     if (s < KEY_THROW_STEP) t.back = true;
   }
-  const k = t.tick - KEY_WINDUP_TICKS + 1, z = KEY_THROW_HEIGHT - KEY_FALL * k * (k - 1);
+  const k = t.tick - KEY_WINDUP_TICKS + 1, z = t.height - KEY_FALL * k * (k - 1);
   it.x = t.x;
   it.y = t.y;
   if (z > 0) {
@@ -199,6 +202,22 @@ export function stepKeyThrow(game: AdventureGame, world: World): void {
   it.z = 0;
   if (t.key >= 0) layKey(a, t.key, t.x, t.y);
   a.keyThrow = null;
+}
+
+/**
+ * A hit on the leader carrying a key (or lifting it) knocks it out of his hands (traced in the Cave of No Return's room
+ * 1, a fireball trap's shot: docs/measurements/adventure-world1.md "The fireball traps"): from the next tick it flies
+ * as a thrown key does, without the wind-up, from his spot at the carried height (18 px): 6 px a tick along his facing
+ * (up there, his knockback going left), the same fall, stopped and drifting back off a wall; he's knocked back meanwhile.
+ * Assumed: along his facing whatever the hit's way (one case seen), and so from any hit that isn't blocked.
+ */
+export function knockKeyOut(game: AdventureGame): void {
+  const a = game.adventure, l = game.players[0]!;
+  if (a.keys <= 0 || a.keyThrow || !game.battle.hits.some((h) => h.victim === 0 && !h.blocked)) return;
+  const [dx, dy] = TOWARD[l.facing], c = a.carried ?? { key: -1, actor: -1, kind: 0 };
+  a.keyThrow = { ...c, tick: KEY_WINDUP_TICKS - 1, id: 0, x: l.x, y: l.y, dx, dy, back: false, height: KEY_HEIGHT, dropped: true };
+  a.carried = null;
+  a.keyLift = 0;
 }
 
 /** Ticks a locked door takes to open once the key is in (measured: the Link was held 16 ticks). */

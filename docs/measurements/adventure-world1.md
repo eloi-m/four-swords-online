@@ -62,8 +62,8 @@ savestates `ref/adv/w1-boss011-start`, `w1-011-lamp`, `w1-011-room7`, `-room7-bl
 - **Room 0** (color blocks): the two candles by the east door lit from (462, 280) facing up and (464, 318) facing
   down opened it (switches 17, 18 → `SWT4` 16). The color blocks themselves (`BCK2`) are read from main.dol, not traced.
 - **Room 1:** its walls are pots (tile 0x40); the pot over the key's `PONT` (384, 208), lifted, showed the key
-  (switch 21); fireballs (`FBGE`, not simulated) knocked the Link back (state 15) along y 232 and made him drop what he
-  held. The Mozos of room 2 (alive again on the way back) knocked the key out of his hands too.
+  (switch 21); fireballs (`FBGE`: "The fireball traps" below) knocked the Link back (state 15) along y 232 and made him
+  drop what he held. The Mozos of room 2 (alive again on the way back) knocked the key out of his hands too.
 - **Room 3** (where the route stops): its middle is a pit (tile 0x0D/0xDE, type 0x0E) from y 80 to 272; walking in
   cost a heart and put the Link back on the edge (state 50, an arc up to z 132 and down). A Link tossed (apart, lifted,
   thrown up) flew 47 px and fell in alike. The room's candles, crystal and the bridge's switch are all on the far
@@ -71,6 +71,46 @@ savestates `ref/adv/w1-boss011-start`, `w1-011-lamp`, `w1-011-room7`, `-room7-bl
   bridge (66 floor tiles over the pit, x 208-304). Switch 4 or 5 toggles 1 (`OFFS`, checked by a poke), but `SWT4` 16
   also wants switch 0, which nothing sets alone. The lamp at the near side's candle stands lit nothing. How the Links
   cross alone wasn't found (room 9's ghost says friends can be tossed across chasms: room 9's are one tile wide).
+
+### The fireball traps (the Cave's room 1, Dolphin, 2026-10-21) and the blade traps (main.dol)
+Traced with a copy of the cave user folder (`ref/dolphin-user-adventure-cave-fire`, GDB port 2400) from
+`ref/adv/w1-011-room1.sav` (the four just in from room 2 at (98-153, 152), the traps' countdowns at 1), `actor-trace.ts
+--ids FBGE,FBAL,KEY0` (FBGE +0x2A8 its countdown; FBAL +0xC/+0x10 its place, +0x3C/+0x40 its velocity), the Links moved
+by `--tele` in hops of under ~110 px; frame dumps for the look. The sim follows it: `traps.ts`, `doors.ts`
+`knockKeyOut`, `traps.realdisc.test.ts`.
+- **The shot:** the trap at (248, 40) shot the frame the Links were put at (230, 140) (100.6 px off): an `FBAL` at the
+  trap's spot, z 0, velocity (−0.266, 1.476) = 1.5 px/tick at the leader, moving from the next frame, straight on over
+  the pots; the countdown 120 that frame, a shot again 120 frames later while a Link was in reach (the five shot 120
+  frames apart all along). At (153, 152) (147 px) and (223.3, 152.9) (115.6 px) none shot. main.dol (`FBGE`'s update
+  0x8021D2FC → 0x801CECF4(this, 'FBAL', 1.5, 112.0)): the nearest Link on its screen within 112 px; params bit 0 /
+  bit 1 put it away playing alone / with several (all five 0); its switch on puts it away.
+- **The hit:** 63 frames after the shot, at (231.5, 131.5) against the leader at (230, 140) (7 px apart, the sim's ±7
+  body against its ±2 box: a frame earlier): life 12 → 10, state 15 for 25 frames, 1.5 px/tick away from the shot
+  ((−0.26, 1.48), then (−1.50, 0.02) from one coming along the row), up to z 19.5 and down (hop 3.0), 60 invincible;
+  the shot gone. From the right (the trap at (440, 232)): the leader at x 392 struck when it was 7.5 px off. main.dol:
+  the Zora's fireball's update (0x801D2E70): atcp 2, hit type 1 (0x801F2B7C), gone on a hit, a 2-frame poof when a
+  shield stops it (JA_SE_CHR_SHIELD), off the screen's rect gone.
+- **A key knocked out:** the leader lifting the key at (392, 232.5) facing up (state 17 at frame 132, carrying it
+  overhead, state 18, from 156: the key at z 18 over him), struck at 157 by the shot along y 232: from 158 the key
+  flew up 6 px a frame from z 18 ((392, 226.5, 18), (392, 220.5, 17.8), (392, 214.5, 17.4)), stopped by the pots above
+  at y 214, drifted back ½ px a frame and lay at (392, 219) on its 14th frame (z 18 − 0.1·k(k − 1)): the key's throw
+  without its wind-up, along his facing, while he was knocked back left.
+- **The look:** `FBAL`'s init (0x80220274) makes JPA 656 at its spot (layer 0), its update moves it along; its draw
+  (0x802201D8) adds a light, 24 px at 128 (frame dumps: a small flame). Its sound
+  (0x50030) is JA_SE_OBJ_ZORA_TAMA.
+- **The blade traps** (`TRAP`, read from main.dol only: no savestate reaches Tingle's Tower room 2 or Hyrule Castle
+  room 9's area 2): init 0x801650AC, update 0x80164834, draw 0x80164640. Params: p & 3 its way (right, left, down,
+  up), bit 2 it turns toward the Link, bit 4 big (box ±12), (p >> 8) & 15 its look (0: enemy_both2 340; else enemy_gc
+  378 + a step cycling every 10 frames, the first a random 0-2), (p >> 12) & 15 non-zero: to and fro for good.
+  Box ±6, wall box ±3, life 1000 every frame, atcp 2 (enemyparam.csv), hit type 1 every frame it touches a Link; a
+  sword meeting it: 0x801F285C, 0x80237948 (the iron ball's clank), effects 279/280, JA_SE_CHR_SHIELD. Waiting (state
+  0), its 10-frame cool-down over: the nearest Link (0x801EEC98) within 22 px across its way (either side) sets it
+  off: its velocity eases (0x801F71A4: 0.3 of the gap, ≤ 1 px a frame) to 3 px/tick its way, JA_SE_OBJ_TRAP_MOVE;
+  sliding (1): a wall or another actor met (+0x9C) stops it dead, sparks (JPA 1185, 8 px ahead) and
+  JA_SE_OBJ_TRAP_BOUND at most every 4 frames, then back (2): its place eases home (0.3, ≤ 0.5 px a frame), home
+  within 1 px. World 1's: Tingle's Tower room 2 (104, 232) 0x100 right, (184, 296) 0x101 left (look 1, in deep
+  water); Hyrule Castle room 9 area 2 (72, 184), (184, 184) 0x4 (right, turning). Not read: 0x801EEC98's way to the
+  Link (taken as the larger of |dx| and |dy|), which actors +0x9C counts (taken as the other blade trap).
 
 ### The Cave of No Return from room 3 on (Dolphin, 2026-10-10)
 Traced with a copy of the adventure user folder (`ref/dolphin-user-adventure-cave`, GDB port 9093), `trace.ts` and

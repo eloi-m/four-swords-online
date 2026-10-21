@@ -4,7 +4,7 @@
 import { BIG_HANDLE_TEXTURES, bigHandleClass, decodeBti, ESCORT_ZORA_FRAME, ESCORT_ZORA_WALK, ESCORT_ZORA_WALK_TICKS, PULL_HANDLE_FRAME, pullHandleClass, type ActorSob, type RarcArchive, type SpriteFrame } from "@fso/formats";
 import { SpriteAtlas, SpriteMesh, type ActorSpriteSources } from "@fso/render";
 import { PLAYER_ANIMATIONS, SUBPX, SWING, switchOn, WALK_FRAME_TICKS, type Facing } from "@fso/sim";
-import { armosStatue, ARROW_KIND, BALL_FRAME, BALL_SCALE, BALL_SOLDIER, BALL_SOLDIER_FRAME, BALL_TURN, BONE_KIND, CHAIN_FRAME, CHAIN_SCALE, ironBallHand, ironBallOf, BOWMAN_LOOK, BOWMAN_SHOOT, BOWMAN_WALK, CAPTAIN_LUNGE, CAPTAIN_MARCH, BUZZ_SHOCK_STEPS, BUZZ_STEPS, enemyShown, MOZO_FRAMES, GEM_FRAMES, GEAR_BY_NUMBER, getFrame, keyHeight, minorShadowFrame, FIREBALL_KIND, hinoxFrame, isCaster, PAME, pameBig, pickupShown, POE_FRAMES, soldierPose, STALFOS_JUMP, STALFOS_WALK, WIZZROBE_BOLTS, ZOL_PALETTES, ZORA_SHOT, actorKey, currentArea, pullOut, shadowShownColor, type AdventureGame, type AdventureStage, type Enemy, type Lever, type Pickup } from "@fso/sim/adventure";
+import { armosStatue, ARROW_KIND, BLADE_TRAP, bladeFrame, FIRE_TRAP_KIND, BALL_FRAME, BALL_SCALE, BALL_SOLDIER, BALL_SOLDIER_FRAME, BALL_TURN, BONE_KIND, CHAIN_FRAME, CHAIN_SCALE, ironBallHand, ironBallOf, BOWMAN_LOOK, BOWMAN_SHOOT, BOWMAN_WALK, CAPTAIN_LUNGE, CAPTAIN_MARCH, BUZZ_SHOCK_STEPS, BUZZ_STEPS, enemyShown, MOZO_FRAMES, GEM_FRAMES, GEAR_BY_NUMBER, getFrame, keyHeight, minorShadowFrame, FIREBALL_KIND, hinoxFrame, isCaster, PAME, pameBig, pickupShown, POE_FRAMES, soldierPose, STALFOS_JUMP, STALFOS_WALK, WIZZROBE_BOLTS, ZOL_PALETTES, ZORA_SHOT, actorKey, currentArea, pullOut, shadowShownColor, type AdventureGame, type AdventureStage, type Enemy, type Lever, type Pickup } from "@fso/sim/adventure";
 import * as THREE from "three";
 
 const DEPTH_PER_PIXEL = 1 / 1024;
@@ -51,6 +51,8 @@ function lookOf(e: Enemy, tick: number): Look | null {
     case "OKTM":
       // A Stalfos's bone: both2 368 + its spin, a step every 3 ticks; an arrow: both2 76 + its facing.
       if (e.kind === ARROW_KIND) return { sob: "both2", frame: 76 + DIR_INDEX[e.facing] };
+      // A fireball trap's shot: an effect and a light only (view.ts, light.ts).
+      if (e.kind === FIRE_TRAP_KIND) return null;
       // A Zora's fireball: gc 213 + 16-19, 3 ticks each.
       if (e.kind === FIREBALL_KIND) return { sob: "gc", frame: 213 + ZORA_SHOT.frames[Math.floor(e.tick / ZORA_SHOT.stepTicks) % 4]! };
       return e.kind === BONE_KIND ? { sob: "both2", frame: 368 + (Math.floor(e.tick / 3) % 4) } : { sob: "gc", frame: 37 };
@@ -137,6 +139,13 @@ function lookOf(e: Enemy, tick: number): Look | null {
       const frame = minorShadowFrame(e);
       return frame < 0 ? null : { sob: "player", frame };
     }
+    case "TRAP":
+      // A blade trap (TRAP's draw 0x80164640): its look's kind 0 enemy_both2 340, the others enemy_gc 378 + its step
+      // (sim bladeFrame). Not drawn: the big one's size (none in World 1).
+      return bladeFrame(e);
+    case "FBGE":
+      // The fireball trap draws nothing (its shots are effects: view.ts).
+      return null;
     case "POOH":
       // gc 132 + its step (6 more facing left), its alpha +0x270 (the sim's speed, 0-255: 0x80142684); the ghosts'
       // TIMG textures (data.arc timg/e_obake_*.bti) aren't drawn.
@@ -370,6 +379,9 @@ export class EnemyView {
     // Hyrule Castle's pull handles and escort Zoras (both2).
     for (let f = PULL_HANDLE_FRAME; f <= PULL_HANDLE_FRAME + 4; f++) wanted.push({ sob: "both2", frame: f });
     for (let f = ESCORT_ZORA_FRAME; f <= ESCORT_ZORA_FRAME + 12; f++) wanted.push({ sob: "both2", frame: f });
+    // Blade traps (sim traps.ts: both2 340, gc 378-381).
+    wanted.push({ sob: "both2", frame: BLADE_TRAP.frame });
+    for (let f = BLADE_TRAP.stepFrame; f < BLADE_TRAP.stepFrame + 4; f++) wanted.push({ sob: "gc", frame: f });
     for (const look of wanted) this.slot(look);
     this.atlas = this.frames.length ? new SpriteAtlas(sources.sheet, this.frames) : null;
   }

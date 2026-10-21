@@ -12,7 +12,7 @@
 import { readStageBgmTable } from "@fso/audio";
 import type { Dol } from "@fso/formats";
 import { Button, CHARGE, DEBRIS, ownSwitch, THROW_RELEASE_TICK } from "@fso/sim";
-import { GEM_VALUES, pageTyped, shutDoors, talkTyped, type AdventureGame, type AdventureStage } from "@fso/sim/adventure";
+import { BLADE_STATE, FIRE_TRAP_KIND, GEM_VALUES, pageTyped, shutDoors, talkTyped, type AdventureGame, type AdventureStage } from "@fso/sim/adventure";
 import { SynthAudio, type SynthData } from "@fso/web/audio";
 
 const VOLUME_KEY = "fso.adventure.volume";
@@ -37,6 +37,10 @@ export const ADVENTURE_SE = {
   soldierHit: ["JA_SE_CHR_SOLDIER_DAMAGE"],
   soldierDown: ["JA_SE_CHR_SOLDIER_DOWN"],
   octorokSpit: ["JA_SE_CHR_OCTA_FIRE"], // (game)
+  // The traps (game: FBGE's shot, TRAP's slide and its stop against a wall; sim traps.ts).
+  fireTrap: ["JA_SE_OBJ_ZORA_TAMA"],
+  trapMove: ["JA_SE_OBJ_TRAP_MOVE"],
+  trapBound: ["JA_SE_OBJ_TRAP_BOUND"],
   ganonHit: ["JA_SE_CHR_PGANON_DAMAGE"],
   ganonDown: ["JA_SE_CHR_PGANON_DIE", "JA_SE_CHR_BOSS_DOWN"],
   // Pickups (assumed): a Force Gem by its size (worth under 50: the small ones; 50 and more: the big ones), a heart,
@@ -115,7 +119,7 @@ export class AdventureAudio extends SynthAudio {
 interface Seen {
   area: string;
   pickups: Map<number, { type: string; kind: number; z: number }>;
-  enemies: Map<number, { life: number; state: string }>;
+  enemies: Map<number, { life: number; state: string; shot: number; angle: number }>;
   switches: number;
   keys: number;
   opened: number;
@@ -201,7 +205,7 @@ export class AdventureCues {
     const seen: Seen = {
       area,
       pickups: new Map(a.pickups.map((p) => [p.id, { type: p.type, kind: p.kind, z: p.z }])),
-      enemies: new Map(a.enemies.map((e) => [e.id, { life: e.life, state: e.state }])),
+      enemies: new Map(a.enemies.map((e) => [e.id, { life: e.life, state: e.state, shot: e.shot, angle: e.angle }])),
       switches: b.switches,
       keys: a.keys,
       opened: a.opened.length,
@@ -232,7 +236,13 @@ export class AdventureCues {
         const was = before.enemies.get(e.id);
         const soldier = SOLDIERS.test(e.type);
         if (!was) {
-          if (e.type === "OKTM") now("octorokSpit");
+          if (e.type === "OKTM") now(e.kind === FIRE_TRAP_KIND ? "fireTrap" : "octorokSpit");
+          continue;
+        }
+        // A blade trap off (its slide), and stopped dead (its sparks).
+        if (e.type === "TRAP") {
+          if (e.shot === BLADE_STATE.slide && was.shot !== BLADE_STATE.slide) now("trapMove");
+          if (e.angle !== was.angle && e.angle >= 0) now("trapBound");
           continue;
         }
         if (e.state === "die" && was.state !== "die") now(soldier ? "soldierDown" : "enemyDown");

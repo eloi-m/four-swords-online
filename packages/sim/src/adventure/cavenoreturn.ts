@@ -10,6 +10,7 @@ import type { Enemy } from "./enemies.ts";
 import { GATHER_BUTTON, SEPARATE_BUTTON, selectButtons } from "./formation.ts";
 import { SHADOW, SHADOW_STATE, shadowColor, shadowForm, shadowState } from "./shadowlink.ts";
 import { BLOCK_SLIDE_TICKS } from "./tileblocks.ts";
+import { FIRE_TRAP_KIND } from "./traps.ts";
 
 const { Up, Down, Left, Right, Action, Item } = Button;
 
@@ -65,6 +66,22 @@ const pushColor = (color: number, tx: number, ty: number, dir: number): Goal[] =
 const liftAway = (dir: number): Goal[] => [face(dir), press(Action, 2, 30), press(Action, 2, 30)];
 /** Lifts the pot (or stone) next to (x, y) the way `dir` goes, from there, and throws it on. */
 const liftAt = (x: number, y: number, dir: number): Goal[] => [travelTo(x, y, { tol: 1, exact: true }), ...liftAway(dir)];
+/**
+ * Room 1's fireball traps (traps.ts: each shoots at the nearest Link within 112 px, then waits 120 ticks): the leader,
+ * within the reach of the one at (x, y), turns his shield `dir` (toward it) and waits till it has shot, its shot is
+ * spent (stopped by the shield, or gone by) and `need` ticks at least are left before its next.
+ */
+const outlastShot = (dir: number, x: number, y: number, need: number): Goal[] => [
+  face(dir),
+  waitUntil(
+    `a shot from the fireball trap at (${x}, ${y}) spent`,
+    (g) => {
+      const t = g.adventure.enemies.find((e) => e.type === "FBGE" && e.x === x * SUBPX && e.y === y * SUBPX);
+      return !!t && t.timer >= need && !g.adventure.enemies.some((e) => e.type === "OKTM" && e.kind === FIRE_TRAP_KIND);
+    },
+    300,
+  ),
+];
 /** Lights the candle switch in front with the lamp. */
 const light = (dir: number): Goal[] => [face(dir), press(Item, 2, 12)];
 /** Shoots an arrow from (x, y) the way `dir` goes (the bow: bow.ts). */
@@ -380,16 +397,20 @@ export const CAVE_OF_NO_RETURN_MILESTONES: readonly { name: string; goals: reado
       travelTo(216, 104, { tol: 2, exact: true }),
       waitUntil("the chest out", (g) => ((g.battle.switches >>> 19) & 1) === 1, 60),
       travelTo(216, 136),
+      // The fireball trap above (248, 40) shoots at whoever comes within its reach: its shot taken on the shield first,
+      // then to the chest, out of its reach, before the next.
+      ...outlastShot(Up, 248, 40, 30),
       travelTo(184, 183, { tol: 2, exact: true }),
       ...openChestFacing(Up),
       travelTo(200, 232),
+      // The others wait here, out of every fireball trap's reach (else the traps east shoot at them all along): apart
+      // from here on (else a Link in front is what's lifted).
+      press(SEPARATE_BUTTON, 1, 10),
       travelTo(392, 232, { tol: 2, exact: true }),
       face(Up), press(Action, 2, 30), face(Down), press(Action, 2, 30),
       waitUntil("the key out", (g) => ((g.battle.switches >>> 21) & 1) === 1, 60),
       // The floor points under the pots (PONT): each Force Gem shows over its point once its pot is lifted, and is
-      // reached by lifting the pots on the way to it (before the key: carried, it takes the hands). The others wait
-      // apart (else a Link in front is what's lifted).
-      press(SEPARATE_BUTTON, 1, 10),
+      // reached by lifting the pots on the way to it (before the key: carried, it takes the hands).
       ...liftAt(392, 327, Up),
       ...liftAt(376, 248, Down),
       ...liftAt(376, 264, Down),
@@ -406,13 +427,20 @@ export const CAVE_OF_NO_RETURN_MILESTONES: readonly { name: string; goals: reado
       ...liftAt(120, 168, Down),
       ...liftAt(120, 184, Down),
       travelTo(120, 170, { tol: 2 }),
-      press(GATHER_BUTTON, 1, 10),
-      waitUntil("together", (g) => g.adventure.formation === "trail", 300),
+      // The key alone, the others still out of reach (a hit knocks it out of his hands: doors.ts knockKeyOut); back
+      // to them, then west by the room's west side, out of the reach of the traps above and below.
       travelTo(392, 232),
       travelTo(388, 226, { tol: 2, exact: true }), face(Up), press(Action, 2, 20),
       waitUntil("the key", (g) => g.adventure.keys > 0, 60),
       travelTo(200, 232),
-      travelTo(200, 136),
+      // (A shot from the trap east comes along this row: on the shield, before the others come.)
+      face(Right),
+      waitUntil("the fireballs gone by", (g) => !g.adventure.enemies.some((e) => e.type === "OKTM" && e.kind === FIRE_TRAP_KIND), 300),
+      press(GATHER_BUTTON, 1, 10),
+      waitUntil("together", (g) => g.adventure.formation === "trail", 300),
+      travelTo(100, 232),
+      travelTo(56, 232),
+      travelTo(56, 136),
       travelTo(20, 136),
       goTo(Left, 2),
       travelTo(360, 60),

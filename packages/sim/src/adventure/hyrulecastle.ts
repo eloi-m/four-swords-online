@@ -18,6 +18,7 @@ import { actorKey, type AdventureGame } from "./adventure.ts";
 import { collect, defeat, face, fight, formation, goTo, holdUntil, openChestFacing, press, readOn, sequence, shadowGone, travelTo, wait, waitUntil, type Goal } from "./drive.ts";
 import { enemyActive, enemyShown } from "./enemies.ts";
 import { GATHER_BUTTON, SEPARATE_BUTTON, selectButtons } from "./formation.ts";
+import { BLADE_STATE } from "./traps.ts";
 
 const { Up, Down, Left, Right, Sword, Action, Item } = Button;
 const swing = (dir: number): Goal[] => [face(dir), press(Sword, 2, 14)];
@@ -31,6 +32,21 @@ const landed = (g: AdventureGame) => g.adventure.links[0]!.mode === "walk" && !g
 const CRACKED_WALL = 22;
 /** Room 9's area 3: the cracked east wall (DOOR kind 2 at (192, 64)). */
 const THRONE_ROOM_WALL = 45;
+/**
+ * Room 9's area 2: past its two blade traps (traps.ts: at (72, 184) and (184, 184), each turns toward the nearest Link
+ * within 22 px across its row and slides at him, and they stop where they meet, in the middle). From (128, y0), in
+ * their row but clear of where they meet, the leader sets them off; once they've met and eased 20 px back on their way
+ * home (they wait till they're there), the four go through to (128, y1).
+ */
+const pastBladeTraps = (y0: number, y1: number): Goal[] => [
+  travelTo(128, y0, { tol: 1, exact: true }),
+  waitUntil(
+    "the blade traps met and on their way back",
+    (g) => g.adventure.enemies.filter((e) => e.type === "TRAP").every((e) => e.shot === BLADE_STATE.back && Math.abs(e.x - e.homeX) <= 30 * SUBPX),
+    240,
+  ),
+  travelTo(128, y1),
+];
 /** Hands the controls to the Link in slot 1 (the D-pad of his color). */
 const handOver = (): Goal => ({ name: "hand over to the next Link", limit: 5, next: (g, _s, t) => (t >= 3 ? true : t === 0 ? selectButtons(g.adventure.colors[1]!) : 0) });
 /** Hands the controls to the first other Link (slot) `which` picks. */
@@ -372,7 +388,7 @@ export const HYRULE_CASTLE_MILESTONES: readonly { name: string; goals: readonly 
   {
     name: "room 9's area 2: up its stairs to the four weapons, the bombs from the top right pedestal, up through its top door into area 3",
     goals: [
-      travelTo(128, 120),
+      ...pastBladeTraps(200, 120),
       travelTo(164, 72, { tol: 1 }),
       face(Right),
       press(Action, 2, 4),
@@ -412,7 +428,7 @@ export const HYRULE_CASTLE_MILESTONES: readonly { name: string; goals: readonly 
       holdUntil("up through it into the throne room", Up, inArea(3), 300),
       travelTo(128, 120),
       holdUntil("down into area 2", Down, inArea(2), 300),
-      travelTo(128, 220),
+      ...pastBladeTraps(168, 220),
       holdUntil("down out onto the TV", Down, inArea(0), 300),
       travelTo(128, 280),
       travelTo(24, 300),

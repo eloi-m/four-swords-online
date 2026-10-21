@@ -6,7 +6,9 @@
 // pulled, room 9's four-Link handle (PSWB) pulled, the escort Zoras (FAZR) met and following, room 57's barrier (BARI's
 // effects) with a Zora come to its arrival point (FZRA), the barrier gone, room 10's throne (STBL) pushed; the cracked
 // walls bombed open (doorlook.ts: their base pair and the top layer's lintel): Hyrule Castle room 5's and room 9's area
-// 3's on the route, Tingle's Tower room 4's area 5's marked opened by hand (off its route).
+// 3's on the route, Tingle's Tower room 4's area 5's marked opened by hand (off its route); the traps (sim traps.ts):
+// Hyrule Castle room 9's area 2's blade traps set off on the route, the Cave of No Return room 1's fireball traps
+// shooting (the Links put in their reach), Tingle's Tower room 2's blade traps (a Link put in one's row).
 // A screenshot at each into out/e2e/looks-*.png (kept out of git).
 // Expects the dev server (pnpm --filter @fso/game dev), which serves the game files.
 //   node tools/e2e/src/looks.ts [url] [outDir]
@@ -55,6 +57,10 @@ interface Seen {
   /** The escort in the Links' room and area (the sim moves it into a new area some 80 ticks after them). */
   escortHere: boolean;
   throne: string;
+  /** The blade traps' states (sim BLADE_STATE), the fireball traps' shots, the traps' effects synced. */
+  blades: number[];
+  fireballs: number;
+  trapEffects: number;
 }
 
 const browser = await puppeteer.launch({
@@ -115,6 +121,9 @@ async function stepUntil(page: Page, until: string, ms: number, frames: number, 
           escort: !!a.escort,
           escortHere: !!a.escort && a.escort.room === a.room && a.escort.area === a.area,
           throne: a.rocks.find((r: any) => r.type === "STBL")?.state ?? "",
+          blades: a.enemies.filter((e: any) => e.type === "TRAP").map((e: any) => e.shot),
+          fireballs: a.enemies.filter((e: any) => e.type === "OKTM" && e.kind === 5).length,
+          trapEffects: v.drawnTrapEffects,
         };
       };
       const test = new Function("s", `return ${until};`) as (s: Seen) => boolean;
@@ -201,6 +210,11 @@ try {
   const blown5 = await check(page, "wall-5", "s.room === 5 && s.area === 0 && s.opened.includes(5 * 4096 + 22)", 1000 / 60, 60000, wall5);
   if (blown5) expectTiles("wall-5-open", await check(page, "wall-5-open", `s.tick >= ${blown5.tick + 60}`, 1000 / 60, 200, wall5), [0x338, 0x339, 0x328, 0x329]);
   drew("big-handle", await check(page, "big-handle", "s.room === 9 && s.area === 0 && s.pulls.some((x, k) => k % 3 === 1 && x >= 400)", 1000 / 60, 60000), "PSWB");
+  // Room 9's area 2: the blade traps at rest, then set off by the leader (the route's way past them), sliding.
+  drew("blade-traps", await check(page, "blade-traps", "s.room === 9 && s.area === 2 && s.window === 1 && s.blades.length === 2", 1000 / 60, 20000), "TRAP");
+  const blades = await stepUntil(page, "s.room === 9 && s.area === 2 && s.blades.every((b) => b === 1)", 1000 / 60, 2000);
+  if (blades) drew("blade-traps-off", await check(page, "blade-traps-off", `s.tick >= ${blades.tick + 14}`, 1000 / 60, 100), "TRAP");
+  else problems.push("blade-traps-off: not set off");
   // Room 9's area 3 throne-room wall (DOOR #45 (192, 64), kind 2 side 3): 0x32E 0x33E down from the anchor, the top
   // layer's 0x32F 0x33F a tile to the right.
   const wall9 = [4 * 32 + 12, 5 * 32 + 12, 1024 + 4 * 32 + 13, 1024 + 5 * 32 + 13];
@@ -237,6 +251,34 @@ try {
   await page.evaluate(() => void (window as unknown as { fso: any }).fso.game.adventure.opened.push(4 * 4096 + 16));
   const blown4 = await stepUntil(page, "true", 1000 / 60, 1);
   if (blown4) expectTiles("tingle-wall-open", await check(page, "tingle-wall-open", `s.tick >= ${blown4.tick + 10}`, 1000 / 60, 100, wall4), [0x32e, 0x33e, 0x32f, 0x33f]);
+
+  // The Cave of No Return's room 1: the Links put within the fireball trap at (248, 40)'s reach, its shot (an effect
+  // and a light) on its way some 40 ticks after it's made.
+  await open(page, "stage=boss011&room=1&players=4&mute&run=off");
+  await page.evaluate(() => {
+    const g = (window as unknown as { fso: any }).fso.game;
+    g.players.forEach((p: any) => ((p.x = 230 * 256), (p.y = 140 * 256)));
+  });
+  const shot = await stepUntil(page, "s.fireballs > 0", 1000 / 60, 400);
+  if (shot) {
+    const flying = await check(page, "fire-trap", `s.tick >= ${shot.tick + 40}`, 1000 / 60, 100);
+    if (flying && !flying.trapEffects) problems.push("fire-trap: its shot's effect isn't synced");
+  } else problems.push("fire-trap: no shot");
+
+  // Tingle's Tower room 2: its blade traps at rest, then a Link put in the row of the one at (104, 232), west of it.
+  await open(page, "stage=boss012&room=2&players=1&mute&run=off");
+  await page.evaluate(() => {
+    const g = (window as unknown as { fso: any }).fso.game;
+    g.players.forEach((p: any) => ((p.x = 200 * 256), (p.y = 170 * 256)));
+  });
+  drew("tingle-blades", await check(page, "tingle-blades", "s.room === 2 && s.tick >= 30", 1000 / 60, 200), "TRAP");
+  await page.evaluate(() => {
+    const g = (window as unknown as { fso: any }).fso.game;
+    g.players.forEach((p: any) => ((p.x = 72 * 256), (p.y = 236 * 256)));
+  });
+  const off = await stepUntil(page, "s.blades[0] === 1", 1000 / 60, 200);
+  if (off) drew("tingle-blades-off", await check(page, "tingle-blades-off", `s.tick >= ${off.tick + 12}`, 1000 / 60, 100), "TRAP");
+  else problems.push("tingle-blades-off: not set off");
 } finally {
   await browser.close();
 }
