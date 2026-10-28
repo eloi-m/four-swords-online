@@ -6,7 +6,9 @@
 // - a Force Gem's type is its params' low byte; its look the table at 0x80471948 (types 0-7 enemy_both2, 8-11 the huge
 //   ones in enemy_gc) and its worth the table at 0x804719D8 (RUPY's code indexes it by type): 1, 5, 20, 50, 100, 150,
 //   200, 300, then 1000, 1500, 2000, 3000;
-// - a hovering gem (HNRY) shows the gem of its params & 7 (table 0x804AB038), so it's worth that gem;
+// - a hovering gem (HNRY) shows the gem of its params & 7 (table 0x804AB038), so it's worth that gem; it hovers 8 px
+//   up with params bit 12 set, 24 without (init 0x8031B994; on a side view at y less that, on the ground), and of kind
+//   (p >> 16) & 0xFF 1, 2, 6 or 7 it shuttles (update 0x8031A6A4, HOVER_SHUTTLE);
 // - the stage's goal wants the four Links' gems to add up to 2000 (0x802F0404 compares their sum with 2000).
 // - RYRN "Force Gem rain" (init 0x802A92FC, update 0x802A8284): kinds 0, 6 and 7 wait for their switch (and do nothing
 //   if it's already on when the Links come in), kinds 3 and 12 start at once; then it makes (p >> 12) & 0xFF gems (0:
@@ -38,8 +40,19 @@ export const GEM_QUOTA = 2000;
 export const GEM_HALF = 6;
 export const HUGE_GEM_HALF = 12;
 export const PICKUP_HALF = 6;
-/** How high a hovering gem floats. TODO(measure). */
+/** How high a hovering gem floats: 8 px with its params' bit 12, else 24 (HNRY's init 0x8031B994). */
 export const HOVER_HEIGHT = 8 * SUBPX;
+export const HOVER_HIGH = 24 * SUBPX;
+/**
+ * A hovering gem (HNRY) of kind (p >> 16) & 0xFF 1, 2, 6 or 7 shuttles (update 0x8031A6A4, state 0; traced in Lake
+ * Hylia's room 7, its 0x71000 from x 232.7 to 389.4 and back in ~400 frames): kinds 1 and 6 up and down, 2 and 7 across,
+ * the way it starts (+0x98) at random; its target speed 0.8 px/frame that way, its velocity easing 0.3 of the gap (at
+ * most 1 px/frame) each frame before it moves (0x801F71A4). A timer (+0x250) counts down from 200: kinds 6 and 7 turn
+ * at 100 and 0 is 200 again, so they swing ±80 px about their place; kinds 1 and 2 turn at 0 and 200 again, from the
+ * first frame, so they go 160 px the other way and back. Never stopped by walls. Not done (none in World 1): kinds 3
+ * and 4 (a 30 px circle, ±100 angle units a frame), 5 (side views, at the water), 8 (flies off, the camera's).
+ */
+export const HOVER_SHUTTLE = { speed: 205, ease: 3, maxEase: SUBPX, period: 200, turn: 100 } as const;
 /** A rained gem falls from 300-350 px up (RYRN). RUPY's fall (traced: a gem dropped from 299 px onto a Link fell 1.3
  *  px the first tick, 0.3 more each tick, 13 px on the last of 41): from 1 px/tick, 0.3 px/tick² (77/256); its cap
  *  wasn't reached (TODO(measure)). */
@@ -78,6 +91,56 @@ export interface Pickup {
   vy?: number;
   /** The boomerang bringing it back (its entity id), 0 when it lies where it is (gear.ts). */
   fetched?: number;
+  /** A shuttling hovering gem (HOVER_SHUTTLE): the way it goes (0 right, 1 left, 2 down, 3 up), its timer, whether it
+   *  swings about its place (kinds 6, 7), its velocity and target velocity (1/256 px per tick). */
+  shuttle?: Shuttle;
+}
+
+export interface Shuttle {
+  dir: number;
+  timer: number;
+  mid: boolean;
+  vx: number;
+  vy: number;
+  tvx: number;
+  tvy: number;
+}
+
+/**
+ * HNRY's shuttle for its params, if its kind shuttles, as it is `ticks` after the room came in (the game makes it then,
+ * whichever area it's in). The way it starts is the game's at random (its init draws one): here a bit of the tick the
+ * room came in and its index, so it keeps it over the visit and the rolls after it (gem rains, drops) stay as they were.
+ */
+export function shuttleOf(a: AdventureState, actor: number, params: number, it: Pickup, ticks: number): Shuttle | undefined {
+  const kind = (params >>> 16) & 0xff;
+  if (kind !== 1 && kind !== 2 && kind !== 6 && kind !== 7) return undefined;
+  const dir = (kind === 1 || kind === 6 ? 2 : 0) | ((a.roomTick + actor) & 1);
+  const s = { dir, timer: 0, mid: kind >= 6, vx: 0, vy: 0, tvx: 0, tvy: 0 };
+  for (let t = 0; t < ticks; t++) stepShuttle(it, s);
+  return s;
+}
+
+/** `v` eased `ease`/10 of the way to `target`, by at most `max` (0x801F71A4); at least 1/256 px, so it gets there. */
+function easeTo(v: number, target: number, ease: number, max: number): number {
+  const d = target - v, step = Math.trunc((d * ease) / 10) || Math.sign(d);
+  return v + Math.max(-max, Math.min(max, step));
+}
+
+/** A shuttling gem, one tick: it moves at its velocity eased to its target, then sets its next target and turns. */
+export function stepShuttle(it: Pickup, s: Shuttle): void {
+  const S = HOVER_SHUTTLE;
+  s.vx = easeTo(s.vx, s.tvx, S.ease, S.maxEase);
+  s.vy = easeTo(s.vy, s.tvy, S.ease, S.maxEase);
+  it.x += s.vx;
+  it.y += s.vy;
+  s.tvx = s.dir === 0 ? S.speed : s.dir === 1 ? -S.speed : 0;
+  s.tvy = s.dir === 2 ? S.speed : s.dir === 3 ? -S.speed : 0;
+  if (s.mid && s.timer === S.turn) s.dir ^= 1;
+  else if (s.timer === 0) {
+    s.timer = S.period;
+    if (!s.mid) s.dir ^= 1;
+  }
+  if (s.timer > 0) s.timer--;
 }
 
 /** A RYRN Force Gem rain of the current area: waiting for its switch, raining, or done. */
@@ -121,10 +184,11 @@ export function spawnPickups(game: AdventureGame, stage: AdventureStage): void {
     a.keyThrow = null;
   }
   a.pickups = [];
-  for (const actor of currentArea(game, stage).actors) {
+  const area = currentArea(game, stage);
+  for (const actor of area.actors) {
     if (!PICKUP_TYPES.includes(actor.id) || a.taken.includes(actorKey(a.room, actor.index))) continue;
     const p = actor.params;
-    let type: PickupType = "gem", kind = 0, z = 0;
+    let type: PickupType = "gem", kind = 0, z = 0, lift = 0;
     const down = actor.id === "KEY0" ? keyDown(a, actorKey(a.room, actor.index)) : undefined;
     switch (actor.id) {
       case "RUPY":
@@ -133,7 +197,9 @@ export function spawnPickups(game: AdventureGame, stage: AdventureStage): void {
         break;
       case "HNRY":
         kind = HOVERING_GEMS[p & 7]!;
-        z = HOVER_HEIGHT;
+        z = (p >>> 12) & 1 ? HOVER_HEIGHT : HOVER_HIGH;
+        // On a side view it stands that much higher, on the ground (init: +0x131DF of its screen).
+        if (area.sideView) (lift = z), (z = 0);
         break;
       case "HART":
         type = "heart";
@@ -147,11 +213,14 @@ export function spawnPickups(game: AdventureGame, stage: AdventureStage): void {
         kind = p & 0x7f;
         break;
     }
-    a.pickups.push({ id: a.nextId++, type, from: actor.id, actor: actor.index, x: down ? down.x : actor.x * SUBPX, y: down ? down.y : actor.y * SUBPX, z, kind, gate: p >>> 27, tick: 0, vz: 0 });
+    const it: Pickup = { id: a.nextId++, type, from: actor.id, actor: actor.index, x: down ? down.x : actor.x * SUBPX, y: down ? down.y : actor.y * SUBPX - lift, z, kind, gate: p >>> 27, tick: 0, vz: 0 };
+    const shuttle = actor.id === "HNRY" ? shuttleOf(a, actor.index, p, it, game.tick - a.roomTick) : undefined;
+    if (shuttle) it.shuttle = shuttle;
+    a.pickups.push(it);
   }
   // The area's gem rains: one whose switch is already on has rained already.
   a.rains = [];
-  for (const actor of currentArea(game, stage).actors) {
+  for (const actor of area.actors) {
     if (actor.id !== "RYRN") continue;
     const p = actor.params >>> 0, kind = p & 0xff, sw = p >>> 27;
     const now = kind === 3 || kind === 12;
@@ -239,6 +308,7 @@ export function stepPickups(game: AdventureGame): void {
     // Keys are lifted, not taken by touch (doors.ts liftKey); a thrown one flies on its own (doors.ts stepKeyThrow).
     if (!pickupShown(game, it) || it.fetched || it.type === "key") continue;
     it.tick++;
+    if (it.shuttle) stepShuttle(it, it.shuttle);
     if (it.actor < 0 && it.z > 0) {
       // Falling to the ground.
       it.vz = Math.max(-GEM_MAX_FALL, it.vz - GEM_GRAVITY);

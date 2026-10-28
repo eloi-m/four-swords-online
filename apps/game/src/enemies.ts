@@ -251,13 +251,13 @@ function facingOf(dx: number, dy: number): Facing | null {
 }
 
 /**
- * Pickups: a Force Gem its type's frame (enemy_both2, the huge ones enemy_gc; the sparkle steps aren't drawn), a small
- * heart HART's enemy_both2 44, a key KEY0's 45 + its kind.
+ * Pickups: a Force Gem its type's frame (enemy_both2, the huge ones enemy_gc; a RUPY's sparkle steps aren't drawn, a
+ * hovering one's are: hoverGlint), a small heart HART's enemy_both2 44, a key KEY0's 45 + its kind.
  */
 function pickupLook(p: Pickup): Look | null {
   switch (p.type) {
     case "gem":
-      return { sob: p.kind >= 8 ? "gc" : "both2", frame: GEM_FRAMES[p.kind]! };
+      return { sob: p.kind >= 8 ? "gc" : "both2", frame: GEM_FRAMES[p.kind]! + (p.from === "HNRY" && p.kind < 8 ? hoverGlint(p.tick) : 0) };
     case "heart":
       return { sob: "both2", frame: 44 };
     case "key":
@@ -266,6 +266,18 @@ function pickupLook(p: Pickup): Look | null {
       return null; // TODO: LSTI's look (the item's own sprite)
   }
 }
+
+/**
+ * A hovering gem's (HNRY) glint: its frame + 0 for 61 frames, then + 1, 2, 3 two frames each (HNRY's update: a counter
+ * against 60, 62, 64, 66, table 0x804716A8). Which frame of the cycle a gem starts on: from when it appeared here.
+ */
+export const hoverGlint = (tick: number) => [0, 1, 1, 2, 2, 3, 3][Math.max(0, (tick % 67) - 60)]!;
+/**
+ * A hovering gem's bob (px over its height): HNRY's update eases +0x2B8 a tenth of the way (at most 0.2 px a frame)
+ * to 3 + 3 sin of a phase going 512-767 of 65536 a frame at random; drawn as that easing's mean, 3 + 2.6 sin over 102.4
+ * frames (bobbing 8-14 px up for a gem at 8: Dolphin's frames show 11-13 at zoom 1.5).
+ */
+export const hoverBob = (tick: number) => 3 + 2.6 * Math.sin((2 * Math.PI * tick) / 102.4);
 
 /**
  * The Fire Rod's bolts and the stumps burning: BLZ2's GBA flame, enemy_both2 265-268, 6 ticks a step (a stand-in:
@@ -350,7 +362,9 @@ export class EnemyView {
     const wanted: Look[] = [];
     for (const kind of [0, 1, 2]) for (let f = 0; f < 16; f++) wanted.push({ sob: "gc", frame: (kind === 1 ? 1094 : 0) + f, palettes: { 3: kind === 1 ? 4 : kind === 2 ? 5 : 3 } });
     wanted.push({ sob: "gc", frame: 37 });
-    GEM_FRAMES.forEach((frame, kind) => wanted.push({ sob: kind >= 8 ? "gc" : "both2", frame }));
+    GEM_FRAMES.forEach((frame, kind) => {
+      for (let k = 0; k < (kind < 8 ? 4 : 1); k++) wanted.push({ sob: kind >= 8 ? "gc" : "both2", frame: frame + k });
+    });
     for (let f = 44; f < 62; f++) wanted.push({ sob: "both2", frame: f });
     for (let n = 1; n < GEAR_BY_NUMBER.length; n++) wanted.push({ sob: "both2", frame: 64 + n });
     for (let f = 341; f <= 343; f++) wanted.push({ sob: "both2", frame: f });
@@ -437,7 +451,10 @@ export class EnemyView {
       this.pullHandles(game, stage, things);
       this.escortZoras(game, stage, things);
     }
-    for (const p of game.adventure.pickups) things.push({ look: pickupLook(p), x: p.x, y: p.y, z: p.z, type: p.from, hidden: !pickupShown(game, p) });
+    for (const p of game.adventure.pickups) {
+      const z = p.from === "HNRY" ? p.z + Math.round(hoverBob(p.tick) * SUBPX) : p.z;
+      things.push({ look: pickupLook(p), x: p.x, y: p.y, z, type: p.from, hidden: !pickupShown(game, p) });
+    }
     const a = game.adventure;
     // A key carried overhead (sim doors.ts), rising while he lifts it.
     if (a.keys > 0) {
@@ -577,7 +594,8 @@ export class EnemyView {
   }
 
   /**
-   * The minor Shadow Links' shadow and afterimages (their draw 0x80220F54). Its shadow spec 7: his own frame squashed
+   * The minor Shadow Links' shadow and afterimages (their draw 0x80220F54), and the hovering gems' shadows (the same spec
+   * 7, their gem's frame). Its shadow spec 7: his own frame squashed
    * 0.9 × 0.5 at height -5, flat (40, 40, 40), on the ground under him whatever his height, an actor shadow's opacity
    * (223, less z / 2 in the air, at least 159), none on ground types 0x02, 0x03, 0x0E
    * (docs/formats/sprites-and-actors.md). Its afterimage kind 14 (sim MINOR_SHADOW_AFTERIMAGE): a black copy of him
@@ -589,7 +607,23 @@ export class EnemyView {
     const A = MINOR_SHADOW_AFTERIMAGE, tick = game.tick, atlas = this.atlas;
     // Stamps from ticks not reached any more (a rollback, a replay) go.
     this.trails = this.trails.filter((t) => t.tick <= tick && tick - t.tick < A.life);
-    let shadows = 0;
+    let shadows = 0, minor = 0;
+    /** A spec 7 shadow: the look's frame, flat, squashed, on the ground at (x, y) (none on ground types 0x02, 0x03, 0x0E). */
+    const silhouette = (look: Look, x: number, y: number, z: number) => {
+      const slot = this.slots.get(this.key(look));
+      const ground = stage ? stage.tileTypeAt(currentArea(game, stage), x, y) : 0;
+      if (!atlas || slot === undefined || ground === 0x02 || ground === 0x03 || ground === 0x0e) return;
+      let mesh = this.silhouettes[shadows];
+      if (!mesh) {
+        mesh = new ShadowSprite(atlas, LINK_SHADOW.color);
+        this.silhouettes.push(mesh);
+        this.group.add(mesh);
+      }
+      shadows++;
+      const s = linkShadow(x, y, 0);
+      mesh.setFrame(slot);
+      mesh.place(s.x, s.y, 2 + (y - 0.5) * DEPTH_PER_PIXEL, s.sx, s.sy, actorShadowOpacity(z));
+    };
     if (atlas) {
       for (const e of game.adventure.enemies) {
         if ((e.type !== "ZSLH" && e.type !== "ZSLJ") || !enemyShown(game, e)) continue;
@@ -598,19 +632,14 @@ export class EnemyView {
         const x = Math.floor(e.x / SUBPX), y = Math.floor(e.y / SUBPX), z = Math.floor(e.z / SUBPX);
         const at = tick - (tick % A.every);
         if (tick - at <= 1 && !this.trails.some((t) => t.id === e.id && t.tick === at)) this.trails.push({ id: e.id, tick: at, frame, x, y, z });
-        const slot = this.slots.get(this.key({ sob: "player", frame }));
-        const ground = stage ? stage.tileTypeAt(currentArea(game, stage), x, y) : 0;
-        if (slot === undefined || ground === 0x02 || ground === 0x03 || ground === 0x0e) continue;
-        let mesh = this.silhouettes[shadows];
-        if (!mesh) {
-          mesh = new ShadowSprite(atlas, LINK_SHADOW.color);
-          this.silhouettes.push(mesh);
-          this.group.add(mesh);
-        }
-        shadows++;
-        const s = linkShadow(x, y, 0);
-        mesh.setFrame(slot);
-        mesh.place(s.x, s.y, 2 + (y - 0.5) * DEPTH_PER_PIXEL, s.sx, s.sy, actorShadowOpacity(z));
+        silhouette({ sob: "player", frame }, x, y, z);
+      }
+      minor = shadows;
+      // The hovering gems' (HNRY's draw 0x8031A270: shadow spec 7, their gem's frame), none on a GBA screen.
+      for (const p of stage && currentArea(game, stage).sublayer === 0 ? game.adventure.pickups : []) {
+        if (p.from !== "HNRY" || !pickupShown(game, p)) continue;
+        const look = pickupLook(p);
+        if (look) silhouette(look, Math.floor(p.x / SUBPX), Math.floor(p.y / SUBPX), Math.floor(p.z / SUBPX) + hoverBob(p.tick));
       }
     }
     for (let i = shadows; i < this.silhouettes.length; i++) this.silhouettes[i]!.visible = false;
@@ -635,7 +664,8 @@ export class EnemyView {
     }
     for (let i = n; i < this.trailPool.length; i++) this.trailPool[i]!.visible = false;
     if (n) this.drawn.afterimages = n;
-    if (shadows) this.drawn.minorShadowShadows = shadows;
+    if (minor) this.drawn.minorShadowShadows = minor;
+    if (shadows > minor) this.drawn.gemShadows = shadows - minor;
   }
 
   /**

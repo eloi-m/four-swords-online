@@ -57,7 +57,8 @@ Index of the docs: [README.md](README.md).
   from the place and pairs the live actors at each moment (`diff.ts`: same within ±4 px, moved, missing from ours,
   extra in ours), with the frames side by side at 640 x 480 (`side-t<s>.png`, Dolphin left). Ours: an adventure room
   entered at the leader's spot (`#room`; a GBA area is not supported, it needs the route's state), each Link put on
-  Dolphin's; a battle round state's arena with its props, the Links at Dolphin's starts and control on the same frame
+  Dolphin's, and a shuttling hovering gem (`HNRY`) given the way, timer and speeds of Dolphin's (`live.ts` reads
+  them: `LIVE_FIELDS`; our frames still start it from the room's entry); a battle round state's arena with its props, the Links at Dolphin's starts and control on the same frame
   (the replay record's `start`, @fso/sim replay.ts). Our frames come from the app's dev server, which compare.ts
   starts on port 5560 (`--web-port`) replaying `out/dolphin-compare/captures`. Actors the sim keeps no object for are
   shown at their placed px (`placed`). SWTH floor switches come out 8 px up-left of Dolphin's on both sides (The

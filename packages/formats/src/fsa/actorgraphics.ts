@@ -283,10 +283,16 @@ export const ACTOR_LOOKS: Readonly<Record<string, ActorLook>> = {
   },
   OBLF: {
     draw: "sprite",
-    confidence: "guessed",
-    note: "object lift (stone slabs): both 20 + a params-selected shape; the mapping from params is a guess",
+    confidence: "confirmed",
+    note:
+      "object lift (stone slabs): both 20 + its shape, (p & 0xF) + ((p >> 16) & 0xF) × 16 (init 0x8035151C, +0x258; " +
+      "shapes 0-20, each with its own box). Shapes 0-13 are the slab frames 20-33; Lake Hylia's raft (0x80012124) is " +
+      "shape 20, both 40, a dark ball on the TV palette and nothing to see in Dolphin's GBA window: not drawn",
     facts: [{ at: 0x8034f3c0, imm: 20 }],
-    pieces: (a) => [sprite("both", 20 + Math.min(a.params & 0xf, 13))],
+    pieces: (a) => {
+      const shape = (a.params & 0xf) + ((a.params >>> 16) & 0xf) * 16;
+      return shape <= 13 ? [sprite("both", 20 + shape)] : [];
+    },
   },
   YAJI: {
     draw: "sprite",

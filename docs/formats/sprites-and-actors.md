@@ -34,7 +34,8 @@ Part of the FSA file-format notes (index: [../formats.md](../formats.md)).
   the warp that led into it. Implemented in `packages/sim/src/adventure/` (stage.ts `warpTarget`, adventure.ts).
 - **confirmed** (main.dol) `RUPY` Force Gems: type = params & 0xFF (0-11), look table 0x80471948 (Actor graphics), worth
   table 0x804719D8: 1, 5, 20, 50, 100, 150, 200, 300, 1000, 1500, 2000, 3000. `HNRY` hovering gems show (and so are
-  worth) the gem of table 0x804AB038 by params & 7. A stage's goal wants 2000 Force Gems from the four Links together
+  worth) the gem of table 0x804AB038 by params & 7; of kind (p >> 16) & 0xFF 1, 2, 6, 7 they shuttle (pickups.ts
+  `HOVER_SHUTTLE`, update 0x8031A6A4, init 0x8031B994). A stage's goal wants 2000 Force Gems from the four Links together
   (0x802F0404). `packages/sim/src/adventure/pickups.ts`.
 - Adventure stage machinery, read from main.dol (vtable slot 3 = init, slot 5 = update), implemented in
   `packages/sim/src/adventure/` (`logic.ts`, `doors.ts`, `chests.ts`, `pickups.ts`, `enemies.ts`); a room's 32
@@ -202,7 +203,7 @@ at the frames of the block the code draws from; for ZASL, ZSLH and KEPO the pick
   | FGAL (4 girls) | both2 910 ×4, 16 px apart downward | confirmed: direction table 0x80474EE0 (913 up, 907 left, 904 right, 910 down) + walk table 0x80474ED0; the savestate has all four at 910 in that column, as Dolphin frame 1 shows. They then cycle through formations (ring, square…), so later frames differ |
   | JIJI (villagers) | variant = params byte 2 -> table 0x804753C0 (base frame, SOB) + the variant's animation set's down offset (table 0x80475498) | confirmed; RAM: the room-1 old man has variant 0, base 902, SOB both2, frame 902/903 |
   | RUPY (Force Gems) | table 0x80471948 by params & 0xFF: 0-7 both2, 8-11 gc | confirmed |
-  | HNRY (hovering gem) | both2 table 0x804AB038 by params & 7 | confirmed (sparkles not drawn) |
+  | HNRY (hovering gem) | both2 table 0x804AB038 by params & 7, + its glint step (0 for 61 frames, then 1, 2, 3 two frames each); bobbing +0x2B8 over its height (8 or 24), shadow spec 7 (its own frame) | confirmed (draw 0x8031A270) |
   | SLR1 (soldier) | kind = params & 7: both 155 or both2 512 (kinds 1-3); palette 2 (and 8) <- table 0x8049FA40 | confirmed |
   | OKTA (Octorok) | gc 8 (kind 1: gc 1102), palette 3 <- 3/4/5 | confirmed (spawn direction is random; down shown). Animated (draw 0x8013FA08): gc 0 + 4 × direction + step, the step bit 2 of the walk count (+0x234) while walking, 2 + the spit pose while spitting; its rock `OKTM` gc 37 |
   | PLAS (player start) | player_sob 8 × direction, palettes 7/15 <- 12 + player | confirmed: direction table 0x8046C890 |
@@ -210,7 +211,7 @@ at the frames of the block the code draws from; for ZASL, ZSLH and KEPO the pick
   | CNON 332, PUKU 323, FTGL 192, YNSW both 13, YAJI both 16 + params & 0xF, BLCK both 4 + size / 69 / 72 + color, ZORA gc 213, HBMB both2 232, BEEE both2 460, SNPC variants, RCK2 both2 43 (+8 y) | as listed | confirmed: the constants are the draw call's immediates |
   | ZASL gc 721, SLR4 gc 556, NIWA both2 687, CIRC gc 297 + color, KEY0 both2 45 + kind, LSTI both2 64 + item, ZSLH player_sob 16, ZSLJ 62 (palette 7 left as is = dark; both simulated in Lake Hylia, rooms 4 and 3, their +0x280 traced: 60 + facing standing (62 down: ZSLJ's frame through his hops and jumps), ZSLH's 305-307, 379, 380-386 the hammer: sim minorshadow.ts; their draw 0x80220F54 also passes shadow spec 7 and afterimage kind 14, below), RCK3 `yy_1_1_iwa1.bti` | base frame from code, resting pose or param field picked visually | matched |
   | BLZ2 (eternal flame) | TV: an effect; GBA: both2 265 + step (from BLZE, which BLZ2 spawns), drawn as a stand-in | matched |
-  | KEPO gc 618, OBLF both 20 + shape, CRGN both2 144 ('?' crystal ball; the content is chosen at run time) | | guessed |
+  | KEPO gc 618, OBLF both 20 + shape ((p & 0xF) + ((p >> 16) & 0xF) × 16, init 0x8035151C; shape 20, room 6's raft, not drawn: below 14 the slabs), CRGN both2 144 ('?' crystal ball; the content is chosen at run time) | | guessed |
   | PLSW (pull handle), STBL (throne) | PLSW both2 327 + length class (0 under 1 px out, 1 under 3, 2 under 8, 4 out for good) at its home; STBL both2 449 at 2×, 16 px below its placement | confirmed (Hyrule Castle: below) |
   | FAZR, FZRA (escort Zoras), PSWB (four-Link handle) | both2 578 + animation frame; data.arc `timg/4hippari_switch_0-4.bti` | matched (below) |
   | KNBN, TKRA, SWTH, DOOR, TRCH, PNPC, RBPN, TFLR, TMI2, DOSN, SVGT | nothing: the look is in the tile layers | matched (no sprite/texture draw reachable) |

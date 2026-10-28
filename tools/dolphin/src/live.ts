@@ -31,7 +31,18 @@ export interface LiveActor {
   screen: number;
   x: number;
   y: number;
+  /** Fields read for some types (LIVE_FIELDS). */
+  fields?: Record<string, number>;
 }
+
+/** Fields read from the live actors of some types, by name: offset and kind (f32 or i32). */
+export const LIVE_FIELDS: Readonly<Record<string, Readonly<Record<string, readonly [number, "f32" | "i32"]>>>> = {
+  // A hovering gem's shuttle (sim pickups.ts HOVER_SHUTTLE): the way, the timer, velocity, target velocity, its place.
+  HNRY: {
+    dir: [0x98, "i32"], timer: [0x250, "i32"], vx: [0x3c, "f32"], vy: [0x40, "f32"], tvx: [0x28c, "f32"], tvy: [0x290, "f32"],
+    homeX: [0x298, "f32"], homeY: [0x29c, "f32"],
+  },
+};
 
 export interface LiveState {
   links: LiveLink[];
@@ -87,7 +98,11 @@ export function readLive(mem1: Uint8Array, vtables: Map<number, string[]>, all =
   }
   const actors = liveActors(mem1, vtables)
     .filter((a) => a.addr < LIVE_LIMIT && (all || !a.ids.some((id) => UNDRAWN.has(id))))
-    .map((a) => ({ addr: a.addr, id: a.ids.join("/"), screen: a.screen, x: a.x, y: a.y }));
+    .map((a) => {
+      const spec = a.ids.map((id) => LIVE_FIELDS[id]).find(Boolean);
+      const fields = spec && Object.fromEntries(Object.entries(spec).map(([k, [o, t]]) => [k, t === "f32" ? f32(a.addr + o) : v.getInt32(a.addr + o - MEM1_BASE)]));
+      return { addr: a.addr, id: a.ids.join("/"), screen: a.screen, x: a.x, y: a.y, ...(fields ? { fields } : {}) };
+    });
   let camera: LiveState["camera"] = null;
   const stage = u32(STAGE_PTR);
   if (inRam(stage) && inRam(u32(stage + 0x24))) {

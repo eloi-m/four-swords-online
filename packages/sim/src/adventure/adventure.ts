@@ -108,6 +108,9 @@ export interface AdventureState {
   entryX: number;
   entryY: number;
   entryFacing: Facing;
+  /** The tick the Links came into this room: its actors' clock, whichever area they're in (the game makes all of a
+   *  room's areas' actors as it comes in: Lake Hylia room 7's hovering gems, TV and caves, on one timer). */
+  roomTick: number;
   /** Walking into the next room (rooms.ts), while it lasts; the Links are already in the new room's coordinates. */
   edge: RoomTransition | null;
   /** Going through a door or another warp, while it lasts. */
@@ -320,6 +323,7 @@ export function createAdventure(stage: AdventureStage, opts: AdventureStart = {}
     entryX: leader.x,
     entryY: leader.y,
     entryFacing: leader.facing,
+    roomTick: 0,
     edge: null,
     warp: null,
     stairs: null,
@@ -828,7 +832,7 @@ export function enterArea(game: AdventureGame, stage: AdventureStage, room: numb
   a.blocks = [];
   a.colorBlocks = [];
   a.bushSeen = 0;
-  if (newRoom) a.kills = 0;
+  if (newRoom) (a.kills = 0), (a.roomTick = game.tick);
   spawnEnemies(game, stage);
   spawnGanon(game, stage);
   spawnGenerators(game, stage);

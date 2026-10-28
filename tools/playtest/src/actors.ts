@@ -48,6 +48,9 @@ export interface ActorFinding {
 
 // Known findings (by key) and what they are: reported, not fixed here.
 export const EXPECTED_ACTORS: Readonly<Record<string, string>> = {
+  // Room 6's raft is OBLF shape 20 (formats actorgraphics.ts): both 40 is a dark ball on the TV palette and Dolphin's
+  // GBA window shows nothing there; its GBA-screen draw (0x80307AC8) isn't read, so it's left undrawn.
+  "undrawn rock OBLF": "the raft's GBA-screen look not read (shape 20)",
   // The open doors are drawn with the game's open tiles (doorlook.ts); their types (0x2A/0x2B: walkable quarters the
   // shut tiles' type 1 hasn't) aren't applied to the sim's collision, which keeps the door's wall (the warp takes the
   // Links through).
