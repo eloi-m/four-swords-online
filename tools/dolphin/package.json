@@ -8,6 +8,18 @@
     "trace": "node src/trace.ts",
     "trace-print": "node src/trace-print.ts",
     "fixture": "node src/fixture.ts",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "place": "node src/place.ts",
+    "compare": "node src/compare.ts",
+    "clip": "node src/clip.ts"
+  },
+  "dependencies": {
+    "@fso/capture": "workspace:*",
+    "@fso/formats": "workspace:*",
+    "@fso/sim": "workspace:*"
+  },
+  "devDependencies": {
+    "@fso/e2e": "workspace:*",
+    "puppeteer-core": "^25.12.0"
   }
 }

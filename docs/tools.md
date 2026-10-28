@@ -22,6 +22,9 @@ Index of the docs: [README.md](README.md).
   `<base>data/` URLs in dev and `vite preview` from `extracted/`, or from `FSO_DATA` (another extracted disc or a
   bundle); manifest `no-cache`, hashed files `immutable`
 - `tools/census` — catalogs every file (recursing into archives) for format discovery
+- `tools/dolphin` — Dolphin reference runs (`docs/dolphin.md`): `trace.ts` (RAM traces), `place.ts` (savestates kept
+  with their recipe, rebuilt and checked), `compare.ts` (live actors and frames against ours at a place), `clip.ts`
+  (one script in both, the first divergence)
 - `tools/render` — PNG renders (`room.ts`, `ACTORS=1` adds actor sprites, `SUBLAYER=1-7` a GBA side room; `stage.ts`, `textures.ts`, `sprites.ts`), `compare.ts` (fits our render onto a Dolphin frame dump)
   and `swordboxes.ts` (sword hitboxes per player_sob frame, for `packages/sim/src/animations.ts`)
 - `tools/audio` — `node tools/audio/src/audio.ts inventory|stages|waves|ast|bms|render` (WAVs into `out/audio/`;

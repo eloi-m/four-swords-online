@@ -349,7 +349,24 @@ importers:
         specifier: workspace:*
         version: link:../../packages/formats
 
-  tools/dolphin: {}
+  tools/dolphin:
+    dependencies:
+      '@fso/capture':
+        specifier: workspace:*
+        version: link:../capture
+      '@fso/formats':
+        specifier: workspace:*
+        version: link:../../packages/formats
+      '@fso/sim':
+        specifier: workspace:*
+        version: link:../../packages/sim
+    devDependencies:
+      '@fso/e2e':
+        specifier: workspace:*
+        version: link:../e2e
+      puppeteer-core:
+        specifier: ^25.12.0
+        version: 25.12.0
 
   tools/e2e:
     dependencies:

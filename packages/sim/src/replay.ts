@@ -3,7 +3,7 @@
 // (tools/capture, apps' F8) replays exactly in node or in a page (#replay=). The log is run-length encoded: buttons
 // change a few times a second at most.
 import { arenaSpawns, buildArenaWorld } from "./arena.ts";
-import { createBattle, type BattleRules } from "./battle.ts";
+import { COUNTDOWN_TICKS, createBattle, type BattleRules, type Spawn } from "./battle.ts";
 import { addCpus, cpuInputs, type CpuLevel } from "./cpu.ts";
 import { stepGame, type GameState } from "./game.ts";
 import { hashState } from "./hash.ts";
@@ -68,6 +68,9 @@ export interface BattleRecord {
   rules: BattleRules;
   seed: number;
   cpus: { player: number; level: CpuLevel }[];
+  /** A round begun elsewhere (a Dolphin round state, tools/dolphin compare.ts); absent = the arena's starts in order
+   *  and the whole countdown. */
+  start?: RoundStart;
   /** The humans' buttons (CPU slots 0) fed to cpuInputs on each step. */
   inputs: InputRuns;
   checkpoints: [tick: number, hash: number][];
@@ -113,11 +116,26 @@ export function replaySteps<S>(state: S, record: ReplayRecord, step: (state: S, 
   return { state, steps, hash: hashState(state), diverged };
 }
 
+/** A round's start other than the arena's: the Links' starts in player order, and the countdown's ticks left. */
+export interface RoundStart {
+  spawns: Spawn[];
+  countdown: number;
+}
+
+/** The Links' starts of a match: the round start's, else the arena's in order. */
+export const matchSpawns = (stage: Stage, room: number, players: number, start?: RoundStart): Spawn[] => start?.spawns ?? arenaSpawns(stage, room).slice(0, players);
+
+/** A new match's countdown cut to a round start's. */
+export function applyRoundStart(game: GameState, start?: RoundStart): void {
+  if (start && game.battle?.phase === "countdown") game.battle.phaseTick = Math.max(0, COUNTDOWN_TICKS - start.countdown);
+}
+
 /** A battle record's start, as apps/battle builds it: the world, then the state before its first step. */
 export function startBattle(record: BattleRecord, stage: Stage, tileTypes: Uint16Array): { game: GameState; world: World } {
   const world = buildArenaWorld(stage, tileTypes, record.room);
-  const spawns = arenaSpawns(stage, record.room).slice(0, record.players);
+  const spawns = matchSpawns(stage, record.room, record.players, record.start);
   const game = createBattle(record.room, spawns, record.rules, arenaProps(stage, tileTypes, record.room), record.seed);
+  applyRoundStart(game, record.start);
   addCpus(game, record.cpus);
   return { game, world };
 }

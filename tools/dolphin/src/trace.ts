@@ -15,8 +15,8 @@
 //   --ports gba,gba (what ports 1–4 hold: gc, gba = Dolphin's integrated GBA, none; default gc; the savestate's own
 //   layout from its .json when it has one). GBA ports need the battle user folder (battle-user.ts), the default then.
 //   --boot (start from power-on instead of a savestate; frames count from the first main-loop pass)
-//   --save <frame>:<path.sav> (repeatable; saves a state at that frame's breakpoint through the hotkey pipe, with a
-//   <path>.json of how it was made; the movie must have ended by then, so the script stops before and --tail covers it)
+//   --save <frame>:<path.sav> (repeatable; saves a state at that frame's breakpoint through the hotkey pipe, with its
+//   recipe <path>.json (how it was made, pokes included: recipe.ts, place.ts); the movie must have ended by then, so the script stops before and --tail covers it)
 //   --from <frame> (records snapshots from that frame on only: faster while booting or walking through menus)
 //   --link <hexoff>:<hexlen> (repeatable; also records those bytes of every Link each frame, as hex in `links[i].raw`,
 //   e.g. --link 35c:c for the push velocity)
@@ -149,6 +149,7 @@ const gbaPorts = ports.lastIndexOf("gba") + 1;
 const records: (FrameSnapshot & { f: number; input: string })[] = [];
 const dumpDir = join(userDir, "Dump", "Frames");
 const frameDumps: number[] = [];
+const dumpedBefore = values["dump-frames"] && existsSync(dumpDir) ? readdirSync(dumpDir).length : 0;
 let actors: number[] = [];
 try {
   const gdb = await GdbClient.connect(Number(values.port), "127.0.0.1", 60000);
@@ -219,6 +220,7 @@ try {
       if (now.join() !== actors.join()) actors = now;
       records.push({ f, input: labels[f] ?? "tail", ...(await readSnapshot(gdb, actors, gbaPorts, linkFields)) });
     }
+    if (values["dump-frames"]) frameDumps.push(existsSync(dumpDir) ? readdirSync(dumpDir).length - dumpedBefore : 0);
     for (let r = 0; r < raw.length; r++) rawBufs[r]!.set(await gdb.readMemory(raw[r]![0], raw[r]![1]), f * raw[r]![1]);
     for (const [df, addr, len] of dumps) if (df === f) writeFileSync(`${out}.f${f}.${addr.toString(16)}.bin`, await gdb.readMemory(addr, len));
     for (const w of writes) if (w.f === f) await gdb.writeMemory(w.addr, w.data);
@@ -243,7 +245,9 @@ try {
         resumed = true;
       });
       if (movieActive) console.error(`warning: ${s.path} was saved while the movie still played (it ended late): make the tail longer`);
-      const info = { ports, frame: f, retrace, movieActive, script, from: savestate ? values.savestate : "boot" };
+      // The state's recipe (recipe.ts): enough to make it again, pokes included.
+      const pokes = Object.fromEntries((["tele", "write", "fill", "patch"] as const).flatMap((k) => (values[k]!.length ? [[k, values[k]]] : [])));
+      const info = { ports, frame: f, retrace, movieActive, script, from: savestate ? values.savestate : "boot", ...pokes };
       writeFileSync(`${s.path}.json`, JSON.stringify(info, null, 2) + "\n");
       console.log(`state at frame ${f} -> ${s.path}`);
     }

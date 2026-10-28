@@ -41,3 +41,31 @@ Index of the docs: [README.md](README.md).
   A movie that starts from a savestate needs the state at `<movie>.sav` and, for states not recorded with a movie, a
   copy of the movie at `<movie>.sav.dtm` or Dolphin stops playback on load. Only one tracer at a time per GDB port;
   graphics dump switches only take effect from the user folder's `GFX.ini`, not `-C`.
+
+## Places, comparisons and clips (Dolphin against ours)
+- **Recipes.** `trace.ts --save` writes next to each state its recipe `<state>.sav.json`: the parent state (or `boot`),
+  the script, the pokes (`tele`, `write`, `fill`, `patch`), the port layout and the frame (`recipe.ts`; older states
+  noted some pokes as free text or not at all, and say so). `place.ts` keeps named places in `ref/`:
+  `node tools/dolphin/src/place.ts save ref/places/lake-room7.sav --from ref/adv/room5-river.sav --script "5 idle;
+  40 right; 20 idle; 160 up; 40 idle; 40 up; 30 idle"` saves the state 10 frames after the script (`--at <frame>`),
+  with its `place`: the stage and room (from the leader's cell; on a GBA screen `--room`) or the arena, and the
+  Links. `place.ts check <state>` replays the recipe from its parent and compares the Links on its frame with the
+  place (exit 1 when they differ: `ref/adv/room9.sav`'s chain, for one, no longer lands where it was saved);
+  `build <state> [--parents]` makes it again (missing parents first); `show <state>` prints the recipe and the state
+  read offline (`live.ts <state.sav|mem1>`: the Links, the live actors by vtable, the camera).
+- **Compare at a place:** `node tools/dolphin/src/compare.ts <state.sav> [--at 0,2,5]` leaves Dolphin and ours idle
+  from the place and pairs the live actors at each moment (`diff.ts`: same within ±4 px, moved, missing from ours,
+  extra in ours), with the frames side by side at 640 x 480 (`side-t<s>.png`, Dolphin left). Ours: an adventure room
+  entered at the leader's spot (`#room`; a GBA area is not supported, it needs the route's state), each Link put on
+  Dolphin's; a battle round state's arena with its props, the Links at Dolphin's starts and control on the same frame
+  (the replay record's `start`, @fso/sim replay.ts). Our frames come from the app's dev server, which compare.ts
+  starts on port 5560 (`--web-port`) replaying `out/dolphin-compare/captures`. Actors the sim keeps no object for are
+  shown at their placed px (`placed`). SWTH floor switches come out 8 px up-left of Dolphin's on both sides (The
+  Field, Lake Hylia room 7): a difference of where the position is taken, so far.
+- **Clip diff:** `node tools/dolphin/src/clip.ts <state.sav> --script "<script>"` plays the script in Dolphin, feeds
+  ours what Dolphin's game read each frame (the GBA keys, or the pad: B sword, A item, R action, the C stick's
+  formations) from the same place, and reports the first frame a Link is more than 1 px off (`--tol`), with a table
+  every 10 frames (`--every`) and around it.
+- Output in `out/dolphin-compare/<name>/` (report.md, diff.json or clip.json, the frames); defaults GDB port 2490,
+  user folders `ref/dolphin-user-compare` (GBA ports) and `ref/dolphin-user-compare-adventure` (`--user`, `--port`).
+  Dolphin's camera is not ours (zoom in the report), and the live reader sees only actors spawned by ID.
