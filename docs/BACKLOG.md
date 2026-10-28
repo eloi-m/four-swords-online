@@ -508,7 +508,7 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      `playtest:actors --census` lists them "drawn: hidden". **Done (2026-10-18):** Lake Hylia's two stay drawn,
      standing facing down as Dolphin shows them (ZSLH was the hammer frame 363, now 16 like ZSLJ). **Done
      (2026-10-18):** room 4's ZSLH simulated (sim `minorshadow.ts`, traced: by time, not distance; three blows that stun
-     the leader, the spin, the smoke, off the TV), Hyrule Castle's too; left: a sword on him, the camera widening, his
+     the leader, the spin, the smoke, off the TV), Hyrule Castle's too; left: a sword on him, his
      sounds. **Done (2026-10-21):** room 3's doorway ZSLJ simulated (sim `minorshadow.ts`, traced: hops in place, a
      Link within 48 px sets him off, a 44-tick jump 125.16 px aside on his next landing, three of them, then ZSLH's
      spin, smoke and walk off; the door does nothing to him, the old "gone when the key opens it" is dropped), drawn
@@ -593,10 +593,15 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   2. The four-Link switch (`YNSW`) snaps the Links round its own position ((128, 93.5) for the switch at (128, 96)),
      ours round 8 px further ((136, 104)): from Dolphin's inputs ours misses the catch and the door stays shut. Dolphin
      holds the pose 95 frames (232 for 45, 220 → 232 two frames each, 232 for 26), ours 9.
-  3. The camera's zoom varies (room 0 1.75, room 3 1.51, room 7 1.43 → 1.19, room 9 1.89 → 1.20, GBA areas 1.1875);
-     ours is fixed at 2.14.
+  3. **Done (2026-10-28):** the camera's zoom (room 0 1.75, room 3 1.51, room 7 → 1.19, room 9 1.89 → 1.20, GBA areas
+     1.1875): apps/game `camera.ts`, main.dol's rule replayed against Dolphin's traces to the pixel. Left: the points
+     of the types not simulated or not read (`DOOR`, `GOL2`'s pads, `HNRY` kind 8, `KEPO`, `SWT4`, `FTGL`, the bosses), the
+     camera's special focus (+0x7F4: the owl, a Shadow Link's entrance) and its shake; the sim's `FOCS` still waits 30
+     ticks, not for the camera (docs/measurements/adventure-lake-hylia.md "the TV camera").
   4. The HUD changes corner (room 0 bottom-right mirrored, room 1 bottom-left; it left the top-left as the Links reached
-     room 6's top-left); ours stays top-left.
+     room 6's top-left); ours stays top-left. Read: the several players' corners (0x8042165C: ten spots, a Link within
+     ±94 × ±61.5 px of one keeps it free, 60 frames before a corner moves); the single player's rule isn't that one
+     (never reached in a trace) and wasn't found, nor the mirrored layout's panes.
   5. Winged Force Gems (`HNRY`) move by their params (room 7's, 0x71000: x 232.7 ↔ 389.4 at 0.8 px/frame, ~396 frames a
      round trip; room 6 area 6's and room 7 area 5's too; rooms 2 and 3's stay), bobbing 16-19 px over a gem-shaped
      shadow; ours are still, with no shadow.
