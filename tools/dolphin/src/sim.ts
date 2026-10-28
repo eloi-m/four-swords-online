@@ -1,0 +1,146 @@
+// Our sim at a Dolphin place (place.ts): the stage built as the apps build it, the Links put where Dolphin's stand, and
+// what is in it as diff.ts bodies, in the px both sides share (an adventure room's own px, an arena's room px with its
+// side rooms below it).
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { decompressYaz0, Dol, isYaz0, loadActorTypes, parseBmg, parseRarc, readTileTypes, Stage, type RarcArchive } from "@fso/formats";
+import {
+  applyRoundStart, arenaProps, buildArenaWorld, createBattle, SIDE_ROOM_STRIDE, stepGame, SUBPX, type BattleRules, type Facing, type GameState, type RoundStart,
+  type Spawn, type World,
+} from "@fso/sim";
+import { actorStats, AdventureStage, createAdventure, messageBook, playedAlone, stepAdventure, type AdventureGame } from "@fso/sim/adventure";
+import type { Body, ClipLink } from "./diff.ts";
+import { UNDRAWN, type LiveActor } from "./live.ts";
+import { CELL_H, CELL_W, localPx, type Place } from "./recipe.ts";
+
+export const FACINGS: readonly Facing[] = ["right", "left", "down", "up"];
+/** A round state loads this many frames before the players get control (docs/measurements/battle-arenas.md). */
+export const ROUND_STATE_LEAD = 10;
+/** Link state 1: a Link not in the round (2-3 player games). */
+const STATE_ABSENT = 1;
+/** The round states' rules (the game's defaults; no time limit, as the states were made). */
+export const BATTLE_RULES: BattleRules = { hearts: 3, timeLimit: 0, wins: 3 };
+
+function archives(extracted: string) {
+  const archive = (path: string): RarcArchive => {
+    const bytes = readFileSync(join(extracted, "files/GC4Sword_usa", path));
+    return parseRarc(isYaz0(bytes) ? decompressYaz0(bytes) : bytes);
+  };
+  return { archive, tileTypes: readTileTypes(new Dol(readFileSync(join(extracted, "sys/main.dol")))) };
+}
+
+/** An adventure stage as apps/game builds it: played alone, the actors' stats, the English messages. */
+export function loadAdventureStage(extracted: string, name: string): AdventureStage {
+  const { archive, tileTypes } = archives(extracted);
+  const stage = new AdventureStage(playedAlone(new Stage(archive(`Boss/${name}.arc`))), tileTypes, actorStats(loadActorTypes(archive("data.arc")) ?? new Map()));
+  const bmg = archive("msgus.arc").files.find((f) => f.path.endsWith("_e.bmg"));
+  if (bmg) stage.messages = messageBook(parseBmg(isYaz0(bmg.data) ? decompressYaz0(bmg.data) : bmg.data));
+  return stage;
+}
+
+export interface Sim {
+  kind: "adventure" | "battle";
+  game: GameState;
+  step(buttons: readonly number[]): void;
+  bodies(): Body[];
+  links(): ClipLink[];
+}
+
+/** Room px of a Dolphin position at a place: an adventure room's own, an arena's with its side rooms below it. */
+export function placePx(place: Place, p: { x: number; y: number; screen: number }): { x: number; y: number } {
+  if (place.arena) return p.screen >= 8 ? { x: p.x, y: p.y + (p.screen - 7) * SIDE_ROOM_STRIDE } : { x: p.x - CELL_W, y: p.y - CELL_H };
+  return localPx(p, { cx: Math.floor(place.links[0]!.x / CELL_W), cy: Math.floor(place.links[0]!.y / CELL_H) });
+}
+
+/** Dolphin's actors at a place as bodies: an adventure's on the place's screen, an arena's on all its screens. */
+export function dolphinBodies(place: Place, actors: readonly LiveActor[], room?: { cx: number; cy: number }): Body[] {
+  const screen = place.area ? 7 + place.area : 0;
+  return actors
+    .filter((a) => (place.arena ? true : a.screen === screen))
+    .filter((a) => place.arena || a.screen !== 0 || !room || (Math.floor(a.x / CELL_W) === room.cx && Math.floor(a.y / CELL_H) === room.cy))
+    .map((a) => {
+      const p = place.arena ? placePx(place, a) : localPx(a, room ?? { cx: 0, cy: 0 });
+      return { kind: a.id, x: p.x, y: p.y };
+    });
+}
+
+/** Our adventure at a Dolphin place: its room entered at the leader's spot, then each Link put where Dolphin's stands. */
+export function adventureSim(stage: AdventureStage, place: Place): Sim & { adventure: AdventureGame; cell: { cx: number; cy: number } } {
+  if (place.area) throw new Error("our side starts in a room's TV part only (#room): a GBA area needs the route's state");
+  const cell = stage.cellOf(place.room);
+  if (!cell) throw new Error(`${place.stage} has no room ${place.room}`);
+  const local = place.links.map((l) => localPx(l, cell));
+  const g = createAdventure(stage, { room: place.room, x: Math.round(local[0]!.x), y: Math.round(local[0]!.y), players: place.links.length });
+  g.players.forEach((p, i) => {
+    p.x = Math.round(local[i]!.x * SUBPX);
+    p.y = Math.round(local[i]!.y * SUBPX);
+  });
+  const px = (v: number) => v / SUBPX;
+  return {
+    kind: "adventure",
+    game: g,
+    adventure: g,
+    cell,
+    step: (buttons) => stepAdventure(g, [buttons[0] ?? 0], stage),
+    links: () => g.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${g.adventure.links[i]?.mode ?? ""}` })),
+    bodies: () => {
+      const a = g.adventure;
+      const placed = stage.area(a.room, a.area).actors;
+      const used = new Set<number>();
+      const kindOf = (actor: number, own: string) => {
+        if (actor >= 0) used.add(actor);
+        return placed[actor]?.id ?? own;
+      };
+      const bodies: Body[] = [
+        ...a.enemies.map((e) => ({ kind: kindOf(e.actor, e.type), x: px(e.x), y: px(e.y), state: e.state })),
+        ...a.rocks.map((r) => ({ kind: kindOf(r.actor, r.type), x: px(r.x), y: px(r.y), state: r.state })),
+        ...a.pickups.map((p) => ({ kind: kindOf(p.actor, p.from), x: px(p.x), y: px(p.y), state: p.type })),
+      ];
+      // What the sim keeps no object for stands where it is placed.
+      placed.forEach((p, i) => used.has(i) || bodies.push({ kind: p.id, x: p.x, y: p.y, state: "placed" }));
+      return bodies.filter((b) => !UNDRAWN.has(b.kind));
+    },
+  };
+}
+
+/** Our entities' kinds as the game's actor types, where one matches. */
+const ENTITY_TYPES: Readonly<Record<string, string>> = { orb: "CRTL", bomb: "HBMB", flame: "BLZ2", pot: "TUBO" };
+
+/**
+ * Our battle at a Dolphin round state: the arena with its props, the Links in the round at Dolphin's starts (port
+ * order), the countdown left so that control comes on the frame Dolphin's does (`lead` frames in).
+ */
+export function battleSim(extracted: string, place: Place, opts: { seed?: number; lead?: number; live?: { state: number; facing: number }[] } = {}): Sim & { world: World; start: RoundStart } {
+  const { archive, tileTypes } = archives(extracted);
+  const stage = new Stage(archive("Boss/boss500.arc"));
+  const world = buildArenaWorld(stage, tileTypes, place.room);
+  const playing = place.links.filter((_, i) => (opts.live?.[i]?.state ?? 0) !== STATE_ABSENT).slice(0, place.players ?? 4);
+  const spawns: Spawn[] = playing.map((l, i) => ({ ...roundPx(placePx(place, l)), facing: FACINGS[opts.live?.[i]?.facing ?? 2]! }));
+  const start: RoundStart = { spawns, countdown: opts.lead ?? ROUND_STATE_LEAD };
+  const game = createBattle(place.room, spawns, BATTLE_RULES, arenaProps(stage, tileTypes, place.room), opts.seed ?? 1);
+  applyRoundStart(game, start);
+  const px = (v: number) => v / SUBPX;
+  return {
+    kind: "battle",
+    game,
+    world,
+    start,
+    step: (buttons) => stepGame(game, [...buttons], world),
+    links: () => game.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${game.battle!.fighters[i]!.mode}` })),
+    bodies: () => {
+      const b = game.battle!;
+      // A prop's own entity (its switch, its bees, its torch's crystal…) stands for it; what a prop makes (an orb, a
+      // bomb) is a thing of its own.
+      const live = new Set<number>();
+      const things = b.entities.map((e) => {
+        const own = !ENTITY_TYPES[e.kind] && e.home >= 0 && b.props.actors[e.home];
+        if (own) live.add(e.home);
+        return { kind: own ? own.id : (ENTITY_TYPES[e.kind] ?? e.kind), x: px(e.x), y: px(e.y), state: `${e.kind} ${e.phase}` };
+      });
+      const props = b.props.actors.flatMap((a, i) => (live.has(i) ? [] : [{ kind: a.id, x: a.x, y: a.y, state: "prop" }]));
+      return [...props, ...things].filter((x) => !UNDRAWN.has(x.kind));
+    },
+  };
+}
+
+const roundPx = (p: { x: number; y: number }) => ({ x: Math.round(p.x), y: Math.round(p.y) });
