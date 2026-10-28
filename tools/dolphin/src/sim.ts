@@ -104,7 +104,10 @@ export function adventureSim(stage: AdventureStage, place: Place): Sim & { adven
 }
 
 /** Our entities' kinds as the game's actor types, where one matches. */
-const ENTITY_TYPES: Readonly<Record<string, string>> = { orb: "CRTL", bomb: "HBMB", flame: "BLZ2", pot: "TUBO" };
+const ENTITY_TYPES: Readonly<Record<string, string>> = {
+  orb: "CRTL", bomb: "HBMB", flame: "BLZ2", pot: "TUBO", pickup: "LSTI",
+  soldier: "SLR1", bowSoldier: "SLR2", ballSoldier: "SLR3", captain: "SLR4", soldierArrow: "OKTM",
+};
 
 /**
  * Our battle at a Dolphin round state: the arena with its props, the Links in the round at Dolphin's starts (port
@@ -129,13 +132,14 @@ export function battleSim(extracted: string, place: Place, opts: { seed?: number
     links: () => game.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${game.battle!.fighters[i]!.mode}` })),
     bodies: () => {
       const b = game.battle!;
-      // A prop's own entity (its switch, its bees, its torch's crystal…) stands for it; what a prop makes (an orb, a
-      // bomb) is a thing of its own.
+      // A prop's own entity (its switch, its bees, its flame, its soldier…) stands for it; what a prop makes (an orb,
+      // an item, a spawner's soldier) is a thing of its own, and so is a socket's bomb (the game keeps both HBMBs).
       const live = new Set<number>();
       const things = b.entities.map((e) => {
-        const own = !ENTITY_TYPES[e.kind] && e.home >= 0 && b.props.actors[e.home];
-        if (own) live.add(e.home);
-        return { kind: own ? own.id : (ENTITY_TYPES[e.kind] ?? e.kind), x: px(e.x), y: px(e.y), state: `${e.kind} ${e.phase}` };
+        const prop = e.home >= 0 ? b.props.actors[e.home] : undefined;
+        const kind = ENTITY_TYPES[e.kind] ?? prop?.id ?? e.kind;
+        if (prop && prop.id === kind && e.kind !== "bomb") live.add(e.home);
+        return { kind, x: px(e.x), y: px(e.y), state: `${e.kind} ${e.phase}` };
       });
       const props = b.props.actors.flatMap((a, i) => (live.has(i) ? [] : [{ kind: a.id, x: a.x, y: a.y, state: "prop" }]));
       return [...props, ...things].filter((x) => !UNDRAWN.has(x.kind));
