@@ -503,7 +503,7 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      `playtest:actors --census` lists them "drawn: hidden". **Done (2026-10-18):** Lake Hylia's two stay drawn,
      standing facing down as Dolphin shows them (ZSLH was the hammer frame 363, now 16 like ZSLJ). **Done
      (2026-10-18):** room 4's ZSLH simulated (sim `minorshadow.ts`, traced: by time, not distance; three blows that stun
-     the leader, the spin, the smoke, off the TV), Hyrule Castle's too; left: a sword on him, the camera widening, his
+     the leader, the spin, the smoke, off the TV), Hyrule Castle's too; left: a sword on him, his
      sounds. **Done (2026-10-21):** room 3's doorway ZSLJ simulated (sim `minorshadow.ts`, traced: hops in place, a
      Link within 48 px sets him off, a 44-tick jump 125.16 px aside on his next landing, three of them, then ZSLH's
      spin, smoke and walk off; the door does nothing to him, the old "gone when the key opens it" is dropped), drawn
@@ -582,21 +582,26 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
 - **Lake Hylia against Dolphin (2026-10-28):** each room's live actors read from Dolphin RAM dumps and compared with
   the sim's, frames side by side, and three input clips replayed in both. Matching: every placed actor's position, the
   room-change arrival spots, the box formation (0.0 px), room 9's soldiers closing in on idle Links. Different:
-  1. Done (2026-10-28): slope tiles 0x08-0x0B, solid on one side of the diagonal by pixel; a Link walking into one
+  1. **Done (2026-10-28):** slope tiles 0x08-0x0B, solid on one side of the diagonal by pixel; a Link walking into one
      slides along it by the corner sliding (docs/measurements/walking-and-sword.md "Slopes"; the leader's walk up room
      2's area 5 within 0.4 px of Dolphin's). The Field's arena has eight (its two worlds): the battle changed too
      (`ONLINE_VERSION` 31).
-  2. Done (2026-10-28): the four-Link switch's catch, snap and 95-tick pose, read in main.dol and traced
+  2. **Done (2026-10-28):** the four-Link switch's catch, snap and 95-tick pose, read in main.dol and traced
      (`logic.ts` stepFourSwitch; from Dolphin's inputs the four match to 0.0 px through the snap and the pose). Left:
      from there Dolphin's door north takes the leader 98 frames after the switch, the right-hand Links pushing against
      the doorway's frame while he walks in; ours opens with the switch and the box formation stays held under the
      doorway by those Links (holdFormation), so the clip doesn't go through the door. Needs the `DOOR`'s opening
      timing (update 0x802C59D8) and when a pushing follower stops holding the leader (docs/measurements/
      adventure-lake-hylia.md "Room 2's cave").
-  3. The camera's zoom varies (room 0 1.75, room 3 1.51, room 7 1.43 → 1.19, room 9 1.89 → 1.20, GBA areas 1.1875);
-     ours is fixed at 2.14.
+  3. **Done (2026-10-28):** the camera's zoom (room 0 1.75, room 3 1.51, room 7 → 1.19, room 9 1.89 → 1.20, GBA areas
+     1.1875): apps/game `camera.ts`, main.dol's rule replayed against Dolphin's traces to the pixel. Left: the points
+     of the types not simulated or not read (`DOOR`, `GOL2`'s pads, `HNRY` kind 8, `KEPO`, `SWT4`, `FTGL`, the bosses), the
+     camera's special focus (+0x7F4: the owl, a Shadow Link's entrance) and its shake; the sim's `FOCS` still waits 30
+     ticks, not for the camera (docs/measurements/adventure-lake-hylia.md "the TV camera").
   4. The HUD changes corner (room 0 bottom-right mirrored, room 1 bottom-left; it left the top-left as the Links reached
-     room 6's top-left); ours stays top-left.
+     room 6's top-left); ours stays top-left. Read: the several players' corners (0x8042165C: ten spots, a Link within
+     ±94 × ±61.5 px of one keeps it free, 60 frames before a corner moves); the single player's rule isn't that one
+     (never reached in a trace) and wasn't found, nor the mirrored layout's panes.
   5. Winged Force Gems (`HNRY`) move by their params (room 7's, 0x71000: x 232.7 ↔ 389.4 at 0.8 px/frame, ~396 frames a
      round trip; room 6 area 6's and room 7 area 5's too; rooms 2 and 3's stay), bobbing 16-19 px over a gem-shaped
      shadow; ours are still, with no shadow.

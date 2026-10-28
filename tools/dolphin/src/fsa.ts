@@ -71,7 +71,8 @@ export interface LinkSnapshot {
 
 export interface FrameSnapshot {
   retrace: number;
-  pad: { buttons: number; x: number; y: number };
+  /** Pad 0 as PADRead filled it: buttons, the stick and the C stick (cx, cy; s8 each). */
+  pad: { buttons: number; x: number; y: number; cx?: number; cy?: number };
   stick: { x: number; y: number; angle: number };
   camera: { x: number; y: number; zoom?: number };
   links: LinkSnapshot[];
@@ -95,7 +96,7 @@ export async function linkActors(gdb: GdbClient): Promise<number[]> {
  *  every Link. */
 export async function readSnapshot(gdb: GdbClient, actors: readonly number[], gbaPorts = 0, extra: readonly (readonly [number, number])[] = []): Promise<FrameSnapshot> {
   const retrace = view(await gdb.readMemory(VI_RETRACE_COUNT, 4)).getUint32(0);
-  const pad = view(await gdb.readMemory(PAD_STATUS, 4));
+  const pad = view(await gdb.readMemory(PAD_STATUS, 6));
   const stick = view(await gdb.readMemory(PAD_STICK, 16));
   const matrix = view(await gdb.readMemory(VIEW_MATRIX, 0x30));
   const links: LinkSnapshot[] = [];
@@ -139,7 +140,7 @@ export async function readSnapshot(gdb: GdbClient, actors: readonly number[], gb
   }
   return {
     retrace,
-    pad: { buttons: pad.getUint16(0), x: pad.getInt8(2), y: pad.getInt8(3) },
+    pad: { buttons: pad.getUint16(0), x: pad.getInt8(2), y: pad.getInt8(3), cx: pad.getInt8(4), cy: pad.getInt8(5) },
     stick: { x: stick.getFloat32(0), y: stick.getFloat32(4), angle: stick.getUint16(12) },
     camera: { x: -matrix.getFloat32(0xc), y: -matrix.getFloat32(0x1c), ...(zoom === undefined ? {} : { zoom }) },
     links,

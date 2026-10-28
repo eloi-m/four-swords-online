@@ -362,8 +362,12 @@ come near, then spins away in the same smoke and walks off left unseen; the door
 key sets him off first). Room 5's Tingle (`FTGL`, `tingle.ts`, traced): under the two-Link rock on area 2's ledge (the
 bridge's GBA area); the rock lifted, he lies there, then stops the Links, talks (1294, then 1295 → 1305 → his chant 1302
 in one box), floats off on his balloon past the GBA screen's edge and over room 5's TV, gone for good; the route reads
-him (`lakehylia.ts`). Placed but not simulated (besides `FGAL`, `KEPO` and the hidden controllers named above): `YAJI`
-(the arrows on room 0's ground, drawn only), `TMI2` (room 58's 2-3 player blocks, in its tiles), `PRTC` (the waterfalls'
+him (`lakehylia.ts`). The TV camera (apps/game `camera.ts`, read from main.dol and replayed against Dolphin's to the
+pixel): it keeps the leader and what the room's actors hand it in view (room 0's lit arrows, room 3's doorway Shadow
+Link, big gem and key, room 4's minor Shadow Link, room 7's switchless `FOCS`, room 9's captain), zooming out from 2.14
+to as far as the room's whole width (1.1875, also behind a GBA area); docs/measurements/adventure-lake-hylia.md "the
+TV camera". Placed but not simulated (besides `FGAL`, `KEPO` and the hidden controllers named above): `YAJI`
+(the arrows on room 0's ground, drawn only; apps/game's camera lights them for itself), `TMI2` (room 58's 2-3 player blocks, in its tiles), `PRTC` (the waterfalls'
 particles, drawn by the stage effects), and `WPWL`, `SENP`, `ZOOM`, `GLWP` (hidden; what they do unknown).
 The 2026-10-18 black-box playtest (screenshots only, `#manual`): its "push blocks" walked through in room 4 and room
 2's cave are the four-Link switches (`YNSW`, floor; its "Link drawn under the block" was blinking after an Octorok's

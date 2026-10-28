@@ -459,3 +459,52 @@ px. The sim follows them (`apart.realdisc.test.ts`, `lakehylia.realdisc.test.ts`
   he stood at (280, 8) about 55 frames (state 31), then fell 4 px a frame to the floor (216.7) (the sim walks him out
   20 px first). The followers: "Adventure: the followers in a side view".
 - **Bushes**: two cut by a spin in room 1 dropped nothing (gems 4 → 4); the drop rule wasn't looked into further.
+
+## Adventure: the TV camera and the HUD's corner (2026-10-28)
+Read from main.dol, checked with `trace.ts --raw 80f8bd94:6f8` (the camera object [[0x8053AB10]+0x24] = 0x80F8BC30
+from +0x164, every frame) and `--break 8030c288` (who hands it a point) from `ref/save-lake-hylia.sav` (into room 0),
+`ref/adv/room9.sav` and `ref/adv/room2-cave5.sav` (out of the cave). Applied: apps/game `camera.ts`; the traces
+replayed through it give Dolphin's box to 0.00 px and its zoom to 0.00 % over 120-650 frames.
+- **The step** (0x8030E154 every frame): the mode (+0x174, an entry of the table 0x804AA8E8, 36 bytes: margin, half
+  the least width, a focus point's margin, px out, px back in, slack, hold ticks, ease, a flag) is 0 when an actor handed
+  it a point this frame, else 4 (several players: 1 or 3, Shadow Battle's). Entry 0: 104, 142, 32, 3, 3, 64, 240, 0.1;
+  entry 4: 104, 142, 112, 3, 1, 0, 0, 0.2 (the slack only counts without points: never in the adventure). The box (+0x1B4)
+  is around player 0's Link (the leader; with the flag the other players' Links count only in other control modes) and
+  the points (+0x1F0, 12 bytes each, the count +0x7F0 zeroed after the step), each pulled toward the box by the margin
+  less the point's margin (72 px: shown with 32 px to spare). An edge's gap out is eased by the mode's ease, at most
+  `px out × gap / largest gap`; back in at most `px back in × gap / largest gap in` (`px out` while the opposite edge
+  goes out), and not at all while its hold (+0x1C4…, left, right, top, bottom) runs, unless the opposite edge goes out;
+  an edge going out sets its hold to the mode's. Single floats: an edge eased in stops an ulp short, so it keeps
+  setting its hold (room 0's top and right edges stayed at 240 for good). The view (+0x164) is the box ± 104, clipped to
+  the room, at least 284 × 209.3, widened to 608:448, moved into the room; the zoom +0x858 = 608 / its width.
+- **What the camera follows** (0x8030C210, 122 calls; a point outside the room is dropped). Lake Hylia: room 0's arrow
+  signs (`YAJI` once lit: a Link within 32 px of its column, p & 15 < 2, or row sets its switch p >> 27, traced: switch
+  1 of room 0 came on the frame the Links came in at x 44, and it lights while that's on), a switchless `FOCS` (room 7's,
+  p & 0xFFF = 0: for good), room 9's captain (`SLR4`, always: two objects, both handing the same point), room 3's doorway
+  `ZSLJ`, its big gem (`RUPY` of type 3 and up) and its key (`KEY0` lying). Others read: `OKTA` of params 2, `ZORA` out
+  of the water, `SLR1` walking in, `FOCS` with a hold (until it's on the TV, then p & 0xFFF ticks), `HNRY` of kind
+  (p >> 16) & 0xFF = 8 (none in Lake Hylia), `DOOR` in one state, `GOL2`'s pads, `KEPO`, `SWT4`, `FTGL`, `BBSL`,
+  `SLK2`, `SLR3`, `TENN`, `FLYO`, the bosses (not done). The points a frame stands for are used on the next frame's step.
+- **Places** (Dolphin's zoom; ours the same deep link): room 0 1.75 with the signs lit (the view 0-347.4 × 64-320);
+  room 3 1.514 (centre 296, 236, the leader at 280, 341); room 9 1.890 → 1.198 (the captain at 618, 1110: the box
+  690-954.5 × 842-1038) and back in from frame ~570 once the holds ran out with him walking up; room 7 → 1.1875.
+- **GBA-screen areas** (+0x7F5 set while the Links are in one): the box eases onto the room less 104 px a side over 70
+  frames (+0x838, 0.5 + 0.5 cos(180° (1 − u)), u = 0.5 + 0.5 cos(180° × left / 70)), the view the room's whole width
+  (1.1875). Out again (`room2-cave5`, the Links on the TV from frame 60, the flag off from ~95) nothing resets: the box
+  comes back in at 3 px a frame while an actor hands it points, else 1.
+- **A room change by an edge** (0x8030C9E4 from 0x802DCE5C): +0x1A0 gets the new room's view as it stands round the
+  leader then, +0x1EC counts 30 → 0 and the view is the live one × (left / 30)² + that one × the rest (render's
+  `RoomPan` measured the same); at 0 the box (+0x1B4) is zeroed and snaps round the leader on the next frame (the
+  room's actors' points are dropped meanwhile: the room's bounds +0x154 are still the last room's).
+- **Feedback into the sim:** a `FOCS` turns its switch on when its point is on the TV (0x8030C2A8: inside the screen
+  less 14 px), and so does what waits for the camera (ADVENTURE.md: an actor acts once the camera caught up); the sim
+  keeps its 30 ticks (logic.ts `FOCUS_ARRIVE_TICKS`). The arrow signs' switch (room 0's 1) isn't set in the sim
+  (the view lights them by itself).
+- **The HUD's corner (read, not applied):** 0x8042165C (main_adv's screen class) places the four players' corners in
+  ten spots (TV px, x 0x8048F188, y 0x8048F1B0: 0 (102.5, 60), 1 (502.5, 60), 2 (102.5, 420), 3 (502.5, 420), 4
+  (302.5, 60), 5 (302.5, 420), 6 (102.5, 180), 7 (102.5, 300), 8 (502.5, 180), 9 (502.5, 300)), each player taking
+  the first of their order (0x8048F1D8, 10 bytes each: player 1 0 1 2 3 4 6 7 5 8 9, player 2 1 3 0 2 4 8 9 5 6 7…)
+  that no Link is within ±94 × ±61.5 px of (0x8043DF24) and no other player has, 60 frames after it became the one (the
+  frame count +0x198 then runs on to 120). It was never reached in the single-player traces (`--break 8042165c`), so
+  the single player's corner (Dolphin: room 0 bottom-right with the mirrored layout, room 1 bottom-left, rooms 2 and 7
+  top-left, off the top-left as the Links reached room 6's top-left) is decided elsewhere: not found.

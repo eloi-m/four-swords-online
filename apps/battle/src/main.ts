@@ -34,6 +34,7 @@ import { TouchControls } from "@fso/input/touch";
 import type { ScreenAssets } from "@fso/render";
 import {
   addCpus,
+  applyRoundStart,
   ARENA_H,
   Button,
   ARENA_ROOMS,
@@ -52,6 +53,7 @@ import {
   hashGame,
   HEART_OPTIONS,
   InputLog,
+  matchSpawns,
   MAX_FIGHTERS,
   replayFrameSteps,
   RunCursor,
@@ -61,6 +63,7 @@ import {
   type BattleRecord,
   type CpuLevel,
   type GameState,
+  type RoundStart,
   type World,
 } from "@fso/sim";
 import { GameArt, openServerStore, SYS_DOL, type AssetStore } from "@fso/web";
@@ -240,7 +243,8 @@ async function start(store: AssetStore): Promise<void> {
   });
 
   let replaying: Replaying | null = null;
-  const startMatch = (overrides: Partial<Settings> = {}, seedOverride?: number) => {
+  // `start`: a replayed round begun elsewhere (its record's: the Links' starts, the countdown left).
+  const startMatch = (overrides: Partial<Settings> = {}, seedOverride?: number, start?: RoundStart) => {
     settings = { ...settings, ...overrides };
     if (seedOverride === undefined) saveSettings(settings); // (a replay leaves the menu's settings alone)
     replaying = null;
@@ -248,14 +252,15 @@ async function start(store: AssetStore): Promise<void> {
     menu.sync();
     input.gamepadsFirst = settings.padsFirst;
     const world = worldFor(settings.room);
-    const spawns = arenaSpawns(stage, settings.room).slice(0, settings.players);
+    const spawns = matchSpawns(stage, settings.room, settings.players, start);
     // The battle's random generator (what the orbs hold): #seed=<n> for a repeatable match, else a new one each time.
     const seed = seedOverride ?? (params.has("seed") ? Number(params.get("seed")) >>> 0 : crypto.getRandomValues(new Uint32Array(1))[0]!);
     const rules = { hearts: settings.hearts, timeLimit: settings.time * 60, wins: settings.wins };
     const game = createBattle(settings.room, spawns, rules, propsFor(settings.room), seed);
+    applyRoundStart(game, start);
     const cpus = settings.slots.slice(0, spawns.length).flatMap((slot, player) => (slot === "human" ? [] : [{ player, level: slot }]));
     addCpus(game, cpus);
-    const record = import.meta.env.DEV ? { kind: "battle" as const, room: settings.room, players: spawns.length, rules, seed, cpus } : null;
+    const record = import.meta.env.DEV ? { kind: "battle" as const, room: settings.room, players: spawns.length, rules, seed, cpus, ...(start ? { start } : {}) } : null;
     match = { game, world, settings, record, log: record && new InputLog() };
     pause.reset();
     view.show(settings.room, spawns.length);
@@ -540,7 +545,7 @@ async function start(store: AssetStore): Promise<void> {
  * Dev server only: F8 captures (packages/web capture.ts), #replay= replays a capture's match, F9 plays on from it.
  * `replay` sets the main loop's replay.
  */
-function devTools(current: () => Match | null, startMatch: (s: Partial<Settings>, seed: number) => void, replay: (r: Replaying | null) => void, view: ArenaView, render: () => void): void {
+function devTools(current: () => Match | null, startMatch: (s: Partial<Settings>, seed: number, start?: RoundStart) => void, replay: (r: Replaying | null) => void, view: ArenaView, render: () => void): void {
   void import("@fso/web/capture").then(async ({ installCapture, fetchReplay }) => {
     installCapture({
       app: "battle",
@@ -573,7 +578,7 @@ function devTools(current: () => Match | null, startMatch: (s: Partial<Settings>
     const total = record.inputs.reduce((n, [, t]) => n + t, 0);
     const at = params.has("at") ? Math.min(total, Math.max(0, Number(params.get("at")))) : total;
     const slots = DEFAULTS.slots.map((_, i): Slot => record.cpus.find((c) => c.player === i)?.level ?? "human");
-    startMatch({ room: record.room, players: record.players, hearts: record.rules.hearts, time: record.rules.timeLimit / 60, wins: record.rules.wins, slots }, record.seed);
+    startMatch({ room: record.room, players: record.players, hearts: record.rules.hearts, time: record.rules.timeLimit / 60, wins: record.rules.wins, slots }, record.seed, record.start);
     fso.replay = { id, steps: 0, done: at === 0, hash: hashGame(fso.game!), expected: at === total ? record.hash : (record.checkpoints.find(([t]) => t === at)?.[1] ?? -1) };
     replay({ id, cursor: new RunCursor(record.inputs), left: at, steps: 0 });
   }).catch((error: Error) => {

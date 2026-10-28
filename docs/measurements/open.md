@@ -9,8 +9,7 @@ Part of the measurements from the real game (index: [../measurements.md](../meas
   Dark World seconds!" box and the HUD disc's live sprite (seen in frame dumps, not drawn).
 - Surfaces (shallow water, ladders, ice, quicksand; deep water, where the Links swim: state 74 when
   teleported into the river; the walk code at 0x802808E8 scales the vertical speed by 0.5 when a lookup at Link's
-  position returns 0x2C–0x2F, and both axes by 1.4 in some state 5, *hypothesis*); free (non-formation) movement; the adventure
-  camera's follow smoothing (battle's is measured: "Battle measurements: arenas, orbs and camera"); the warp styles
+  position returns 0x2C–0x2F, and both axes by 1.4 in some state 5, *hypothesis*); free (non-formation) movement; the warp styles
   other than 0x19 and 0x1A; every enemy but the Octorok and the sword soldiers (the others are main.dol readings: the
   Keese, the Tektite, the Stalfos, the Buzz Blob, the Poe, the Mozo, the rat, the sand crab, the Armos, the bow
   soldier, the captain, the snake, the Zol, the PAME, the river Zora, the fish, the Hinox, the Wizzrobe; the soldiers'

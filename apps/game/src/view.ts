@@ -1,8 +1,8 @@
 // The adventure on screen, in the TV's 608×448 frame (letterboxed in the canvas, as apps/battle does): every room of
 // the stage laid out on its grid (tile layers, ground overlay, animated tiles, the actors as static sprites), the
 // current area's arena entities (apps/battle's EntityView: bushes, pots, bombs, explosions, shots…) and the Links
-// y-sorted between the base and top layers, the camera following the leader within his room and panning on a room
-// change (measured). Inside a GBA-screen area (a house, a cave) the area shows in a window over the TV, as the game
+// y-sorted between the base and top layers, the camera (camera.ts: the leader and what the room's actors hand it, its
+// zoom with them, a pan on a room change). Inside a GBA-screen area (a house, a cave) the area shows in a window over the TV, as the game
 // does when playing alone with a controller. The current area's rocks (pushed, sunk, lifted: rocks.ts) are drawn where
 // the sim has them instead of as static sprites. The environment as the game draws it: the river bed under the water
 // and the cloud shadows (rooms whose SWEV turns them on), the SEV2 J3D effects (waterfalls, rainbows), the particles'
@@ -21,7 +21,6 @@ import {
   RiverBed,
   riverBedPalettes,
   roomQuad,
-  RoomPan,
   SpriteAtlas,
   SpriteMesh,
   stageParticles,
@@ -44,13 +43,12 @@ import { GanonView } from "./ganon.ts";
 import type { AdventureHud } from "./hud.ts";
 import type { DialogueBox } from "./dialogue.ts";
 import type { GbaWindow } from "./gbawindow.ts";
+import { TvCamera } from "./camera.ts";
 import { AdventureLight } from "./light.ts";
 
 /** The TV frame the game renders in (and lays its HUD out in). */
 export const TV_W = 608;
 export const TV_H = 448;
-/** Room px the TV shows vertically: 448 / the adventure camera's zoom 2.1408 (measured in Lake Hylia). */
-export const VIEW_H = TV_H / 2.1408;
 const ROOM_W = 512, ROOM_H = 384;
 // Depths: base layer (1) < floor decals (1.5) < actors and Links (2 + y / 1024) < top layer (3) < debug (3.5+).
 const DEPTH_PER_PIXEL = 1 / 1024;
@@ -162,7 +160,8 @@ export class AdventureView {
   private readonly tvTingle = new THREE.Group();
   private tingleKey = "";
   private areaBounds = { x0: 0, y0: 0, x1: GBA_W, y1: GBA_H };
-  private view = new RoomPan();
+  /** The TV camera (camera.ts; world px). */
+  readonly camera: TvCamera;
   private gbaView = { x: 0, y: 0 };
   private windowOpen = 0;
   private lastArea = 0;
@@ -224,6 +223,7 @@ export class AdventureView {
     this.gba.add(this.areaGroup);
     this.lighting = new Lighting(data);
     this.light = new AdventureLight(stage);
+    this.camera = new TvCamera(this.adventure);
   }
 
   /** A room's layers and static actors at its place on the grid. */
@@ -394,16 +394,8 @@ export class AdventureView {
       const b = this.areaBounds;
       this.gbaView.x = clamp(p.x / SUBPX, b.x0 + GBA_W / 2, b.x1 - GBA_W / 2);
       this.gbaView.y = clamp(p.y / SUBPX, b.y0 + GBA_H / 2, b.y1 - GBA_H / 2);
-      return;
     }
-    const room = this.rooms.get(a.room);
-    if (!room) return;
-    const halfH = VIEW_H / 2, halfW = (VIEW_H * TV_W) / TV_H / 2;
-    const x = room.origin.x + p.x / SUBPX, y = room.origin.y + p.y / SUBPX;
-    const tx = clamp(x, room.origin.x + halfW, room.origin.x + ROOM_W - halfW);
-    const ty = clamp(y, room.origin.y + halfH, room.origin.y + ROOM_H - halfH);
-    // A room change pans (an edge walk); coming out of a GBA area, or the first frame, snaps.
-    this.view.step(a.room, tx, ty, !!a.edge);
+    this.camera.follow(game);
   }
 
   private syncParticles(game: AdventureGame): void {
@@ -583,9 +575,10 @@ export class AdventureView {
       this.renderer.setSize(cw, ch, false);
     }
     const tv = this.frame();
-    const scale = (tv.h * dpr) / VIEW_H; // device px per room px; the center snapped to the device-pixel grid
-    const halfW = (tv.w * dpr) / scale / 2, halfH = VIEW_H / 2;
-    const cx = Math.round(this.view.x * scale) / scale, cy = Math.round(this.view.y * scale) / scale;
+    const v = this.camera.view, viewH = v.bottom - v.top;
+    const scale = (tv.h * dpr) / viewH; // device px per room px; the center snapped to the device-pixel grid
+    const halfW = (tv.w * dpr) / scale / 2, halfH = viewH / 2;
+    const cx = Math.round(((v.left + v.right) / 2) * scale) / scale, cy = Math.round(((v.top + v.bottom) / 2) * scale) / scale;
     Object.assign(this.tvCamera, { left: cx - halfW, right: cx + halfW, top: -cy + halfH, bottom: -cy - halfH, near: -10, far: 10 });
     this.tvCamera.updateProjectionMatrix();
     // TODO(measure): the cloud level's rise in the adventure (the battle's: one a frame from the round's start).
