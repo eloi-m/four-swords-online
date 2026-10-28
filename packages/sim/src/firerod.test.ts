@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Fighter } from "./combat.ts";
-import { isRemoved, tileIndexAt } from "./entities.ts";
-import { BLAZE, BURNING, FIRE_ROD, STREAM_WAIT } from "./firerod.ts";
+import { isRemoved, spawnEntity, tileIndexAt } from "./entities.ts";
+import { BLAZE, BURNING, FIRE_ON_SOLDIERS, FIRE_ROD, STREAM_WAIT } from "./firerod.ts";
 import type { GameState } from "./game.ts";
 import { moveFrame } from "./moveframes.ts";
 import { Button, SUBPX } from "./player.ts";
 import { NO_PROPS } from "./props.ts";
 import { arena, run, start, until } from "./testarena.ts";
+import { newSoldier, SOLDIER_STUN_TICKS } from "./strike.ts";
 import { SURFACE_CODES } from "./world.ts";
 
 const fighter = (game: GameState, i: number): Fighter => game.battle!.fighters[i]!;
@@ -128,5 +129,65 @@ describe("the Fire Rod", () => {
     run(game, world, 20);
     expect(fireballs(game)[0]!.phase).toBe("flying");
     expect(fireballs(game)[0]!.x).toBeGreaterThan(160 * SUBPX);
+  });
+
+  // The traced cases (docs/measurements/battle-combat.md "Fire on pots, orbs and soldiers"): Hyrule Castle's soldier at
+  // (128, 128) with its life poked to 100, P1 40 px below it, 24 px left of it, or 40 px above it (the soldier moved
+  // there). The fireball met it on its 19th, 5th and 13th tick: 32 life, and it was knocked along the flight.
+  for (const [name, at, facing, ticks, knock] of [
+    ["below", { x: 128, y: 168 }, "up", 19, [0, -1]],
+    ["left", { x: 104, y: 128 }, "right", 5, [1, 0]],
+    ["above", { x: 128, y: 88 }, "down", 13, [0, 1]],
+  ] as const) {
+    it(`a fireball on a soldier from ${name}: 32 life, the fireball spent, the soldier knocked along its flight`, () => {
+      const world = arena();
+      const game = start(world, [{ ...at, facing }, { x: 280, y: 220, facing: "up" }]);
+      fighter(game, 0).item = "fireRod";
+      const soldier = spawnEntity(game.battle!, "soldier", 128 * SUBPX, 128 * SUBPX, { ...newSoldier(2), hp: 100 });
+      run(game, world, 1, [Button.Item]);
+      until(game, world, () => fireballs(game).length > 0, 20);
+      const flown = 1 + until(game, world, () => soldier.hp < 100, 40);
+      expect(flown).toBe(ticks);
+      expect(soldier.hp).toBe(100 - FIRE_ON_SOLDIERS.damage);
+      expect(fireballs(game).length).toBe(0);
+      expect(blazes(game).length).toBe(0);
+      const [x0, y0] = [soldier.x, soldier.y];
+      run(game, world, 1);
+      expect([Math.sign(soldier.x - x0), Math.sign(soldier.y - y0)]).toEqual(knock);
+    });
+  }
+
+  it("fire kills a castle soldier (1 to 20 life); the stream stuns one where it stands and strikes again every 25 ticks", () => {
+    const world = arena();
+    const game = start(world, [{ x: 128, y: 168, facing: "down" }, { x: 280, y: 60, facing: "up" }]);
+    fighter(game, 0).item = "fireRod";
+    const soldier = spawnEntity(game.battle!, "soldier", 128 * SUBPX, 208 * SUBPX, { ...newSoldier(2), hp: 100 });
+    const life = [soldier.hp], at: number[] = [];
+    for (let t = 0; t < 80; t++) {
+      run(game, world, 1, [Button.Item]);
+      if (soldier.hp !== life[life.length - 1]) [life[life.length], at[at.length]] = [soldier.hp, t];
+    }
+    expect(at[0]).toBe(12); // (traced: the stream's first tick, 12 after the press)
+    expect(soldier.x).toBe(128 * SUBPX);
+    expect(soldier.y).toBe(208 * SUBPX);
+    expect(life).toEqual([100, 68, 36, 4]);
+    expect([at[1]! - at[0]!, at[2]! - at[1]!]).toEqual([SOLDIER_STUN_TICKS, SOLDIER_STUN_TICKS]);
+    run(game, world, 30, [Button.Item]);
+    expect(isRemoved(soldier)).toBe(true);
+  });
+
+  it("orbs and pots: a fireball flies through an orb, and bursts on a pot as on a wall, the pot left whole", () => {
+    const world = arena([28, 20, 2, 2, "#"]); // the pot tile at (224, 160)
+    const pot = tileIndexAt(224, 160);
+    const game = start(world, [{ x: 190, y: 168, facing: "right" }, { x: 100, y: 60, facing: "up" }], { ...NO_PROPS, pots: [pot] });
+    fighter(game, 0).item = "fireRod";
+    const orb = spawnEntity(game.battle!, "orb", 205 * SUBPX, 168 * SUBPX, { phase: "rest" });
+    run(game, world, 1, [Button.Item]);
+    until(game, world, () => fireballs(game).length > 0, 20);
+    // Traced (the Tower of Flames' pot): the BLZE on the pot's tile on the fireball's 13th tick.
+    expect(1 + until(game, world, () => blazes(game).length > 0, 40)).toBe(13);
+    expect(blazes(game).map((e) => [e.x / SUBPX, e.y / SUBPX])).toEqual([[232, 168]]);
+    expect(game.battle!.cut).not.toContain(pot);
+    expect(isRemoved(orb)).toBe(false);
   });
 });

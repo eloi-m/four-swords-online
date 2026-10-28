@@ -147,6 +147,13 @@ const EXPECT: Readonly<Record<string, { pos?: number; sprites?: number; players?
   fireTree: { sprites: 1 },
   fireStream: { pos: 0.26 },
   hammerTap: { pos: 0.51 },
+  // A plain pit (Above the Clouds' outer void): the 4 ticks before he falls, the game's walking Link shows his walk,
+  // stops, stands and walks a step (1.5 px) before he's put back and falls, where the sim's holds the spot he was
+  // placed on, drawn standing; a burning Link shows his run on those ticks.
+  cloudsPitLeft: { pos: 1.51, sprites: 2 },
+  cloudsPitDown: { pos: 1.51, sprites: 2 },
+  cloudsPitWait: { pos: 1.51, sprites: 2 },
+  fireCloudsPit: { sprites: 4 },
 };
 
 describe.skipIf(!existsSync(boss500))("sim vs Dolphin Shadow Battle traces", () => {

@@ -130,7 +130,7 @@ measurements below). Everything not listed is `TODO(measure)` in the code.
 | combat.ts `SWORD_DAMAGE`, `LUNGE_DAMAGE`, `SPIN_DAMAGE`, `CHARGE_DAMAGE`; attacks.ts | 2, 4, 4, 1 (half the power 4 / 8 / 8 / 2, + 2 power at sword level 2); the two boxes per direction, when they're live | traced in battle ("Battle measurements: combat") |
 | `INVINCIBLE_TICKS`, `RESPAWN_INVINCIBLE_TICKS`, `fighterVisible` | 60 after a hit, 180 after a pit; hidden while (mod 4) ≥ 2 but for the first 5 ticks | measured; battle traced |
 | combat.ts shield, clash, pushes | blocks by facing; 2 px/tick along the line, × 0.9 (× 0.95 above 2), zero under 0.2; sword boxes meeting = a clash, a 15-tick tink; overlapping Links step 1 px apart | traced in battle |
-| combat.ts pits, `PIT_DAMAGE`, `HURTBOX` | the anchor over the pit, a 58-tick fall and a 64-tick jump back to 7 px off the edge, 2 life; bodies ±7 px | traced in battle |
+| combat.ts pits, `PIT_DAMAGE`, `HURTBOX` | the anchor over the pit, a 58-tick fall and a 64-tick jump back to 7 px off the edge, 2 life; a plain pit (type 0x03): 4 ticks, the 58-tick fall, back where he last stood clear of it, 60 ticks standing; bodies ±7 px | traced in battle |
 | carry.ts held Links, `LINK_FLIGHT`, `ESCAPE_PRESSES` | held 2 px higher, no time limit, free on the 17th direction press; thrown or free: 3.3 px/tick from z 18, gravity 0.25, lands unhurt | traced in battle |
 | projectiles.ts on Links | quick arrow 1 life, a drawn one 2 and 180 invincible, the Link carried 13 ticks (combat.ts `pinFighter`); quick seed: a 90-tick stun, then 60 invincible, a drawn one 1 with the sword's knockback; boomerang: its ±12 box hooks, the Link dragged 6 px/tick toward it until it's caught | traced in battle ("Items, levels and the Four Sword") |
 | items.ts drawing, levels | the bow and slingshot pose held while the button is, walking at 1.125 px/tick; drawn at 48 on a counter of 1 a tick from the pose's 7th (bow level 2: 2); bow slots 1 / 2 by level, slingshot 3, its level-2 drawn triple shot; boomerang level 2 +3 px/tick; bomb level 2 ±32 blast; generator items level 2 one time in five; the Four Sword = sword level 2 | traced in battle |
@@ -488,8 +488,8 @@ hammerTap, hammerJolt, hammerJoltL2, hammerCharged, hammerTurn), the rules in `f
   he stood on the lake's first tile (x 416), state 0 from that tick.
 - **He runs into pits**, as walking does: running left off Above the Clouds' island (x 64) he was put 8 px in and ran
   on burning 4 more ticks (56, 54, 52, 52), fell (state 30, 183…188, 58 ticks), and was back on the edge (72, 312;
-  state 31, then 0) with 2 life less and 180 invincibility. (That fall isn't the sim's pit: it jumps him out of the
-  hole the Tower of Flames' way. Not applied; a pit question, not the fire's.)
+  state 31, then 0) with 2 life less and 180 invincibility: the plain pit's fall ("Fire on pots, orbs and soldiers,
+  and the plain pit", below; applied since).
 - **He sets alight the Links his flame meets**: the FIRE kind 6 that follows him is where he stood at the end of the
   last tick, with his ±7 px body box; a Link 13.5 px across and 13.3 down from it was set alight (14.05 across: not),
   turned away from the flame, not from him.
@@ -540,9 +540,61 @@ hammerTap, hammerJolt, hammerJoltL2, hammerCharged, hammerTurn), the rules in `f
 - **Pots and orbs**: a pound centred on the Tower of Flames' pot (232, 168) and on The Field's orb (250, 238) left
   both as they were.
 
-Not traced: fire on pots, orbs and soldiers; the stream on bushes (applied as the fireball); a burning Link's flame on
+Not traced (fire on pots, orbs and soldiers: below): the stream on bushes (applied as the fireball); a burning Link's flame on
 bushes (kind 6 skips 0x802BABEC: treated as a wall); the stream's flame lingering 2 ticks after the button is up
 (FIRE at x + 36 on the release tick and the next); the flattened Link's Action button (read: 0x80261480 does nothing).
+
+### Fire on pots, orbs and soldiers, and the plain pit, traced
+Traced 2026-10-28 in Dolphin from the round states (`actor-trace.ts --ids FIRE,BLZE,CRTL,SLR1`, the Fire Rod poked into
+P1's +0xC10 and P1 moved by his +8 / +0xC on frame 12 as before; a soldier's life poked at its +0x108, `--place` to
+put it in front of P1; `trace.ts` for the pits). Applied in `firerod.ts` (`FIRE_ON_SOLDIERS`) and `combat.ts`
+(`PLAIN_FALL_START_TICKS`, `stepPlainFall`), `ONLINE_VERSION` 30; 4 replayed traces in `dolphin-battle-traces.json`
+(cloudsPitLeft, cloudsPitDown, cloudsPitWait, fireCloudsPit), the fire rules in `firerod.test.ts` (each traced case
+set up again: the ticks to the hit, the life, the knock, the BLZE).
+- **Orbs**: a fireball through The Field's orb (it lay at (250.0, 238.4), the fireball's middle passing 0.4 px from
+  its own) flew on to the house's wall; the stream held over it 50 ticks: the orb as it was (+0x278 counting on),
+  no BLZE. Fire does nothing to orbs (the sim already let it through).
+- **Pots**: a fireball into the Tower of Flames' top-left pot (232, 168) from (190, 168) burst on its 13th tick, a
+  `BLZE` on the pot's tile (232, 168) for its 30 ticks, the pot whole under it afterwards (frame dumps): a pot is a wall
+  to fire (the sim's burst already did this).
+- **Soldiers** (Hyrule Castle, the SLR1 at (128, 128); kind 2, life 1): a fireball from 40 px below killed it on its
+  19th tick (+0x108 1 → 0, gone on it; dying 38 frames as when stabbed). With its life poked to 16: 0 at once; to
+  100: **68**, so fire takes **32** (it kills any of the battle's sword soldiers, 1 to 20 life). Not killed, it's
+  stunned as by a stab, 16 px/tick × 0.78 (12.48, 9.73, 7.60 …), **along the fireball's flight**: right from the
+  left, down from above, up from below (8 px into the wall above it), whatever where it was hit. The fireball is gone
+  on it (no `BLZE`). Met at 9.88 px across (11.55: not), 10.63 above it (12.6: not), 6.66 below (8.66: not): with the
+  fireball's ±6 box, the soldier's is x ± 5 (4 to 5), y − 6 (5 to 6) … + 2 (1 to 2). The **stream** (down, the
+  soldier 40 px below): 32 on its first tick and every 25 ticks after (68, 36, 4: its stun's 25 ticks, then struck
+  again), the soldier never moved (the stream's flame has no flight to knock it along).
+  Not reached: the archers, the captain and the ball-and-chain soldier (SLR2/4/3 come from the arena's random
+  soldier picks), a burning Link's flame and `BLZE` flames on a soldier, a fireball meeting a stunned soldier. The sim
+  takes the others alike in their strike boxes, lets a fireball through a stunned one, and leaves the burning flame
+  and `BLZE` off soldiers (TODO(measure)).
+- **The plain pit** (`clouds-2p`, Above the Clouds' outer void, tile type 0x03; the Tower of Flames' hole and lava are
+  0x0E, The Field's trick floor opens as a damaging pit too). P1 walking left off the island (the floor's edge at
+  x 64), down off it (the void from y 352), and left again after standing 30 ticks at x 66.5 with his body over the
+  void; and the burning Link above (P2 set alight at x 84 by P1's fireball, running left):
+  - Put **8 px inside the edge** as in the hole (65 → 56, 351 → 360, 64 → 56), in his state 2/0: walking, the game's
+    Link shows his walk frame, stops (his walk's stop frame), stands (61) and walks a step again (54.5) over the next 3
+    ticks; burning, he runs on 2 ticks (54, 52) and stops (52). On the 4th tick after, **state 30** puts him back a
+    step (56, 360; burning 54) and he falls: 183 ×8, 184 ×8, 185 ×8, 186 ×6, 187 ×6, 188 ×6, 187 ×6, 186 ×10, the
+    hole's 58 frames.
+  - **No jump**: on the next tick (state 30 → 31, frame 186 still) he's **back where he last stood with his whole body
+    clear of the void**, (x − 7 … x + 7, y − 7 … y + 7), the far sides open: 71 walking at 1.5 px a tick (69.5's body
+    reached 62.5), 72 running at 2 (70's reached 63), y 345 going down (346.5's reached 352.5), and 71 again after
+    the wait at 66.5 (not where he was a few ticks before). 2 life, invincibility 179 (blinking from 175).
+  - **State 31**: 60 ticks standing (his standing frame, facing the way he went in), out of control (the D-pad held
+    did nothing); on the last its invincibility is set back to **179**, blinking at once (hidden on 179 and 178), and
+    the next tick he's in state 0, turned away from the void (walking left in: standing right, 60). 240 invincible
+    ticks in all.
+  - (The hole's numbers fit the same rule: 279 and 215 were the last spots clear of the Tower of Flames' hole. Left
+    as measured there.)
+  Applied: a Link over a plain pit falls the plain way (combat.ts: `world.plainPit`), the spot clear of pits kept every
+  tick he's on the ground (`safeX`, `safeY`); the walking Link's stop and step before the fall aren't (he's held where
+  he was put, drawn standing), nor the burning one's run frames then. With his last life: dying, as in the hole
+  (TODO(measure)).
+
+The charged pound's missing `DOSN` switch: not looked at again (none of these traces pounds).
 
 ### Read from main.dol (2026-10-11; the traces above confirm or correct it)
 Both appear only in Hyrule Castle's side rooms (generator mask 0x97E2), items 5 and 6 (`LSTI` draws `enemy_both2` 69

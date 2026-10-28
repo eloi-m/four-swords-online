@@ -23,8 +23,11 @@
 // - Fire meeting a wall leaves a BLZE flame that hurts any Link (BLAZE): a fireball bursts, the BLZE on the tile beyond
 //   it; the stream's flame bursts at its middle and comes back 60 ticks later; a burning Link's bursts where it is (and
 //   usually hurts him: that ends his run). Fireballs and the stream burn the bushes they pass (a BLZE on each).
-// Not modelled: fire on orbs, pots and soldiers, the eternal flames and burnable tiles other than bushes, the stream's
-// flame lingering two ticks after the button is let go.
+// - Fire on Hyrule Castle's soldiers takes 32 of their life (FIRE_ON_SOLDIERS): a fireball is spent on one and knocks
+//   it along its flight, the stream knocks it nowhere. Orbs and pots are nothing to it (traced): a fireball flies
+//   through an orb, and bursts on a pot as on a wall (its BLZE on the pot's tile, the pot left whole).
+// Not modelled: a burning Link's flame and BLZE flames on soldiers, the eternal flames and burnable tiles other than
+// bushes, the stream's flame lingering two ticks after the button is let go.
 import { CHARGE } from "./animations.ts";
 import { bodyBox, subBoxesOverlap } from "./attacks.ts";
 import type { BattleState } from "./battle.ts";
@@ -36,7 +39,7 @@ import { touching } from "./hazards.ts";
 import { FIRE_ROD, ITEM_OVER as OVER, STREAMING, streaming } from "./itemframes.ts";
 import { Button, moveAxis, nextFacing, SUBPX, type Facing, type PlayerState } from "./player.ts";
 import { sameScreen } from "./siderooms.ts";
-import { bushesIn } from "./strike.ts";
+import { bushesIn, strikeEntity, strikeHalf } from "./strike.ts";
 import { CELL, isSolidAt, surfaceAt, type World } from "./world.ts";
 
 export { FIRE_ROD, fireRodFrame, streaming } from "./itemframes.ts";
@@ -221,6 +224,36 @@ function burnBushes(b: BattleState, box: SubBox, owner: number): void {
   }
 }
 
+/**
+ * Fire on Hyrule Castle's sword soldiers (SLR1; traced: fireballs from below, the side and above, and the stream, on one
+ * whose life was poked to 100 and 16): 32 off its life (FIRE's hit on an enemy; the battle's soldiers have 1 to 20:
+ * fire kills any), and stunned as by a sword (strike.ts strikeEntity: 16 px/tick × 0.78, 25 ticks), knocked the way
+ * the fireball flew (traced: right, up and down, whatever the soldier's side) and nowhere by the stream's flame (it
+ * stood, struck again 25 ticks later, every 25). A fireball is spent on one; one stunned lets it through (assumed).
+ * Its box against fire, around its anchor (px): traced met at 9.9 px across, 10.6 above and 6.7 below, not at 11.6,
+ * 12.6 and 8.7. The archers, the captain and the ball-and-chain soldier are taken alike in their strike boxes
+ * (TODO(measure): not reached in Dolphin).
+ */
+export const FIRE_ON_SOLDIERS = { damage: 32, box: { left: -5, top: -6, right: 5, bottom: 2 } } as const;
+const SOLDIERS: ReadonlySet<string> = new Set(["soldier", "bowSoldier", "captain", "ballSoldier"]);
+
+/** The soldiers a fire box meets, not stunned (1/256 px). */
+function soldiersIn(state: GameState, box: SubBox, from: PlayerState | Entity): Entity[] {
+  return state.battle!.entities.filter((e) => {
+    if (!SOLDIERS.has(e.kind) || isRemoved(e) || !sameScreen(from, e)) return false;
+    if (e.kind === "ballSoldier" ? e.timer > 0 : e.phase === "stun") return false;
+    const h = strikeHalf(e), r = e.kind === "soldier" ? FIRE_ON_SOLDIERS.box : { left: -h, top: -h, right: h, bottom: h };
+    return subBoxesOverlap(box, { left: e.x + r.left * SUBPX, top: e.y + r.top * SUBPX, right: e.x + r.right * SUBPX, bottom: e.y + r.bottom * SUBPX });
+  });
+}
+
+/** Fire strikes a soldier, knocked along (dx, dy) (none: stunned where it stands). */
+function burnSoldier(b: BattleState, e: Entity, dx: number, dy: number): void {
+  strikeEntity(b, e, FIRE_ON_SOLDIERS.damage >> 1, e.x - dx, e.y - dy); // (strikeEntity doubles a Link's share)
+  if (dx || dy || isRemoved(e)) return;
+  e.vx = e.vy = 0;
+}
+
 function spawnBlaze(b: BattleState, x: number, y: number, owner: number): void {
   spawnEntity(b, "blaze", x, y, { owner, timer: BLAZE.ticks });
 }
@@ -258,7 +291,13 @@ export function stepFire(state: GameState, world: World): Hit[] {
       continue;
     }
     const victim = meets(box, e, e.owner);
-    if (victim < 0) continue;
+    if (victim < 0) {
+      const soldier = soldiersIn(state, box, e)[0];
+      if (!soldier) continue;
+      burnSoldier(b, soldier, sx, sy);
+      removeEntity(e);
+      continue;
+    }
     const hit = setAlight(state, victim, e.x, e.y, e.owner);
     if (hit) hits.push(hit);
     removeEntity(e);
@@ -277,7 +316,10 @@ export function stepFire(state: GameState, world: World): Hit[] {
     }
     const box = stream ? streamBox(at) : burning ? bodyBox(at) : null;
     if (!box) return;
-    if (stream) burnBushes(b, box, i);
+    if (stream) {
+      burnBushes(b, box, i);
+      for (const soldier of soldiersIn(state, box, p)) burnSoldier(b, soldier, 0, 0);
+    }
     if (meetsWall(world, b, box, stream)) {
       const [mx, my] = stream ? STREAM_MID[at.facing] : [0, 0];
       spawnBlaze(b, at.x + mx * SUBPX, at.y + my * SUBPX, i);
