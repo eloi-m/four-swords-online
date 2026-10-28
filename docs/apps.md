@@ -30,7 +30,7 @@ Index of the docs: [README.md](README.md).
   `#route` (Lake Hylia, the Cave of No Return, Tingle's Tower or Hyrule Castle played by its scripted route;
   `#stage=boss013&room=11&route` the Phantom Ganon fight, `ganon.ts` draws him; `window.fso.route`). J/Z = sword, L/C
   action, K/X item (the GC's A: also talks, reads signs and opens a chest from below; `dialogue.ts` the message boxes) (keys and gamepad from `@fso/input`), T/F/G/H the C stick's formations (box, cross, long, wide; or a
-  gamepad's right stick); on touch screens the on-screen controls over the scene's corners. `view.ts` (rooms on the grid, PNPC tile patches, camera),
+  gamepad's right stick); on touch screens the on-screen controls over the scene's corners. `view.ts` (rooms on the grid, PNPC tile patches), `camera.ts` (the TV camera as main.dol has it: a box round the leader and the points the room's actors hand it, its zoom with them, the whole room behind a GBA area; docs/measurements/adventure-lake-hylia.md "the TV camera"),
   `enemies.ts` (enemies at the game's sizes and alphas, the ghost Poes' textures, pickups, chest contents, the Cave's chain levers and Shadow Link), `light.ts` (the rooms' darkness from their `LTEV`s and the lamp's, torches', candles' and burning arrows' lights, through apps/battle's light pass; `#nolight` turns it off), `hud.ts`, `gbawindow.ts`, `stages.ts`; the actors' particles of the leader's room and its neighbours (the waterfalls' spray,
   torches). `sound.ts`: the stage's BGM and the adventure's sound effects (docs/ADVENTURE.md "Music and sounds"),
   started on the first key, click or tap; M or the sound button (top right) mutes, `#mute` for this page only.

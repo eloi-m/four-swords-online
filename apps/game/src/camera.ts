@@ -2,11 +2,12 @@
 // box's step 0x8030CD18, the modes' table 0x804AA8E8) and checked against Dolphin traces of Lake Hylia (the object's
 // box +0x1B4, its edges' holds +0x1C4, the view +0x164, the zoom +0x858 = 608 / the view's width, frame by frame).
 // It keeps a box (world px) around what it follows: the leader, and the points the room's actors hand it every tick
-// (0x8030C210, only those inside the room: `focusPoints` below lists who does, and when). Each such point counts
+// (0x8030C210, only those inside the room: `FocusPoints` below lists who does, and when). Each such point counts
 // pulled 72 px toward the box (the margin 104 less the mode's 32), so the view shows it with 32 px to spare. The view
 // is the box grown by 104 px on each side, clipped to the room, at least 284 px wide (142 each side; 2.1408 a zoom),
 // widened to the TV's 608:448 and moved back inside the room. Two modes (the table's entries 0 and 4):
-// - with focus points: each edge eases a tenth of its gap per tick, at most 3 px × its gap / the largest gap; an edge
+// - with focus points: each edge eases a tenth of its gap per tick, at most 3 px × its gap / the largest gap (in single
+//   floats, as the game: an edge eased in stops an ulp short and keeps its hold); an edge
 //   that went out holds 240 ticks before it may come back in, unless the opposite edge is going out (the box pans);
 // - without: a fifth of the gap, at most 3 px out, 1 px back in (3 while the opposite edge goes out), no hold.
 // While the Links are inside a GBA-screen area the box eases onto the whole room (the view 512 px wide, zoom 1.1875)
