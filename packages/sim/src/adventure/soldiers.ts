@@ -91,8 +91,9 @@ const wobble = (game: AdventureGame, angle: number, spread: number) => (angle - 
 // - room 5 of Lake Hylia (traced): one spawned at world (104x, 87x) / 10 in the room on cell (2, 2) appears 32 px higher
 //   and walks in ("walk", 0): right at 1.4 px/tick for 110 + rand(40) ticks (a Link it sees ahead makes it wind up),
 //   then chases 150 + rand(100) ticks; the others in that room chase for good.
-// Timers count down at the end of its tick. Not simulated: kinds 1 and 6's own states, the guards ((p >> 16) & 15 of
-// 6-9: standing facing a set way), the circling ones (4), side views' gravity, soldiers pushing each other apart.
+// Timers count down at the end of its tick. Its box against the walls and its body that shoves the others: below
+// (shoveSoldiers). Not simulated: kinds 1 and 6's own states, the guards ((p >> 16) & 15 of 6-9: standing facing a set
+// way), the circling ones (4), side views' gravity.
 export const SOLDIER_LIFE: readonly number[] = [12, 12, 1, 12, 16, 8, 20, 0];
 export const SOLDIER = {
   half: 7,
@@ -270,7 +271,7 @@ export function stepSwordSoldier(game: AdventureGame, e: Enemy, world: World): v
       } else [e.tvx, e.tvy] = along((angleTo(e.x, e.y, p.x, p.y) - SOLDIER.veer) & 0xffff, e.turn);
     }
   }
-  const blocked = moveSoldier(e, world);
+  const blocked = moveSoldier(e, world, SOLDIER_WALL_BOX.SLR1);
   const look = () => {
     if (e.frameTimer > 0) return;
     e.frame = (e.frame + 1) & 7;
@@ -391,14 +392,90 @@ export function stepSwordSoldier(game: AdventureGame, e: Enemy, world: World): v
   for (const k of ["timer", "shot", "grace", "frameTimer"] as const) if (e[k] > 0) e[k]--;
 }
 
-/** Moves a soldier against walls, and never into a pit or deep water; true when something stopped it. */
-function moveSoldier(e: Enemy, world: World): boolean {
+/** Moves a soldier against walls (with its own box, `half` px: else a Link's), and never into a pit or deep water; true
+ *  when something stopped it. */
+function moveSoldier(e: Enemy, world: World, half?: number): boolean {
   const x0 = e.x, y0 = e.y;
   const ahead = (v: number) => Math.sign(v) * 6;
   const safe = (px: number, py: number) => !["pit", "deep"].includes(surfaceAt(world, px, py));
-  if (e.vx && safe(Math.floor((e.x + e.vx) / SUBPX) + ahead(e.vx), Math.floor(e.y / SUBPX))) moveAxis(e, world, e.vx, "x");
-  if (e.vy && safe(Math.floor(e.x / SUBPX), Math.floor((e.y + e.vy) / SUBPX) + ahead(e.vy))) moveAxis(e, world, e.vy, "y");
+  const move = (v: number, axis: "x" | "y") => (half ? moveInBox(e, world, half, v, axis) : moveAxis(e, world, v, axis));
+  if (e.vx && safe(Math.floor((e.x + e.vx) / SUBPX) + ahead(e.vx), Math.floor(e.y / SUBPX))) move(e.vx, "x");
+  if (e.vy && safe(Math.floor(e.x / SUBPX), Math.floor((e.y + e.vy) / SUBPX) + ahead(e.vy))) move(e.vy, "y");
   return (e.vx !== 0 && e.x - x0 !== e.vx) || (e.vy !== 0 && e.y - y0 !== e.vy);
+}
+
+// --- the soldiers' boxes: against the walls, and shoving each other ---
+// Traced in room 9 (docs/measurements/adventure-enemies.md "Adventure: the sword soldiers"): an actor's box against the
+// walls (+0x80..+0x8C, ±8 px for SLR1, ±10 for SLR4: they stop 8 and 10 px off the fence) and its body (+0x60..+0x6C)
+// that shoves: SLR1 x −4..4, y −6..2; SLR4 x −12..12, y −20..4. Every tick after all the actors' updates (0x801F6A4C,
+// from the actor loop 0x801F871C), each actor whose push class (+0xB8) is 1 is shoved out of every body of a weight
+// (+0xBC: SLR1 2, SLR4 3) at least its own, in the order they updated: 1 px at a time (up to 8 times while they
+// overlap) from the other's position give or take 0x2000, unless that step would put its wall box in a wall (0x801F23BC).
+// So the soldiers' centres keep about 8 px apart on an axis, and they give way to their captain, who shoves through them.
+/** Half the wall box (px) of a sword soldier and a captain. */
+export const SOLDIER_WALL_BOX = { SLR1: 8, SLR4: 10 } as const;
+/** The bodies that shove (px: left, top, right, bottom) and their weights. */
+export const SOLDIER_BODY = {
+  SLR1: { box: [-4, -6, 4, 2], weight: 2 },
+  SLR4: { box: [-12, -20, 12, 4], weight: 3 },
+} as const;
+type Shover = keyof typeof SOLDIER_BODY;
+const shoves = (e: Enemy): e is Enemy & { type: Shover } => e.type in SOLDIER_BODY;
+export const SHOVE = { step: SUBPX, steps: 8, spread: 0x2000 };
+
+/** Is a square box (half size px, its bottom and right edges exclusive) at (x, y) (1/256 px) in a wall along the side
+ *  leading along `axis` in direction `dir` (sampled every 8 px)? */
+function boxSideHits(world: World, x: number, y: number, half: number, axis: "x" | "y", dir: number): boolean {
+  const h = half * SUBPX, edge = (dir > 0 ? h - 1 : -h) + (axis === "x" ? x : y);
+  const across = axis === "x" ? y : x;
+  for (let o = -h; ; o = Math.min(o + 8 * SUBPX, h - 1)) {
+    const a = Math.floor(edge / SUBPX), b = Math.floor((across + o) / SUBPX);
+    if (axis === "x" ? isSolidAt(world, a, b) : isSolidAt(world, b, a)) return true;
+    if (o === h - 1) return false;
+  }
+}
+
+/** Moves `e` along one axis against the walls with its square wall box (half size px), in steps of at most 4 px (no wall
+ *  is thinner than 8 px), a step into a wall backed off 0.5 px at a time; true when a wall stopped it. */
+export function moveInBox(e: Pick<Enemy, "x" | "y">, world: World, half: number, delta: number, axis: "x" | "y"): boolean {
+  const dir = Math.sign(delta), n = Math.ceil(Math.abs(delta) / (4 * SUBPX));
+  for (let k = 1, done = 0; k <= n; k++) {
+    const step = Math.round((delta * k) / n) - done, from = e[axis];
+    done += step;
+    e[axis] += step;
+    while (Math.sign(e[axis] - from) === dir && boxSideHits(world, e.x, e.y, half, axis, dir)) e[axis] -= dir * (SUBPX / 2);
+    if (Math.sign(e[axis] - from) !== dir) e[axis] = from;
+    if (e[axis] - from !== step) return true;
+  }
+  return false;
+}
+
+/** Is a square box (half size px) at (x, y) (1/256 px) in a wall anywhere along its sides? */
+const boxInWall = (world: World, x: number, y: number, half: number) =>
+  boxSideHits(world, x, y, half, "x", 1) || boxSideHits(world, x, y, half, "x", -1) || boxSideHits(world, x, y, half, "y", 1) || boxSideHits(world, x, y, half, "y", -1);
+
+const bodyOf = (e: Enemy & { type: Shover }) => {
+  const b = SOLDIER_BODY[e.type].box;
+  return [e.x + b[0] * SUBPX, e.y + b[1] * SUBPX, e.x + b[2] * SUBPX, e.y + b[3] * SUBPX] as const;
+};
+const overlap = (a: readonly number[], b: readonly number[]) => Math.min(a[2]!, b[2]!) >= Math.max(a[0]!, b[0]!) && Math.min(a[3]!, b[3]!) >= Math.max(a[1]!, b[1]!);
+
+/** The soldiers shoving each other apart (0x801F6A4C), once a tick after every enemy's step. */
+export function shoveSoldiers(game: AdventureGame, world: World, shown: (e: Enemy) => boolean): void {
+  const bodies = game.adventure.enemies.filter((e) => shoves(e) && e.life > 0 && e.state !== "die" && shown(e)) as (Enemy & { type: Shover })[];
+  for (const a of bodies) {
+    const weight = SOLDIER_BODY[a.type].weight, half = SOLDIER_WALL_BOX[a.type];
+    for (const b of bodies) {
+      if (b === a || SOLDIER_BODY[b.type].weight < weight) continue;
+      const other = bodyOf(b);
+      for (let n = 0; n < SHOVE.steps && overlap(bodyOf(a), other); n++) {
+        const [dx, dy] = along(wobble(game, angleTo(b.x, b.y, a.x, a.y), SHOVE.spread), SHOVE.step);
+        if (boxInWall(world, a.x + dx, a.y + dy, half)) break;
+        a.x += dx;
+        a.y += dy;
+      }
+    }
+  }
 }
 
 // --- the captain's group ---
@@ -704,7 +781,7 @@ export function stepCaptain(game: AdventureGame, e: Enemy, world: World): void {
         e.angle = marching && e.shot2 === ORDER_GATHER ? (toward + 0x8000) & 0xffff : toward;
       }
       [e.vx, e.vy] = along(e.angle, marching ? CAPTAIN.march : CAPTAIN.chase);
-      moveWalls(e, world);
+      moveCaptain(e, world);
       e.facing = facingTo(e.vx, e.vy);
       if (e.frameTimer === 0) {
         e.frame = (e.frame + 1) & 3;
@@ -720,7 +797,7 @@ export function stepCaptain(game: AdventureGame, e: Enemy, world: World): void {
       e.frame = 2;
       return setState(e, "fly");
     case "fly": {
-      moveWalls(e, world);
+      moveCaptain(e, world);
       const slow = (v: number) => (v > 0 ? Math.max(0, v - CAPTAIN.lungeSlow) : Math.min(0, v + CAPTAIN.lungeSlow));
       [e.vx, e.vy] = [slow(e.vx), slow(e.vy)];
       e.frame = Math.min(5, 2 + Math.floor(e.tick / 4));
@@ -735,6 +812,12 @@ export function stepCaptain(game: AdventureGame, e: Enemy, world: World): void {
       e.frame = 0;
       return setState(e, e.kind >= 4 || !followers ? "chase" : "walk");
   }
+}
+
+/** A captain moves against the walls with his box (±10 px). */
+function moveCaptain(e: Enemy, world: World): void {
+  moveInBox(e, world, SOLDIER_WALL_BOX.SLR4, e.vx, "x");
+  moveInBox(e, world, SOLDIER_WALL_BOX.SLR4, e.vy, "y");
 }
 
 /** Does a captain's shield stop a sword from (x, y)? It faces that Link. */

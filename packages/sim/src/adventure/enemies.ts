@@ -25,7 +25,7 @@ import { DEBRIS, DEBRIS_TICKS, THROWN_DAMAGE } from "../strike.ts";
 import { isSolidAt, ROOM_H, ROOM_W, surfaceAt, type World } from "../world.ts";
 import { actorKey, currentArea, nextRandom, type AdventureGame } from "./adventure.ts";
 import { dropGem } from "./pickups.ts";
-import { ARROW_KIND, BALL_SOLDIER, ballSoldierHurtable, ballSoldierStruck, BOWMAN, bowmanHurtable, CAPTAIN, clearLine, initBallSoldier, initBowman, initCaptain, initSwordSoldier, ironBallBox, ironBallClanks, shieldStops, SOLDIER, soldierAfterKnock, soldierKnocked, soldierStruck, SPEAR_KIND, spearBox, stepBallSoldier, stepBowman, stepCaptain, stepSwordSoldier } from "./soldiers.ts";
+import { ARROW_KIND, BALL_SOLDIER, ballSoldierHurtable, ballSoldierStruck, BOWMAN, bowmanHurtable, CAPTAIN, clearLine, initBallSoldier, initBowman, initCaptain, initSwordSoldier, ironBallBox, ironBallClanks, moveInBox, shieldStops, shoveSoldiers, SOLDIER, SOLDIER_WALL_BOX, soldierAfterKnock, soldierKnocked, soldierStruck, SPEAR_KIND, spearBox, stepBallSoldier, stepBowman, stepCaptain, stepSwordSoldier } from "./soldiers.ts";
 import { armosHalf, armosHurtable, BONE_KIND, BUZZ, CRAB, initArmos, initBuzzBlob, initCrab, initMozo, initPoe, initRat, initStalfos, initTektite, MOZO, POE, poeLaugh, poeSolid, RAT, shock, STALFOS, stalfosHurtable, stepArmos, stepBuzzBlob, stepCrab, stepMozo, stepPoe, stepRat, stepStalfos, stepTektite, TEKTITE } from "./foes.ts";
 import type { AdventureStage } from "./stage.ts";
 import { initPame, initRope, initZol, PAME, pameBig, pameDeathGems, pameHarms, pameStruck, pameUpright, stepPame, stepRope, stepZol, walkerAfterKnock, walkerKnocked, WALKERS } from "./walkers.ts";
@@ -452,6 +452,7 @@ export function stepEnemies(game: AdventureGame, stage: AdventureStage, world: W
         }
     }
   }
+  shoveSoldiers(game, world, (e) => enemyShown(game, e));
   playerAttacks(game, world);
   arenaAttacks(game);
   contact(game);
@@ -670,8 +671,15 @@ export const BUSH_DROP_LOW = 40;
 export const BUSH_DROP_HIGH = 60;
 
 function stepKnock(e: Enemy, world: World): void {
-  moveAxis(e, world, e.vx, "x");
-  moveAxis(e, world, e.vy, "y");
+  // (A soldier or a captain knocked back with his own box.)
+  const half = e.type === "SLR1" || e.type === "SLR4" ? SOLDIER_WALL_BOX[e.type] : 0;
+  if (half) {
+    moveInBox(e, world, half, e.vx, "x");
+    moveInBox(e, world, half, e.vy, "y");
+  } else {
+    moveAxis(e, world, e.vx, "x");
+    moveAxis(e, world, e.vy, "y");
+  }
   e.vx = Math.trunc((e.vx * ENEMY_KNOCK_DECAY) / SUBPX);
   e.vy = Math.trunc((e.vy * ENEMY_KNOCK_DECAY) / SUBPX);
   if (e.tick < ENEMY_KNOCK_TICKS && e.vx * e.vx + e.vy * e.vy >= ENEMY_KNOCK_STOP * ENEMY_KNOCK_STOP) return;

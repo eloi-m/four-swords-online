@@ -375,7 +375,7 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   waterfalls, the C stick's formations, the Links apart (X, the D-pad, Y), pushed boulders and blocks, two-Link rocks,
   the boomerang and the Fire Rod, all traced in Dolphin; a scripted player (`drive.ts`) and Lake Hylia's route
   (`lakehylia.ts`).
-- **Lake Hylia is played to its goal** by the route, in node and in the browser (14 milestones, 22,714 ticks, 2,239
+- **Lake Hylia is played to its goal** by the route, in node and in the browser (14 milestones, 22,866 ticks, 2,305
   Force Gems, the stage cleared, its fights without a Link out of hearts; Tingle's scene under room 5's bridge read
   through, `tingle.ts`, traced): rooms 50+ played as their alone variants
   (room 58 → room 8, traced), the Links apart holding switches, leaving an area alone and called back from it, `SWT4`'s latch, the raft, the side views' walk-offs and their followers (falls, cannon shots),
@@ -405,7 +405,7 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   measured, the savestates and the next steps: `docs/ADVENTURE.md` "World 1: what's left".
 - **Left:** the Links pushing each other, a key pushed on the floor, and C-stick formations held back by
   a blocked follower and the blocked dash's 0.3 slide (traced, not applied: the routes need rescripting for them;
-  docs/measurements/adventure-lake-hylia.md "Adventure: formations against walls"), soldiers shoving each other apart and their rarer variants (guards, circlers, kinds 1 and
+  docs/measurements/adventure-lake-hylia.md "Adventure: formations against walls"), the soldiers' rarer variants (guards, circlers, kinds 1 and
   6), the Hinox's grab, the Armos as push blocks and on rails, the other ~20 placed enemy types (`POPO`, `DDRK`, `SLK2`,
   `TNDR`, `Poon`, `GROK`, `GOMA`, `SLR3`…), the spells' JPA effects, traces of the main.dol-only enemies (no savestate
   reaches their stages), bosses beyond Phantom Ganon (his Dolphin checks: docs/ADVENTURE.md), ice and quicksand, music and sounds, the held sword hitting
@@ -564,8 +564,9 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   apps); the minor Shadow Links above. Checked faithful: room 3's red shield and grey puffs in the doorway (Dolphin
   shows the same figure; the puffs are base-layer doorstep tiles), the sign "over a Link's head" (base layer, the Link
   in front), the carry pose (704, right). Left: `FGAL` (room 1's girls) stand in their spawn column, the formations
-  aren't simulated; room 9's soldiers (`SLR1` ×6, `SLR4`) all chase to one spot and the knight crossed the fence (sim
-  chase/collision). (Done: a `#room=N` start with a spot places all four Links on it (`createAdventure`); the followers
+  aren't simulated; (done 2026-10-28) room 9's soldiers (`SLR1` ×6, `SLR4`) all chasing to one spot and the knight drawn over the
+  fence: they shove each other apart and keep their own boxes (±8, ±10 px) off the walls (traced,
+  docs/measurements/adventure-enemies.md "Their boxes and the shove"). (Done: a `#room=N` start with a spot places all four Links on it (`createAdventure`); the followers
   used to start at the room's centre and walk through its enemies off screen, the "hearts lost with no enemy" of room 3.)
 
 - **Cave of No Return findings (blind playtest, 2026-10-18), all checked faithful, nothing changed:** the HUD's empty

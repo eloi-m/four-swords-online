@@ -831,8 +831,8 @@ Dolphin script; the probes replayed in the sim from the same spot.
   3. Phantom Ganon's early get-up, colours, 2-4 player rules: **not started** (`w1-013-room11`, pokes in the
      measurements' Phantom Ganon section).
   4. Room 11's staircase and room 12's goal in Dolphin: **not started**.
-  The castle route: 2,816 Force Gems (2,801 before room 9's blade traps), no Link out of hearts, 38,486 ticks (the 39 milestones played on; the whirl
-  added a tick). Its gems are rolled (pickups.ts: the rain's colours, the soldiers' drops): the 2,883 of the test's
+  The castle route: 2,751 Force Gems, no Link out of hearts, 39,036 ticks (the 39 milestones played on; 2,816 and 37,998
+  before the soldiers shoved each other apart). Its gems are rolled (pickups.ts: the rain's colours, the soldiers' drops): the 2,883 of the test's
   old comment was before the route's changes since moved the random generator (room 2 then 48 fewer, room 6's rain
   135 more).
   `tools/dolphin/src/trace.ts --watch <from>-<to>:<hexoff>:<hexlen>` (new) logs who writes a field of the Links, with

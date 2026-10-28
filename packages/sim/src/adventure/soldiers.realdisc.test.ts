@@ -4,9 +4,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { decompressYaz0, Dol, loadActorTypes, parseRarc, readTileTypes, Stage } from "@fso/formats";
 import { describe, expect, it } from "vitest";
 import { Button, SUBPX } from "../player.ts";
-import { createAdventure, stepAdventure, type AdventureGame } from "./adventure.ts";
+import { isSolidAt } from "../world.ts";
+import { areaWorld, createAdventure, stepAdventure, type AdventureGame } from "./adventure.ts";
 import { hurtEnemy } from "./enemies.ts";
-import { ARROW_KIND, BOWMAN, CAPTAIN, GROUP, ORDER_ATTACK, ORDER_GATHER, SOLDIER } from "./soldiers.ts";
+import { ARROW_KIND, BOWMAN, CAPTAIN, GROUP, ORDER_ATTACK, ORDER_GATHER, SOLDIER, SOLDIER_WALL_BOX } from "./soldiers.ts";
 import { actorStats, AdventureStage } from "./stage.ts";
 
 const root = new URL("../../../../extracted/", import.meta.url);
@@ -39,16 +40,17 @@ describe.skipIf(!existsSync(root))("the adventure's bow soldiers and captains", 
     expect([arrow!.vx, arrow!.vy]).toEqual([BOWMAN.arrowSpeed, 0]);
   });
 
-  it("sword soldiers keep 40-56 px off an idle Link until one is struck: then one takes his attack slot (traced, main.dol)", () => {
+  it("sword soldiers keep 36-56 px off an idle Link until one is struck: then one takes his attack slot (traced, main.dol)", () => {
     const stage = stageOf("boss010");
-    // Room 5's ambush, the Link idle on the bridge's switch (traced: 900 ticks, none closer than 44 px, slots free).
+    // Room 5's ambush, the Link idle on the bridge's switch (traced: 900 ticks, slots free, none closer than 44 px in
+    // one run and 38.6 in another, a soldier shoved in by the others).
     const game = createAdventure(stage, { room: 5, x: 264, y: 304, hearts: 20 });
     const p = game.players[0]!;
     const near = () => Math.min(...game.adventure.enemies.filter((e) => e.type === "SLR1").map((e) => Math.hypot(e.x - p.x, e.y - p.y) / SUBPX));
     step(game, stage, 400);
     let closest = Infinity;
     for (let t = 0; t < 500; t++) step(game, stage), (closest = Math.min(closest, near()));
-    expect(closest).toBeGreaterThan(40);
+    expect(closest).toBeGreaterThan(36);
     expect(closest).toBeLessThan(SOLDIER.slotReach);
     expect(game.adventure.slots).toEqual({ links: [-1, -1, -1, -1], wait: SOLDIER.slotWait, rate: 0 });
     // A soldier struck: the rate up by 2, the countdown out; the next one within 56 px takes the slot and comes on.
@@ -110,5 +112,33 @@ describe.skipIf(!existsSync(root))("the adventure's bow soldiers and captains", 
     const x0 = c.x;
     step(game, stage, 3);
     expect(c.x - x0).toBeGreaterThan(30 * SUBPX);
+  });
+
+  it("room 9's soldiers keep 8 px apart box to box, and they and their captain keep their boxes off the fence (traced)", () => {
+    const stage = stageOf("boss010");
+    // The Links idle where they come in (traced from ref/adv/room9.sav, 1200 frames: no two soldiers' centres closer
+    // than 5.6 px on both axes, mostly 8 or more; the captain stops at (106, 342), 10 px off the fence and the bottom
+    // wall, the soldiers 8 px off it).
+    const game = createAdventure(stage, { room: 9, x: 443, y: 74 });
+    const inWall = (x: number, y: number, half: number) => {
+      const world = areaWorld(game, stage);
+      for (let px = Math.floor(x / SUBPX - half); px < x / SUBPX + half; px++)
+        for (let py = Math.floor(y / SUBPX - half); py < y / SUBPX + half; py++) if (isSolidAt(world, px, py)) return true;
+      return false;
+    };
+    let closest = Infinity, walled = 0;
+    for (let t = 0; t < 1200; t++) {
+      step(game, stage);
+      const soldiers = game.adventure.enemies.filter((e) => e.type === "SLR1" && e.life > 0);
+      for (const [i, a] of soldiers.entries())
+        for (const b of soldiers.slice(i + 1)) closest = Math.min(closest, Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) / SUBPX);
+      for (const e of game.adventure.enemies) if ((e.type === "SLR1" || e.type === "SLR4") && inWall(e.x, e.y, SOLDIER_WALL_BOX[e.type])) walled++;
+      if (t === 300) {
+        const c = game.adventure.enemies.find((e) => e.type === "SLR4")!;
+        expect([Math.round(c.x / SUBPX), Math.round(c.y / SUBPX)]).toEqual([106, 342]);
+      }
+    }
+    expect(closest).toBeGreaterThan(5);
+    expect(walled).toBe(0);
   });
 });

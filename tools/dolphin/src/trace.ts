@@ -21,7 +21,8 @@
 //   --link <hexoff>:<hexlen> (repeatable; also records those bytes of every Link each frame, as hex in `links[i].raw`,
 //   e.g. --link 35c:c for the push velocity)
 //   --watch <from>-<to>:<hexoff>:<hexlen> (repeatable; a write watchpoint on that field of every Link over those frames:
-//   each write prints the frame, the Link, pc and lr and goes into the output's `watchHits`; slow, Dolphin single-steps)
+//   each write prints the frame, the Link, pc and lr and goes into the output's `watchHits`; slow, Dolphin single-steps;
+//   `@<hexaddr>` in place of the offset watches that address instead, e.g. an enemy's position)
 //   --break <hexpc> (repeatable; a code breakpoint: each time the CPU gets there, the frame, lr, r3–r10 and the callers
 //   go into the output's `breakHits`, e.g. to see who spawns an actor and with what params)
 // With --dump-frames the output's `frameDumps` holds, per frame, how many images Dolphin had dumped (framedump_<n>.png is
@@ -121,7 +122,8 @@ const linkFields = values.link!.map((l) => l.split(":").map((v) => parseInt(v, 1
 const watches = values.watch!.map((w) => {
   const [range, off, len] = w.split(":");
   const [a, b] = range!.split("-").map(Number);
-  return { from: a!, to: b ?? a!, off: parseInt(off!, 16), len: parseInt(len!, 16) };
+  const at = off!.startsWith("@") ? parseInt(off!.slice(1), 16) : null;
+  return { from: a!, to: b ?? a!, off: at ?? parseInt(off!, 16), at, len: parseInt(len!, 16) };
 });
 const watchHits: { f: number; link: number; off: number; pc: string; lr: string; callers: string[] }[] = [];
 const breaks = values.break!.map((b) => parseInt(b, 16));
@@ -221,8 +223,9 @@ try {
     for (const [df, addr, len] of dumps) if (df === f) writeFileSync(`${out}.f${f}.${addr.toString(16)}.bin`, await gdb.readMemory(addr, len));
     for (const w of writes) if (w.f === f) await gdb.writeMemory(w.addr, w.data);
     for (const w of watches) {
-      if (f === w.from) for (const a of actors) await gdb.addWatchpoint(a + w.off, w.len);
-      if (f === w.to + 1) for (const a of actors) await gdb.removeWatchpoint(a + w.off, w.len);
+      const at = w.at !== null ? [w.at] : actors.map((a) => a + w.off);
+      if (f === w.from) for (const a of at) await gdb.addWatchpoint(a, w.len);
+      if (f === w.to + 1) for (const a of at) await gdb.removeWatchpoint(a, w.len);
     }
     for (const [tf, x, y] of teles) {
       if (tf !== f) continue;

@@ -584,7 +584,8 @@ export const HYRULE_CASTLE_MILESTONES: readonly { name: string; goals: readonly 
       // (Fought as they come up out of the lane: chasing one down it would leave the room.)
       travelTo(256, 336),
       guardLane("the generator's soldiers, met at the lane's mouth", 256, 336, switchOn(16), 20000),
-      collect("their drops", (it) => it.type === "gem", 3000),
+      // (Not those down the lane: picking one up there would leave the room.)
+      collect("their drops", (it) => it.type === "gem" && it.y < 360 * SUBPX, 3000),
       travelTo(256, 270),
       holdUntil("up through the door into area 2", Up, inArea(2), 300),
     ],

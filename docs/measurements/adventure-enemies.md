@@ -84,9 +84,25 @@ ambush, the Link idle on the bridge's switch, 900 frames) and `r9idle` (room 9, 
   straight down), every frame, so between aims it backs off. Every SLR1 init frees the slots, sets the countdown to 200
   and the rate to 0; a soldier struck (or killed, 0x8015394C) frees its slot and adds 2 to the rate (at most 200; the
   first time also zeroes the countdown). `r5idle`: the slots stayed free, the countdown 200 and the rate 0 for 900
-  frames, the sixteen soldiers pacing 44-60 px from the Link (none came closer). The traced backing off skips some
-  frames where soldiers shove each other apart (their separation, not simulated); the sim's soldiers kept 52-68 px.
+  frames, the sixteen soldiers pacing 44-60 px from the Link (none came closer; traced again 2026-10-28, `r5idle2`,
+  the four Links teleported there: one soldier shoved in to 38.6 px). The traced backing off skips the frames where
+  soldiers shove each other apart (below).
 - **A captain's soldiers** (`r9idle`): the captain's order (+0x288: 1 gather, 0 attack) is copied to each soldier
   (+0x27C); under gather a patrolling soldier goes 4 → 6 at once (frames 36-38) and aims at the captain while more than
   40 px from him, its chase held at 20; under attack its chase is held while it sees a Link. The captain's legs: 296
   and 268 frames (params 0x01000000: 200 + rand(200)).
+- **Their boxes and the shove** (traced 2026-10-28, `actor-trace.ts` from `ref/adv/room9.sav`, the Links idle 1200
+  frames, `r9idle2`; who wrote a soldier's position: `trace.ts --watch 126-133:@812e490c:8`; read in main.dol): every
+  frame after all the actors' updates, the actor loop (0x801F871C) calls 0x801F6A4C, which goes through the actors
+  that registered after their update (push class +0xB8 1 or 2, in update order; +0xB8 2 only notes the overlap) and
+  shoves each class-1 actor A out of each other one B whose weight (+0xBC) is at least A's: while their bodies
+  (position + the box +0x60..+0x6C: SLR1 x −4..4, y −6..2; SLR4 x −12..12, y −20..4, weights 2 and 3) overlap, up to 8
+  times, A steps 1 px away from B along atan2(A − B) give or take 0x2000 (the game's random generator), unless the step
+  would put its wall box (+0x80..+0x8C: SLR1 ±8, SLR4 ±10) in a wall (0x801F23BC); A's +0x9C keeps B's id. So soldiers
+  shove each other and give way to their captain, who isn't shoved by them. `r9idle2`: the shoves 1 px a frame (2 from
+  two), between soldiers whose centres were 8-10 px apart; the soldiers' centres no closer than 5.6 px on both axes
+  (mostly 8 or more). Against the walls: the captain stopped at (106, 342), 10 px off the fence (x 80-95) and the
+  bottom wall (y 352), the soldiers no closer than 8 px (x 104). The sim (`soldiers.ts` `shoveSoldiers`, `moveInBox`)
+  had them all on one spot (the gather order and the chase aim at one point) and moved both with a Link's ±7 box, the
+  captain drawn over the fence at x 103; the step's random angle is the sim's generator, and the wall test is a box
+  against solid tiles (0x801F23BC not read further).
