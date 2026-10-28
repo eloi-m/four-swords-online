@@ -16,6 +16,7 @@ const root = new URL("../../../../extracted/", import.meta.url);
 const load = (path: string) => parseRarc(decompressYaz0(readFileSync(new URL(`files/GC4Sword_usa/${path}`, root))));
 
 describe.skipIf(!existsSync(root))("the Links apart and Lake Hylia's caves like the game", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stats = actorStats(loadActorTypes(load("data.arc"))!);
   const stage = new AdventureStage(new Stage(load("Boss/boss010.arc")), tileTypes, stats);

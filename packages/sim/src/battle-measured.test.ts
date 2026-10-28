@@ -150,6 +150,7 @@ const EXPECT: Readonly<Record<string, { pos?: number; sprites?: number; players?
 };
 
 describe.skipIf(!existsSync(boss500))("sim vs Dolphin Shadow Battle traces", () => {
+  if (!existsSync(boss500)) return void it.skip("needs extracted/", () => {});
   const stage = new Stage(parseRarc(decompressYaz0(readFileSync(boss500))));
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const worlds = new Map<number, World>();

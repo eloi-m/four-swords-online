@@ -27,6 +27,7 @@ describe("animated background tiles", () => {
 const root = new URL("../../../../extracted/files/GC4Sword_usa/", import.meta.url);
 
 describe.skipIf(!existsSync(root))("real disc: animated background tiles", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const data = parseRarc(decompressYaz0(readFileSync(new URL("data.arc", root))));
   const water = data.files.find((f) => f.path === "sch/bg_anim_b_sch.bin")!.data;
 

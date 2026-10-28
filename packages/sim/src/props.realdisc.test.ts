@@ -16,6 +16,7 @@ const boss500 = new URL("files/GC4Sword_usa/Boss/boss500.arc", root);
 const dol = new URL("sys/main.dol", root);
 
 describe.skipIf(!existsSync(boss500) || !existsSync(dol))("arena props (boss500)", () => {
+  if (!existsSync(boss500) || !existsSync(dol)) return void it.skip("needs extracted/", () => {});
   const stage = new Stage(parseRarc(decompressYaz0(readFileSync(boss500))));
   const tileTypes = readTileTypes(new Dol(readFileSync(dol)));
   /** The props of a room by type: the TV's (screen 0), or a side room's (siderooms.ts). */

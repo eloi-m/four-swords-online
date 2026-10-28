@@ -34,6 +34,7 @@ const root = new URL("../../../../extracted/", import.meta.url);
 const load = (path: string) => parseRarc(decompressYaz0(readFileSync(new URL(`files/GC4Sword_usa/${path}`, root))));
 
 describe.skipIf(!existsSync(root))("Phantom Ganon, as traced", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stage = new AdventureStage(new Stage(load("Boss/boss013.arc")), tileTypes, actorStats(loadActorTypes(load("data.arc"))!));
   const room11 = () => createAdventure(stage, { room: 11, x: 256, y: 330, facing: "up", players: 1 });

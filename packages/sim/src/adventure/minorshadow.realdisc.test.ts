@@ -20,6 +20,7 @@ const AWAY_AT = RAISE_AT + 3 * BLOW + 2 * 120 + 60 + 115;
 const GONE_AT = AWAY_AT + 242;
 
 describe.skipIf(!existsSync(root))("Lake Hylia's minor Shadow Link (room 4)", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stats = actorStats(loadActorTypes(load("data.arc"))!);
   const stage = new AdventureStage(new Stage(load("Boss/boss010.arc")), tileTypes, stats);
