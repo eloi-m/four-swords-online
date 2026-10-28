@@ -82,8 +82,11 @@ import {
  *    60 ticks after a wall; a charged pound sets no thud switch and doesn't jolt a flattened Link.
  * 29: CPUs and fire: a burning CPU steers its run (off pits, hazards and walls, to shallow water, into a rival); CPUs
  *    keep off BLZE flames (round them) and burning Links, and the better ones off fireballs.
+ * 30: fire on the castle's soldiers (32 life: a fireball knocks one along its flight, the stream stuns it on the spot);
+ *    a plain pit (Above the Clouds' outer void) puts a Link back where he last stood clear of it, no jump, 60 ticks
+ *    standing.
  */
-export const ONLINE_VERSION = 29;
+export const ONLINE_VERSION = 30;
 
 /** A free room's match: free play on the free map, or a Shadow Battle for everyone who was on it. */
 export type MatchMode = "free" | "battle";

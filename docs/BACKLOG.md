@@ -172,10 +172,15 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   300 ticks steered by the stick, into pits, put out by shallow water, setting alight whom he meets; fire meeting a
   wall leaves a `BLZE` flame (2 life, the slow knockback, any Link: a burning Link grazing a wall is hurt by his own),
   fireballs and the stream burn bushes. CPUs use them since 2026-10-11, and steer a burning run, keep off `BLZE` flames,
-  burning Links and fireballs since 2026-10-21 (B4). Left
-  (TODO(measure)): fire on pots, orbs and soldiers, the hammer's Action-button lock while flat, why the charged pound
-  sets no `DOSN` switch, Above the Clouds' outer pits (a burning Link fell into one: state 30, back on the edge 58
-  ticks later with 2 life less, not the sim's jump-out of the Tower of Flames' hole), the effects' look. `DOSN` thud
+  burning Links and fireballs since 2026-10-21 (B4). Fire on pots, orbs and soldiers and Above the Clouds' outer
+  pits **traced 2026-10-28** (docs/measurements/battle-combat.md "Fire on pots, orbs and soldiers, and the plain pit,
+  traced"; `ONLINE_VERSION` 30): fire takes 32 off a castle sword soldier (kills any; a fireball knocks a survivor
+  along its flight, the stream stuns it on the spot, again every 25 ticks), flies through orbs, bursts on pots as on
+  walls (sim unchanged there); a plain pit (tile type 0x03) puts a Link back where he last stood clear of it, no jump,
+  then 60 ticks standing. Left (TODO(measure)): fire on the archers, the captain and the ball-and-chain soldier
+  (applied alike, not reached in Dolphin), a burning Link's flame and `BLZE` flames on soldiers, the walking Link's
+  stop and step on a plain pit's edge before he falls, the hammer's Action-button lock while flat, why the charged
+  pound sets no `DOSN` switch, the effects' look. `DOSN` thud
   switches: The Field only ((128, 64) → 3, (256, 128)
   → 4, (144, 256) and (352, 256) → 1).
 - **The Pegasus Boots** (done 2026-10-10; `packages/sim/src/boots.ts`, docs/measurements/battle-combat.md "The Pegasus

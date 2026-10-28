@@ -107,6 +107,18 @@ const FALL_DROP_TICKS = FALL_SEQUENCE.ticks.reduce((a, b) => a + b, 0); // 58
 /** Ticks from falling in to landing back on the edge (the landing tick is the last). */
 export const FALL_TICKS = FALL_START_TICKS + FALL_DROP_TICKS + FALL_JUMP_TICKS + 1;
 /**
+ * A plain pit (tile type 0x03: Above the Clouds' outer void; traced walking off the island left, down, and left after
+ * standing at its edge, and a burning Link running off it): placed 8 px inside the edge too, but 4 ticks before he
+ * falls (state 30: the same 58 frames; meanwhile the game's walking Link stops, stands, walks a step and is put back
+ * where he was placed; a burning one runs on 2 ticks, stops, and is put back a step), then no jump: on the next tick
+ * he's back where he last stood with his whole body (x − 7 … x + 7, y − 7 … y + 7) off the pit (traced at 1.5 and
+ * 2 px a tick: 71 and 72 left of the edge at 64; not where he was a few ticks before), with PIT_DAMAGE and 180
+ * invincibility, and stands there (state 31, his standing frame, blinking) 60 ticks more, out of control, his
+ * invincibility set back to 180 on the last of them (blinking at once); then he faces away from the pit.
+ */
+export const PLAIN_FALL_START_TICKS = 4;
+export const PLAIN_FALL_STAND_TICKS = 60;
+/**
  * Dying (traced after a pit): 189, 190, 191, 192 ×6 three times, 193 ×4, then lying on 195 until the round ends. The sim
  * hides a dead Link instead ("dead" also stands for a player gone from an online match, who mustn't be drawn).
  */
@@ -227,6 +239,9 @@ export interface Fighter {
   fireX: number; // his Fire Rod stream's flame or his flame while burning (firerod.ts): where he stood last tick, 1/256 px
   fireY: number;
   fireWait: number; // ticks before his stream's flame comes back after it burst on a wall; -1: his burning flame burst
+  plainFall: boolean; // falling into a plain pit (tile type 0x03: put back on the edge, no jump), not a hole or lava
+  safeX: number; // where he last stood with his whole body off any pit (a plain pit puts him back there), 1/256 px
+  safeY: number;
 }
 
 export function createFighter(hearts: number, spawn: { x: number; y: number; facing: Facing }): Fighter {
@@ -278,6 +293,9 @@ export function createFighter(hearts: number, spawn: { x: number; y: number; fac
     fireX: 0,
     fireY: 0,
     fireWait: 0,
+    plainFall: false,
+    safeX: spawn.x * SUBPX,
+    safeY: spawn.y * SUBPX,
   };
 }
 
@@ -439,7 +457,18 @@ export function stepFighter(p: PlayerState, f: Fighter, buttons: number, world: 
       p.held = buttons;
       break;
   }
-  if ((f.mode === "active" || f.mode === "recoil" || f.mode === "hurt") && !AWAY.has(f.move) && onGround(f) && overPit(p, world)) startFall(p, f, world);
+  if ((f.mode === "active" || f.mode === "recoil" || f.mode === "hurt") && !AWAY.has(f.move) && onGround(f)) {
+    if (overPit(p, world)) startFall(p, f, world);
+    else if (offPits(p, world)) [f.safeX, f.safeY] = [p.x, p.y];
+  }
+}
+
+/** Is his whole body (x − 7 … x + 7, y − 7 … y + 7, the far sides open) off any pit? */
+function offPits(p: PlayerState, world: World): boolean {
+  const half = 7 * SUBPX, l = Math.floor((p.x - half) / SUBPX), r = Math.ceil((p.x + half) / SUBPX) - 1;
+  const t = Math.floor((p.y - half) / SUBPX), b = Math.ceil((p.y + half) / SUBPX) - 1;
+  for (const [x, y] of [[l, t], [r, t], [l, b], [r, b]] as const) if (surfaceAt(world, x, y) === "pit") return false;
+  return true;
 }
 
 /** On the ground (not held overhead or flying after a throw), so pits and floor hazards apply. */
@@ -503,6 +532,9 @@ function pitEdge(p: PlayerState, f: Fighter, world: World): { axis: "x" | "y"; e
  */
 export function startFall(p: PlayerState, f: Fighter, world?: World): void {
   const edge = world ? pitEdge(p, f, world) : null;
+  f.plainFall = !!world && plainPitAt(world, p);
+  // A burning Link runs on into a plain pit (firerod.ts: his run's step).
+  const run = f.plainFall && f.move === "burning" && f.z === 0 ? [f.flyX, f.flyY] : [0, 0];
   f.pushX = f.pushY = 0;
   f.slideX = f.slideY = 0;
   interrupt(p, f);
@@ -518,13 +550,20 @@ export function startFall(p: PlayerState, f: Fighter, world?: World): void {
       [tx, ty] = [p.x, outside];
     }
   }
-  f.pushX = Math.round((tx - p.x) / FALL_JUMP_TICKS);
-  f.pushY = Math.round((ty - p.y) / FALL_JUMP_TICKS);
+  if (f.plainFall) [tx, ty, f.flyX, f.flyY] = [f.safeX, f.safeY, run[0]!, run[1]!];
+  // The jump's step a tick; a plain pit's way back (from where he falls: one run step on from here).
+  const steps = f.plainFall ? 1 : FALL_JUMP_TICKS;
+  f.pushX = Math.round((tx - p.x - run[0]!) / steps);
+  f.pushY = Math.round((ty - p.y - run[1]!) / steps);
   f.z = f.vz = 0;
   setMode(f, "falling");
 }
 
+const plainPitAt = (world: World, p: PlayerState) =>
+  !!world.plainPit?.[Math.floor(p.y / SUBPX / CELL) * world.widthCells + Math.floor(p.x / SUBPX / CELL)];
+
 function stepFall(p: PlayerState, f: Fighter): void {
+  if (f.plainFall) return stepPlainFall(p, f);
   const t = ++f.modeTick;
   const jump = t - FALL_START_TICKS - FALL_DROP_TICKS + 1; // 1…64 in the air, 65 landing
   if (jump < 1) return;
@@ -547,6 +586,37 @@ function stepFall(p: PlayerState, f: Fighter): void {
     return;
   }
   setMode(f, f.hearts > 0 ? "active" : "dying");
+}
+
+function stepPlainFall(p: PlayerState, f: Fighter): void {
+  const t = ++f.modeTick - PLAIN_FALL_START_TICKS - FALL_DROP_TICKS; // 0 back on the edge, then standing
+  // A burning Link's run goes on 2 ticks, then he's put back a step as he falls (traced).
+  const run = f.modeTick <= 2 ? 1 : f.modeTick === PLAIN_FALL_START_TICKS ? -1 : 0;
+  if (run) {
+    p.x += run * f.flyX;
+    p.y += run * f.flyY;
+  }
+  if (f.modeTick === PLAIN_FALL_START_TICKS) f.flyX = f.flyY = 0;
+  if (t < 0) return;
+  if (t === 0) {
+    p.x += f.pushX; // (the way back stays in pushX / pushY: he turns that way when he stands up)
+    p.y += f.pushY;
+    f.hearts = Math.max(0, f.hearts - PIT_DAMAGE);
+    if (f.hearts > 0) {
+      makeInvincible(f, RESPAWN_INVINCIBLE_TICKS);
+      f.invincible--;
+    } else setMode(f, "dying"); // TODO(measure): a plain pit's last life (taken as the hole's: dying on the edge)
+    return;
+  }
+  if (t < PLAIN_FALL_STAND_TICKS) return;
+  // His invincibility starts over, blinking at once (traced: 179 on this tick, hidden), and he's back in control from
+  // the next, turned away from the pit (traced coming back right: facing right).
+  makeInvincible(f, RESPAWN_INVINCIBLE_TICKS, 0);
+  f.invincible--;
+  if (f.pushX || f.pushY) p.facing = Math.abs(f.pushX) >= Math.abs(f.pushY) ? (f.pushX > 0 ? "right" : "left") : f.pushY > 0 ? "down" : "up";
+  f.pushX = f.pushY = 0;
+  f.plainFall = false;
+  setMode(f, "active");
 }
 
 export type PixelBox = { left: number; top: number; right: number; bottom: number };
@@ -911,8 +981,10 @@ export function fighterFrame(p: PlayerState, f: Fighter, linkFrame: (p: PlayerSt
       if (f.modeTick === 1) return KNOCKBACK_FRAMES[OPPOSITE[p.facing]][0]!;
       return KNOCKBACK_FRAMES[p.facing][Math.min(3, Math.floor((f.modeTick - 2) / PIN_FRAME_TICKS))]!;
     case "falling": {
-      const t = f.modeTick - FALL_START_TICKS;
+      const t = f.modeTick - (f.plainFall ? PLAIN_FALL_START_TICKS : FALL_START_TICKS);
       if (t < 0) return linkFrame(p);
+      // (A plain pit: the fall's last frame still on the tick he's back on the edge, then standing.)
+      if (f.plainFall) return t <= FALL_DROP_TICKS ? at(FALL_SEQUENCE.frames, FALL_SEQUENCE.ticks, t) : STAND_FRAME[p.facing];
       if (t < FALL_DROP_TICKS) return at(FALL_SEQUENCE.frames, FALL_SEQUENCE.ticks, t);
       return knock(t - FALL_DROP_TICKS);
     }
