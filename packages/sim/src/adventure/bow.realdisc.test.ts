@@ -25,6 +25,7 @@ describe("the pedestals' items", () => {
 });
 
 describe.skipIf(!existsSync(root))("the bow in the Cave of No Return", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stats = actorStats(loadActorTypes(load("data.arc"))!);
   const stage = new AdventureStage(new Stage(load("Boss/boss011.arc")), tileTypes, stats);

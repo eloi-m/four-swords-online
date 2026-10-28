@@ -8,6 +8,7 @@ import { FLAME_LIGHT, LINK_LIGHT, lightSources, roomLight } from "./lights.ts";
 const boss500 = new URL("../../../extracted/files/GC4Sword_usa/Boss/boss500.arc", import.meta.url);
 
 describe.skipIf(!existsSync(boss500))("arena lighting (boss500)", () => {
+  if (!existsSync(boss500)) return void it.skip("needs extracted/", () => {});
   const stage = new Stage(parseRarc(decompressYaz0(readFileSync(boss500))));
 
   it("darkens the Dark World rooms and warms the Tower of Flames", () => {

@@ -17,6 +17,7 @@ const boss500 = new URL("files/GC4Sword_usa/Boss/boss500.arc", root);
 const dol = new URL("sys/main.dol", root);
 
 describe.skipIf(!existsSync(boss500) || !existsSync(dol))("Shadow Battle arenas (boss500)", () => {
+  if (!existsSync(boss500) || !existsSync(dol)) return void it.skip("needs extracted/", () => {});
   const stage = new Stage(parseRarc(decompressYaz0(readFileSync(boss500))));
   const tileTypes = readTileTypes(new Dol(readFileSync(dol)));
 

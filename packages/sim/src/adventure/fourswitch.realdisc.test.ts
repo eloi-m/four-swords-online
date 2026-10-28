@@ -24,6 +24,7 @@ const DOOR_SWITCH = 16;
 const SPOT = 16;
 
 describe.skipIf(!existsSync(root))("Lake Hylia's four-Link switch in room 2's cave", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stats = actorStats(loadActorTypes(load("data.arc"))!);
   const stage = new AdventureStage(new Stage(load("Boss/boss010.arc")), tileTypes, stats);
@@ -106,6 +107,7 @@ describe.skipIf(!existsSync(root))("Lake Hylia's four-Link switch in room 2's ca
 // for a big stone block the line walked through (and its fourth Link, blinking after an Octorok's rock, for one drawn
 // under it).
 describe.skipIf(!existsSync(root))("Lake Hylia's four-Link switch in room 4", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stage = new AdventureStage(new Stage(load("Boss/boss010.arc")), tileTypes, actorStats(loadActorTypes(load("data.arc"))!));
 

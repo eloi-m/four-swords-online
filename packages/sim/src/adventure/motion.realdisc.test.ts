@@ -27,6 +27,7 @@ const load = (path: string) => parseRarc(decompressYaz0(readFileSync(new URL(`fi
 const STATE = { walk: [0, 2, 13], swim: [74], jump: [56] } as const;
 
 describe.skipIf(!existsSync(root))("swimming and ledges like the game", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stats = actorStats(loadActorTypes(load("data.arc"))!);
   const stage = new AdventureStage(new Stage(load("Boss/boss010.arc")), tileTypes, stats);

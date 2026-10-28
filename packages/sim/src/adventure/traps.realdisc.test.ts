@@ -15,6 +15,7 @@ const load = (path: string) => parseRarc(decompressYaz0(readFileSync(new URL(`fi
 const px = (v: number) => v / SUBPX;
 
 describe.skipIf(!existsSync(root))("the traps", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stats = actorStats(loadActorTypes(load("data.arc"))!);
   const cave = new AdventureStage(new Stage(load("Boss/boss011.arc")), tileTypes, stats);

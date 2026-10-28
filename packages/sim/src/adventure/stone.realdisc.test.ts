@@ -11,6 +11,7 @@ const root = new URL("../../../../extracted/", import.meta.url);
 const load = (path: string) => parseRarc(decompressYaz0(readFileSync(new URL(`files/GC4Sword_usa/${path}`, root))));
 
 describe.skipIf(!existsSync(root))("Lake Hylia's grey stone, thrown from room 2's cave mouth", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stage = new AdventureStage(playedAlone(new Stage(load("Boss/boss010.arc"))), tileTypes, actorStats(loadActorTypes(load("data.arc"))!));
   const STONE = 0x72;
