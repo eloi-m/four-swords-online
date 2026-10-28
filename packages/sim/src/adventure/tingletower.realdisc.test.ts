@@ -31,6 +31,7 @@ const ENDS: readonly { room: number; area: number; check?: (game: AdventureGame)
 ];
 
 describe.skipIf(!existsSync(root))("Tingle's Tower by its route", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stats = actorStats(loadActorTypes(load("data.arc"))!);
   const stage = new AdventureStage(new Stage(load("Boss/boss012.arc")), tileTypes, stats);

@@ -20,6 +20,7 @@ const load = (path: string) => parseRarc(decompressYaz0(readFileSync(new URL(`fi
 const WALK_IN_X = [24.0, 24.42, 25.134, 26.054, 27.118, 28.282, 29.518, 30.802, 32.122, 33.465, 34.826, 36.198, 37.579, 38.965, 40.356, 41.749, 43.144, 44.541, 45.939, 47.337, 48.736];
 
 describe.skipIf(!existsSync(root))("the adventure's generators", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stats = actorStats(loadActorTypes(load("data.arc"))!);
   const stageOf = (id: string) => new AdventureStage(new Stage(load(`Boss/${id}.arc`)), tileTypes, stats);

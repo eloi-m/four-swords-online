@@ -15,6 +15,7 @@ const root = new URL("../../../../extracted/", import.meta.url);
 const load = (path: string) => parseRarc(decompressYaz0(readFileSync(new URL(`files/GC4Sword_usa/${path}`, root))));
 
 describe.skipIf(!existsSync(root))("signs and dialogue", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stats = actorStats(loadActorTypes(load("data.arc"))!);
   const bmgFile = load("msgus.arc").files.find((f) => f.path.endsWith("_e.bmg"))!.data;

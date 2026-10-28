@@ -18,6 +18,7 @@ const load = (path: string) => parseRarc(decompressYaz0(readFileSync(new URL(`fi
 const HEADING: Record<Facing, number> = { down: 0, right: 0x4000, up: 0x8000, left: 0xc000 };
 
 describe.skipIf(!existsSync(root))("the Cave of No Return's Shadow Link", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stats = actorStats(loadActorTypes(load("data.arc"))!);
   const stage = new AdventureStage(new Stage(load("Boss/boss011.arc")), tileTypes, stats);

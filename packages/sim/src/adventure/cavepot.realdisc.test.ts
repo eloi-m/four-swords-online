@@ -12,6 +12,7 @@ const root = new URL("../../../../extracted/", import.meta.url);
 const load = (path: string) => parseRarc(decompressYaz0(readFileSync(new URL(`files/GC4Sword_usa/${path}`, root))));
 
 describe.skipIf(!existsSync(root))("room 4's pots in the Cave of No Return", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stage = new AdventureStage(playedAlone(new Stage(load("Boss/boss011.arc"))), tileTypes, actorStats(loadActorTypes(load("data.arc"))!));
   const POT = 3 * 32 + 23; // y 48-63, x 368-383

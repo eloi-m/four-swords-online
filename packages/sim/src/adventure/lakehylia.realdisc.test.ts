@@ -39,6 +39,7 @@ const ENDS: readonly { room: number; area: number; gear?: string; check?: (game:
 ];
 
 describe.skipIf(!existsSync(root))("Lake Hylia by its route", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
   const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
   const stats = actorStats(loadActorTypes(load("data.arc"))!);
   const stage = new AdventureStage(new Stage(load("Boss/boss010.arc")), tileTypes, stats);

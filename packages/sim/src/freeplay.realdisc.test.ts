@@ -30,6 +30,7 @@ function perRoom(world: World, cells: Uint8Array): { reached: number; floor: num
 }
 
 describe.skipIf(!existsSync(arc) || !existsSync(dol))("Free play on stage 4-2's field (extracted/)", () => {
+  if (!existsSync(arc) || !existsSync(dol)) return void it.skip("needs extracted/", () => {});
   const raw = readFileSync(arc);
   const stage = new Stage(parseRarc(isYaz0(raw) ? decompressYaz0(raw) : raw));
   const tileTypes = readTileTypes(new Dol(readFileSync(dol)));

@@ -31,6 +31,7 @@ describe("player animation tables", () => {
 const dataArc = new URL("../../../extracted/files/GC4Sword_usa/data.arc", import.meta.url);
 
 describe.skipIf(!existsSync(dataArc))("player animation tables against the real player_sob.bin", () => {
+  if (!existsSync(dataArc)) return void it.skip("needs extracted/", () => {});
   const data = parseRarc(decompressYaz0(readFileSync(dataArc)));
   const frames = loadSob(data, "player_sob.bin");
   const sheet = loadSpriteSheet(data, 8);
