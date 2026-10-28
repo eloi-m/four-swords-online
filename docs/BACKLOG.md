@@ -584,6 +584,28 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
 - **The single-Link stone (tile 0x72, STON look) thrown:** drawn as the stone in flight since 2026-10-18 (carry.ts kept a
   pot's tile through the throw); its landing still breaks into the pot's shards and flies on the pot's speed and arc,
   both assumed: a Dolphin frame of a thrown STON landing would settle them.
+- **Lake Hylia against Dolphin (2026-10-28):** each room's live actors read from Dolphin RAM dumps and compared with
+  the sim's, frames side by side, and three input clips replayed in both. Matching: every placed actor's position, the
+  room-change arrival spots, the box formation (0.0 px), room 9's soldiers closing in on idle Links. Different:
+  1. Slope tiles 0x08-0x0B: in Dolphin a Link walking into one slides along the diagonal (room 2 area 5, holding up
+     from (128, 332.5): x 128 → 104.8 → 119.1 while climbing 1.5 px/frame, 0.6-0.9 px/frame aside); ours stops dead
+     at (128, 311) (`tiletypes.ts` counts them as a solid quarter).
+  2. The four-Link switch (`YNSW`) snaps the Links round its own position ((128, 93.5) for the switch at (128, 96)),
+     ours round 8 px further ((136, 104)): from Dolphin's inputs ours misses the catch and the door stays shut. Dolphin
+     holds the pose 95 frames (232 for 45, 220 → 232 two frames each, 232 for 26), ours 9.
+  3. The camera's zoom varies (room 0 1.75, room 3 1.51, room 7 1.43 → 1.19, room 9 1.89 → 1.20, GBA areas 1.1875);
+     ours is fixed at 2.14.
+  4. The HUD changes corner (room 0 bottom-right mirrored, room 1 bottom-left; it left the top-left as the Links reached
+     room 6's top-left); ours stays top-left.
+  5. Winged Force Gems (`HNRY`) move by their params (room 7's, 0x71000: x 232.7 ↔ 389.4 at 0.8 px/frame, ~396 frames a
+     round trip; room 6 area 6's and room 7 area 5's too; rooms 2 and 3's stay), bobbing 16-19 px over a gem-shaped
+     shadow; ours are still, with no shadow.
+  6. Smaller: room 6 area 6's `OBLF` slabs drawn by ours, not seen in Dolphin; room 0's `YAJI` arrows pulse on an
+     80-frame cycle; the GBA window's "Z Close" label, and its empty space grey (41, 41, 41), not black; a clock icon
+     with a digit beside the Links in room 6 area 5's side-view water (what it counts not known).
+  7. Measured, already known: room 6's ladder foot out of the water is a push of ~20 frames, then a 27-frame ledge jump
+     (state 56); ours walks out 34 ticks sooner (`TRACED_WATER_STAGES`).
+  Not compared (no savestate reaches them): areas 3/2, 3/3, 3/5, 5/2, 7/6 and room 58.
 
 ### B7. Code health
 - **Dependencies:** `playwright-core` is only in `tools/e2e`, for WebKit; its browser lives in `~/.cache/fso-webkit`
