@@ -51,6 +51,16 @@ Part of the measurements from the real game (index: [../measurements.md](../meas
   sideways instead, away from that corner. So Link slides at walking speed and is forgiven up to **5 px** of overlap
   (the corner sensors' offset); if the middle sensor hits, he just stops. Diagonal input slides along walls by its own
   axis components (1.06 px/frame); corner sliding with diagonal input wasn't tested.
+- **Slopes** (traced 2026-10-28, Lake Hylia room 2's area 5 from `ref/adv/room2-cave5.sav`; the sim's
+  `slopeSolid`, formats' `tiletypes.ts`): tile types 0x08 (bottom-right), 0x09 (bottom-left), 0x0A (top-right), 0x0B
+  (top-left) are solid on one side of the tile's diagonal, the diagonal included, by pixel: 0x0A where `lx >= ly`
+  (lx, ly 0-15 in the tile), 0x0B where `lx + ly <= 15`, 0x08 `lx + ly >= 15`, 0x09 `ly >= lx` (0x08 and 0x09 by
+  symmetry, not walked). Nothing else: walking straight into one, the corner sliding above slides Link along it. Holding
+  up from (128, 332.5) the leader went up to y 316, then 0.3-1.2 px aside a frame (fifths: 4 up 1 left, 2 up 3 left,
+  3 up 2 left, 1 up 4 left… 45° on average, x 128 -> 120.9), a 2 px side push past the tile's corner (122.9 -> 120.9),
+  the next 0x0A tile (x -> 104.8 by y 272), then up a 0x0B one to the right (x -> 119.1 by y 193). Replayed from
+  Dolphin's frames each fifth's choice matches the floored-pixel test; the whole walk on the sim stays within 0.4 px
+  (our 1/256 px fifths against the game's floats; `fourswitch.realdisc.test.ts`).
 - **Pushing** (measured, not in the sim): after 20 frames of walking without progress Link enters a push state
   (state 13; sprites 666/670/674/681 by direction…): no movement at all, which also ends a diagonal slide along the
   wall. After the stick is released the push state lasts 6 more frames before idle, delaying the next walk by that much.

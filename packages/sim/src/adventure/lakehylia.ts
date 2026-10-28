@@ -111,8 +111,9 @@ export const LAKE_HYLIA_MILESTONES: readonly { name: string; goals: readonly Goa
       walkTo(120, 190),
       walkTo(120, 150),
       formation("box"),
-      walkTo(128, 100, 2),
-      thenTogether(waitUntil("the door's switch", (g) => ((g.battle.switches >>> 16) & 1) === 1, 120)),
+      // (The four in the switch's box: its middle is 2.5 px up of it, (128, 93.5); logic.ts stepFourSwitch.)
+      walkTo(128, 96, 2),
+      thenTogether(waitUntil("the door's switch, the snap's pose over", (g) => ((g.battle.switches >>> 16) & 1) === 1 && g.adventure.fourSnap < 0, 120)),
       walkTo(120, 60),
       goTo(Up, 2, 6),
       walkTo(125, 88),
@@ -248,7 +249,7 @@ export const LAKE_HYLIA_MILESTONES: readonly { name: string; goals: readonly Goa
       // The four-Link switch (YNSW at (320, 144)): the leader on its top-left quarter, the box formation round him.
       travelTo(320, 144),
       formation("box"),
-      waitUntil("the gem rain's switch", (g) => ((g.battle.switches >>> 16) & 1) === 1, 120),
+      waitUntil("the gem rain's switch, the snap's pose over", (g) => ((g.battle.switches >>> 16) & 1) === 1 && g.adventure.fourSnap < 0, 120),
       ...together(),
       ...rainGems(),
       formation("wide"),

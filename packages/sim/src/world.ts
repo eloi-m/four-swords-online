@@ -1,6 +1,6 @@
 // Static collision world for a stage: every room of the layout grid laid out contiguously
 // (room cell (cx, cy) spans x = cx*512…+512, y = cy*384…+384 in world pixels), sampled in 8×8 cells.
-import { LAYER_TILES, MAP_GRID, solidMask, surfaceOf, type Stage, type Surface } from "@fso/formats";
+import { LAYER_TILES, MAP_GRID, slopeIndex, slopeSolid, solidMask, surfaceOf, type Stage, type Surface } from "@fso/formats";
 
 export const ROOM_W = 512;
 export const ROOM_H = 384; // the playable/visible part: top 24 of 32 tile rows
@@ -35,6 +35,12 @@ export interface World {
   readonly currents?: Uint8Array;
   /** 1 where a cell is a river stone (spike tile type 0x51; adventure/swim.ts STONE_DAMAGE): adventure areas only. */
   readonly spikes?: Uint8Array;
+  /**
+   * The slopes' half-solid cells (tile types 0x08-0x0B, formats' slopeSolid): per cell, slopeCell's code (0 none). A
+   * slope tile is solid on one side of its diagonal; `solid` holds the quadrant wholly on that side, this the two the
+   * diagonal crosses, tested by pixel (isSolidAt).
+   */
+  readonly slopes?: Uint8Array;
 }
 
 export function buildWorld(stage: Pick<Stage, "layout" | "layer">, tileTypes: Uint16Array): World {
@@ -42,6 +48,7 @@ export function buildWorld(stage: Pick<Stage, "layout" | "layer">, tileTypes: Ui
   const solid = new Uint8Array(widthCells * heightCells).fill(1);
   const surface = new Uint8Array(widthCells * heightCells);
   const rooms = new Int16Array(MAP_GRID * MAP_GRID).fill(-1);
+  let slopes: Uint8Array | undefined;
   stage.layout.rooms.forEach((row, cy) =>
     row.forEach((room, cx) => {
       if (room === null) return;
@@ -56,19 +63,33 @@ export function buildWorld(stage: Pick<Stage, "layout" | "layer">, tileTypes: Ui
             const x = cx * ROOM_CELLS_X + tx * 2 + (q & 1), y = cy * ROOM_CELLS_Y + ty * 2 + (q >> 1);
             solid[y * widthCells + x] = mask & (1 << q) ? 1 : 0;
             surface[y * widthCells + x] = code;
+            const slope = slopeCell(type, q);
+            if (slope) (slopes ??= new Uint8Array(widthCells * heightCells))[y * widthCells + x] = slope;
           }
         }
       }
     }),
   );
-  return { widthCells, heightCells, solid, surface, rooms };
+  return { widthCells, heightCells, solid, surface, rooms, ...(slopes ? { slopes } : {}) };
 }
 
 export function isSolidAt(world: World, px: number, py: number): boolean {
   const cx = Math.floor(px / CELL), cy = Math.floor(py / CELL);
   if (cx < 0 || cy < 0 || cx >= world.widthCells || cy >= world.heightCells) return true;
   if (world.boxes?.some((b) => px >= b.left && px <= b.right && py >= b.top && py <= b.bottom)) return true;
-  return world.solid[cy * world.widthCells + cx] === 1;
+  const i = cy * world.widthCells + cx;
+  if (world.solid[i] === 1) return true;
+  const slope = world.slopes?.[i];
+  return slope ? slopeSolid(slope - 1, px & 15, py & 15) : false;
+}
+
+/**
+ * The slope cell code (1 + formats' slopeIndex) of quadrant `q` (TL, TR, BL, BR) of a tile of `type`: the two quadrants
+ * its diagonal crosses, 0 for the others (solidMask has the one wholly solid) and for any other type.
+ */
+export function slopeCell(type: number, q: number): number {
+  const slope = slopeIndex(type);
+  return slope >= 0 && q !== 3 - slope && q !== slope ? slope + 1 : 0;
 }
 
 export function surfaceAt(world: World, px: number, py: number): Surface {

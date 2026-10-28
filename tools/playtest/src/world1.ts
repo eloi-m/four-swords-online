@@ -40,6 +40,14 @@ export const WORLD_1_EXPECTED: Readonly<Record<string, string>> = {
   "cave-big-block-down / box formation": "rule: in a C-stick formation a follower against a wall holds the leader (traced, holdFormation): the bent walk to the block stands at (377.1, 200.9)",
   "cave-big-block-down / long formation": "rule: as box formation (the column held on the way to the block, at (377.1, 200.9))",
   "cave-big-block-down / cross formation": "rule (b): a BLCK moves only with (p & 3) + 1 Links pushing its face (main.dol); the cross puts too few on it (how the game counts them in a diamond: unchecked)",
+  "cave-big-block / y -1 px":
+    "unfair (c): the route's roll: from the slopes' slides (2026-10-28) the Links come into room 13 a few ticks later and 0.2 px off, and on the way to the top corridor its rats bite the four out of hearts; they get up at the west entry with the blocks pushed, cut off from the east side (as the let-go variants)",
+  "cave-big-block / y +2 px": "unfair (c): as y -1 px (out of hearts to the rats, got up at the west entry, cut off from the east side)",
+  "cave-big-block / y +3 px": "unfair (c): as y -1 px (out of hearts to the rats, got up at the west entry, cut off from the east side)",
+  "cave-key-pot / x +2 px":
+    "unfair (c): the route's roll: from the slopes' slides (2026-10-28) the Links come into room 1 a few ticks later, and they're struck out of hearts by the switch's pot (the fireball trap above it, traps.ts, has it in reach); they get up at the west entry, and the walk back east stands against the pots there",
+  "cave-key-pot / x +3 px": "unfair (c): as x +2 px (struck out of hearts by the pot, got up at the west entry)",
+  "cave-key-pot / from another side": "unfair (c): as x +2 px (struck out of hearts once the pot is lifted, got up at the west entry: the chest's wait runs out)",
   "cave-key-pot / away and back": "unfair (c): room 1's pots come back when the Links leave and come in again (the room reloads), and the variant doesn't lift the ones by the chest again: the way to the switch's pot is shut",
   "cave-key-pot / idle 120 ticks":
     "unfair (c): standing idle at the switch's pot, the leader is in the fireball trap above's reach (248, 40: traps.ts) and its shot pushes him off the spot (stopped by his shield) or knocks him back: the route's lift then takes the Link beside him, and the pot keeps the way to the chest's switch (the route waits for the shot before it goes on)",

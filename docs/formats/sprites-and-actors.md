@@ -55,8 +55,10 @@ Part of the FSA file-format notes (index: [../formats.md](../formats.md)).
     0, 6, 7 wait for the switch, 3 and 12 start at once), count (p >> 12) & 0xFF (0: 256; 40/120/200 are re-scaled for 2+
     players), two `RUPY` a frame of type 2 / 1 / 0 for a roll of 100 under 5 / under 20 / else, from 300 + rand(50) px
     up, within ±8 × ((p >> 8) & 0xF) px (0: 64) of it for kinds 6, 7, 12, else anywhere on the screen.
-  - **confirmed** `YNSW` "switch for four" (init 0x8034EAB4, update 0x8034E49C): a ±15 px box, the four Links checked;
-    kind p & 15 (1: already on stays on). Lake Hylia's open the houses' shutters (`DOOR` kind 0 on the same switch).
+  - **confirmed** `YNSW` "switch for four" (init 0x8034EAB4, update 0x8034E49C, snap 0x8034E050): a ±15 px box 2.5 px
+    up of its position, the four Links' bodies (+0x4C0) meeting it for 6 frames running, then each snapped onto a corner
+    (±8 px about the box's middle) and a 95-frame pose, its switch on 79 frames in (docs/measurements/
+    adventure-lake-hylia.md "Room 2's cave"); kind p & 15 (1: already on stays on). Lake Hylia's open the houses' shutters (`DOOR` kind 0 on the same switch).
   - `DOOR` (init 0x802C7CC8, update 0x802C59D8, 15 states not decoded): kind p & 0x7F, side (p >> 7) & 31, (p >> 12) &
     31, bits 17 and 18, the top 5 bits a switch; its ±8 px box around its anchor + (12, 4) / (12, 12) / (12, 12) / (4, 12)
     by side, moved (p >> 12) & 31 tiles along its wall (the Cave of No Return's doors have 2: measured, their key taken at

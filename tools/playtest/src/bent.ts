@@ -23,7 +23,7 @@ const { Up, Down, Left, Right, Action } = Button;
 // Known results: variants (`key / variant`) that may fail today, and why. "finding:" ones are sim bugs or doubts
 // reported with a capture (findings.ts); "rule:" ones fail by a rule of the puzzle the sim has (from the guides or
 // measured), the game's own answer unchecked; "route:" ones fail by the driver or a rolled outcome, not the puzzle.
-const FOUR_ON_SWITCH = "rule: a four-Link switch's catch takes one Link in each quarter of its square (the box formation; the wide, long and cross can't fit that)";
+const FOUR_ON_SWITCH = "rule: a four-Link switch's catch takes the four Links' bodies all in its ±15 px box (traced, logic.ts stepFourSwitch: the box formation; the wide, long and cross can't fit in it)";
 const PUSH_FORMATION = "rule: only the wide formation's four pushers move it (the guides' way; other formations unchecked in Dolphin)";
 const TWO_LIFTERS = "rule: a two-Link rock needs a second Link's lift point (16 px ahead) in its box: this formation puts none there";
 const RAFT_FORMATION = "rule: the raft goes with the four Links on it (the box formation)";
@@ -40,6 +40,8 @@ export const EXPECTED: Readonly<Record<string, string>> = {
   "boulder / cross formation": PUSH_FORMATION,
   "cave-stone / y +2 px": "rule: the leader stops at x 351.96, his lift point 16 px ahead (measured) at 367.96, 0.04 px short of the stone's tile: the route's spot (352) is on the edge of the reach",
   "cave-stone / y +3 px": "rule: as y +2 px (the lift point short of the stone's tile)",
+  "cave-switch / y +3 px":
+    "rule: the leader stops at y 99.6, the box formation's bottom Links at 115.6: their bodies (±7) end 0.1 px past the switch's box (±15 round (128, 93.5), traced: logic.ts stepFourSwitch), so it isn't pressed",
   "cave-switch / wide formation": FOUR_ON_SWITCH,
   "cave-switch / long formation": FOUR_ON_SWITCH,
   "cave-switch / cross formation": FOUR_ON_SWITCH,
@@ -59,6 +61,7 @@ export const EXPECTED: Readonly<Record<string, string>> = {
   "plateau-rock / wide formation": TWO_LIFTERS,
   "plateau-rock / y -1 px": "route: the trail into room 5's pocket puts a follower on its south bank's floor switch (80, 336), switch 1 (the scripted run's passes beside it)",
   "plateau-rock / y -2 px": "route: the trail into room 5's pocket puts a follower on its south bank's floor switch (80, 336), switch 1 (the scripted run's passes beside it)",
+  "plateau-rock / from another side": "route: as y -1 px (the trail into room 5's pocket puts a follower on its south bank's floor switch 1 at (80, 336); the four-Link switch's traced snap, 2026-10-28, moved the route's timing there)",
   "pocket-stone / from another side": "route: coming round from below, a follower steps on room 5's floor switch 1 at (80, 336) (it starts the generator at (304, 208))",
   "block / cross formation": PUSH_FORMATION,
   "raft / wide formation": RAFT_FORMATION,
@@ -160,7 +163,7 @@ const LAKE_HYLIA_PUZZLES: readonly Puzzle[] = [
     key: "cave-switch",
     milestone: 2,
     name: "room 2's cave: the box formation onto its four-Link switch (YNSW), the door",
-    spot: { at: 16, x: 128, y: 100, axes: ["x", "y"] },
+    spot: { at: 16, x: 128, y: 96, axes: ["x", "y"] },
     idle: 16,
     formation: { at: 15, alts: ["wide", "long", "cross"] },
     // Back out of the cave from beside the switch, and in again (the stone at its mouth back in the way: lifted again).

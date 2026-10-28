@@ -117,7 +117,8 @@ Implemented in `packages/formats/src/fsa/bganim.ts` (software: `animateChars`) a
 - Located by correlating candidate arrays with community tile notes (FSALib, used locally as an oracle only), then
   cross-tabulated. Values are an enum, not bitfields: 0x00 floor, 0x01 solid, 0x02 background, 0x03 pit, 0x0d deep water,
   0x0e damaging pit, 0x39 shallow water, 0x50 ice, 0x51 spikes, 0x60 quicksand, 0x61 ladder. Partial walls come in
-  blocks of 4 (top, bottom, left, right or BR, BL, TR, TL): 0x04–07, 0x08–0b (sloped), 0x10–13, 0x14–17, 0x28–2b (door
+  blocks of 4 (top, bottom, left, right or BR, BL, TR, TL): 0x04–07, 0x08–0b (slopes: solid on one side of the diagonal by
+  pixel, docs/measurements/walking-and-sword.md "Slopes"), 0x10–13, 0x14–17, 0x28–2b (door
   frames), 0x58–5f (walls in water). Also 0x20 fence, 0x21 bush (cuttable), 0x30–38 movable blocks, 0x40–43 steel ball
   spawners, 0x52–53 fragile blocks.
 - Collision comes from the **base layer** (group 1) only. Top-layer tiles such as tree canopies are typed solid but

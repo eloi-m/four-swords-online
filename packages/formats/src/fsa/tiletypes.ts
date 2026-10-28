@@ -42,7 +42,7 @@ const TOP = TL | TR, BOTTOM = BL | BR, LEFT = TL | BL, RIGHT = TR | BR;
 const MASKS: Record<number, number> = {
   0x01: SOLID,
   0x04: TOP, 0x05: BOTTOM, 0x06: LEFT, 0x07: RIGHT, // stair and ledge edges
-  0x08: BR, 0x09: BL, 0x0a: TR, 0x0b: TL, // sloped cliff corners (probably slide Link diagonally)
+  0x08: BR, 0x09: BL, 0x0a: TR, 0x0b: TL, // slopes: the quadrant wholly on the solid side of the diagonal (slopeSolid)
   0x10: TOP, 0x11: BOTTOM, 0x12: LEFT, 0x13: RIGHT, // cliff walls
   0x14: TL, 0x15: TR, 0x16: BL, 0x17: BR, // cliff corners
   0x1a: BL, 0x1b: BR, // tree trunk sides
@@ -58,6 +58,25 @@ const MASKS: Record<number, number> = {
 /** Which quadrants of a tile block movement (0 = none). Unknown types are treated as open. */
 export function solidMask(type: number): number {
   return MASKS[type] ?? 0;
+}
+
+/**
+ * Slopes (types 0x08-0x0B, index type - 0x08): a 16 px tile solid on one side of its diagonal, the diagonal itself
+ * included, by pixel (lx, ly: 0..15 inside the tile). Verified: Lake Hylia room 2 area 5, a Link walking up into 0x0A
+ * and right into 0x0B slid along them as in Dolphin, by the corner sliding of a straight walk (docs/measurements/
+ * walking-and-sword.md "Slopes"). 0x08 and 0x09 by symmetry.
+ */
+export function slopeIndex(type: number): number {
+  return type >= 0x08 && type <= 0x0b ? type - 0x08 : -1;
+}
+
+export function slopeSolid(slope: number, lx: number, ly: number): boolean {
+  switch (slope) {
+    case 0: return lx + ly >= 15; // 0x08: bottom-right
+    case 1: return ly >= lx; // 0x09: bottom-left
+    case 2: return lx >= ly; // 0x0A: top-right
+    default: return lx + ly <= 15; // 0x0B: top-left
+  }
 }
 
 export type Surface = "floor" | "pit" | "shallow" | "deep" | "ice" | "quicksand" | "ladder";

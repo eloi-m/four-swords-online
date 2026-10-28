@@ -281,15 +281,21 @@ about 6 px/frame in state 3); the C stick is scripted as `c-up`… (`script.ts`)
   formation walking up onto it (each Link snapped onto a quarter, sprites 224-232 a while), which opens the `DOOR` (kind
   0, switch 16) to area 6; there R facing the pedestal tile 0x017 from below (leader at (125, 87)) gives the
   **boomerang** (+0xC10 = 3, 90 frames later: "You got a boomerang!"), no actor involved.
-  The sim (2026-10-10, `logic.ts` catchFour, `fourswitch.realdisc.test.ts`): the box formation is caught when each Link
-  is in one quarter of the switch's square (its middle (136, 104)) within ±16 px, and then each goes to his quarter's
-  middle (±8 px: (128, 96), (144, 96), (128, 112), (144, 112)), the switch on that tick, the sprites 224-232 for 9 ticks
-  (one a tick). **Assumed, not traced:** the ±16 px catch, the places (the quarters' middles, the box's), the snap at
-  once (no ticks of walking to them), the sprites' timing; the traced "a while" wasn't timed. So the route's walk up to
-  its spot is caught as the leader crosses y 104: from 103.3 he's put on (128, 96) in one tick (a 7 px jump, assumed: a
-  slide over the 9 sprite ticks is the alternative if a trace shows the walk), then walks back to the spot. Room 4's
-  switch (the same rule, `plateau-switch`) moves its Links 0.3-0.8 px onto their middles (the route's stops downstream:
-  `bent.ts` EXPECTED).
+  **The snap** (traced 2026-10-28, `ref/adv/room2-cave5.sav`, the box formation walking up onto it; read in main.dol,
+  update 0x8034E49C, snap 0x8034E050; the sim's `logic.ts` stepFourSwitch, `fourswitch.realdisc.test.ts` replays the
+  trace from `dolphin-adventure-four.json`): the switch's box is ±15 px round its position, 2.5 px up ((128, 93.5)
+  here); a Link counts when his body (±7 px, +0x4C0) meets it, on the ground (z ≤ 4). Once all four count it waits 5
+  frames (a countdown reset whenever one leaves), and on the 6th snaps them: each corner in turn (left top, left
+  bottom, right top, right bottom) takes the Link nearest a point 60 px out that way, put 8 px each way off the box's
+  middle: (120, 85.5), (120, 101.5), (136, 85.5), (136, 101.5), in one frame (the bottom Links' bodies reached the box
+  at frame 280, the snap at 286: the switch sees the Links as they stood the frame before). Then the four hold a pose,
+  the stick ignored: sprite 232 for 45 frames, 220-231 two frames each, 232 again for 26, 95 frames in all; the switch
+  goes on 79 frames in (232 back, then 10 frames: main.dol's table 0x804721D4). The door north then took the leader
+  only from frame 463, 98 frames after the switch: until then the Links stood at y 38.2 under the doorway (its box
+  still shut while it opens, by the look of it: the `DOOR`'s timing isn't decoded), and as it opened the right-hand
+  Links, against the doorway's frame, pushed (state 13) while the leader walked on into it (frame 466). The sim
+  opens the door with the switch and keeps the box formation held by those Links (holdFormation), so from Dolphin's
+  inputs it stands under the doorway: neither is traced enough to change yet.
 - **The whirlpool** (room 6's `WARP` at (416, 224), style 0x0E, in the pool): swimming onto it takes the Link at once:
   state 38 (sprites 962-972) for 50 frames at the warp's position, then in area 5 at the target box's middle (280, 120)
   in state 39 (540-543) for about 90 frames, sinking from frame 60 of it, then **side-view swimming** (state 75):

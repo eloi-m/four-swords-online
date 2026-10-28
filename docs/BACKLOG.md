@@ -380,7 +380,7 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   waterfalls, the C stick's formations, the Links apart (X, the D-pad, Y), pushed boulders and blocks, two-Link rocks,
   the boomerang and the Fire Rod, all traced in Dolphin; a scripted player (`drive.ts`) and Lake Hylia's route
   (`lakehylia.ts`).
-- **Lake Hylia is played to its goal** by the route, in node and in the browser (14 milestones, 22,866 ticks, 2,305
+- **Lake Hylia is played to its goal** by the route, in node and in the browser (14 milestones, 23,575 ticks, 2,059
   Force Gems, the stage cleared, its fights without a Link out of hearts; Tingle's scene under room 5's bridge read
   through, `tingle.ts`, traced): rooms 50+ played as their alone variants
   (room 58 → room 8, traced), the Links apart holding switches, leaving an area alone and called back from it, `SWT4`'s latch, the raft, the side views' walk-offs and their followers (falls, cannon shots),
@@ -442,14 +442,9 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
     them; with the slide the Cave of No Return ends 22 gems short): a blocked dash slides at 0.3 of its step, and
     the four in their places walk as one, a blocked follower holding the leader (most of the four routes then
     stall). docs/measurements/adventure-lake-hylia.md "Adventure: formations against walls".
-  - Done: the four-Link switch's snap onto its quarters (`logic.ts` catchFour): the box formation, each Link in one
-    quarter of the switch's square within ±16 px, is snapped onto the quarters' middles and presses it. 3.8 px below
-    room 2's cave switch is now ok (`playtest-bent-cave-switch-y-3-px`). **Assumed, not measured:** the ±16 px catch,
-    the snap at once, the sprites 224-232 one a tick (9 ticks), the quarters' middles as the places. The snap moved
-    room 4's Links 0.3-0.8 px, and two of `plateau-rock`'s bent walks (`y +2 px`: the second lift point on the rock's
-    box edge, inferred; `idle 120 ticks`: the walk's stop before room 4's north exit is on the exit's edge, inferred)
-    now fail. They're known results in `bent.ts` EXPECTED, not fixed: an exact stop at that exit might clear the second
-    (unverified). The snap is an instant move (a jump of up to ~8 px in one tick, assumed).
+  - Done: the four-Link switch's catch, snap and pose traced (`logic.ts` stepFourSwitch, 2026-10-28): the four Links'
+    bodies in its ±15 px box (2.5 px up) 6 ticks running, then snapped 8 px each way off the box's middle, a 95-tick
+    pose, the switch on 79 ticks in. Lake Hylia's route walks to (128, 96) in room 2's cave and waits out the pose.
   - Done: the open doors' shut look (above): room 2's cave door and room 3's house door (`playtest-cave-door-look`,
     `playtest-locked-door-look`, replayed with `capture:shot`: open; their scenarios dropped from `bent.ts`).
   - Action facing a follower lifts him (the battle's lift of a Link) in the one-player adventure
@@ -587,12 +582,17 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
 - **Lake Hylia against Dolphin (2026-10-28):** each room's live actors read from Dolphin RAM dumps and compared with
   the sim's, frames side by side, and three input clips replayed in both. Matching: every placed actor's position, the
   room-change arrival spots, the box formation (0.0 px), room 9's soldiers closing in on idle Links. Different:
-  1. Slope tiles 0x08-0x0B: in Dolphin a Link walking into one slides along the diagonal (room 2 area 5, holding up
-     from (128, 332.5): x 128 → 104.8 → 119.1 while climbing 1.5 px/frame, 0.6-0.9 px/frame aside); ours stops dead
-     at (128, 311) (`tiletypes.ts` counts them as a solid quarter).
-  2. The four-Link switch (`YNSW`) snaps the Links round its own position ((128, 93.5) for the switch at (128, 96)),
-     ours round 8 px further ((136, 104)): from Dolphin's inputs ours misses the catch and the door stays shut. Dolphin
-     holds the pose 95 frames (232 for 45, 220 → 232 two frames each, 232 for 26), ours 9.
+  1. Done (2026-10-28): slope tiles 0x08-0x0B, solid on one side of the diagonal by pixel; a Link walking into one
+     slides along it by the corner sliding (docs/measurements/walking-and-sword.md "Slopes"; the leader's walk up room
+     2's area 5 within 0.4 px of Dolphin's). The Field's arena has eight (its two worlds): the battle changed too
+     (`ONLINE_VERSION` 31).
+  2. Done (2026-10-28): the four-Link switch's catch, snap and 95-tick pose, read in main.dol and traced
+     (`logic.ts` stepFourSwitch; from Dolphin's inputs the four match to 0.0 px through the snap and the pose). Left:
+     from there Dolphin's door north takes the leader 98 frames after the switch, the right-hand Links pushing against
+     the doorway's frame while he walks in; ours opens with the switch and the box formation stays held under the
+     doorway by those Links (holdFormation), so the clip doesn't go through the door. Needs the `DOOR`'s opening
+     timing (update 0x802C59D8) and when a pushing follower stops holding the leader (docs/measurements/
+     adventure-lake-hylia.md "Room 2's cave").
   3. The camera's zoom varies (room 0 1.75, room 3 1.51, room 7 1.43 → 1.19, room 9 1.89 → 1.20, GBA areas 1.1875);
      ours is fixed at 2.14.
   4. The HUD changes corner (room 0 bottom-right mirrored, room 1 bottom-left; it left the top-left as the Links reached

@@ -508,6 +508,8 @@ export const CAVE_OF_NO_RETURN_MILESTONES: readonly { name: string; goals: reado
       waitUntil("the third candle", (g) => switchOn(g.battle, 26), 90),
       ...shootFrom(408, 300, Up),
       waitUntil("the fourth candle: the crystal shown", (g) => switchOn(g.battle, 19), 90),
+      // (Ten ticks for the Keese to take wing first: started at once, the leader was downed twice in their fight.)
+      wait(10),
       // Arrows at the crystal from below until the bridge is laid (a Keese resting in the way takes one), the Keese
       // that come struck down meanwhile.
       guard("arrows at the crystal, the Keese that come beaten", keese, {

@@ -2,6 +2,9 @@
 // Adventure traces (the formation leader, a GameCube pad): per frame the sim button mask the game read, and the
 // leader's position (world px), sprite frame and state.
 //   node tools/dolphin/src/fixture.ts <out.json> <name>=<trace.json>[@from:to] ...
+// With --four, the four Links (the formations, the four-Link switch): per frame and per Link his area or world px,
+// sprite frame and state; the inputs are the trace's script (its C-stick formations aren't in the pad).
+//   node tools/dolphin/src/fixture.ts --four <out.json> <name>=<trace.json>[@from:to] ...
 // Shadow Battle traces (integrated GBAs, docs/measurements/battle-combat.md "Battle measurements: combat"): per frame and per Link in
 // the round, the sim button mask of his GBA's keys, his room position, height, sprite frame, state, life and
 // invincibility. A trace that recorded the Links' screen (`trace.ts --link 3b4:4`) puts a Link in a side room where the
@@ -64,6 +67,16 @@ function adventureCase(name: string, trace: Trace, frames: Trace["frames"]) {
   };
 }
 
+function fourCase(name: string, trace: Trace, frames: Trace["frames"]) {
+  return {
+    name,
+    script: trace.script,
+    savestate: trace.savestate,
+    // Per frame (frame 0 the starting state, then one per input of the script), per Link: [x, y, sprite frame, state].
+    frames: frames.map((f) => f.links.map((l) => [round(l.x), round(l.y), l.frame, l.state])),
+  };
+}
+
 /** A Link's position in the sim's room layout: the TV's room px, or a side room's own px below it. */
 function roomXY(l: FrameSnapshot["links"][number]): [number, number] {
   const screen = l.raw?.["3b4"] ? parseInt(l.raw["3b4"], 16) : 0;
@@ -114,22 +127,24 @@ function battleCase(name: string, trace: Trace, frames: Trace["frames"]) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
-  const battle = args[0] === "--battle", append = battle && args[1] === "--append";
-  const [out, ...specs] = battle ? args.slice(append ? 2 : 1) : args;
+  const battle = args[0] === "--battle", four = args[0] === "--four", append = battle && args[1] === "--append";
+  const [out, ...specs] = battle || four ? args.slice(append ? 2 : 1) : args;
   if (!out || !specs.length) {
-    console.error("usage: fixture [--battle] <out.json> <name>=<trace.json>[@from:to] ...");
+    console.error("usage: fixture [--battle | --four] <out.json> <name>=<trace.json>[@from:to] ...");
     process.exit(1);
   }
   const cases = specs.map((spec) => {
     const [, name, file, from, to] = /^([^=]+)=([^@]+)(?:@(\d+):(\d+))?$/.exec(spec)!;
     const trace = JSON.parse(readFileSync(file!, "utf8")) as Trace;
     const frames = trace.frames.slice(Number(from ?? 0), to === undefined ? undefined : Number(to) + 1);
-    return battle ? battleCase(name!, trace, frames) : adventureCase(name!, trace, frames);
+    return battle ? battleCase(name!, trace, frames) : four ? fourCase(name!, trace, frames) : adventureCase(name!, trace, frames);
   });
   const source = battle
     ? "Dolphin 2606 with integrated GBAs, G4SE01 rev 0, the Shadow Battle round-start savestates (ref/save-battle-*.sav), traced with tools/dolphin/src/trace.ts"
-    : "Dolphin 2606, G4SE01 rev 0, ref/save-lake-hylia.sav (boss010 room 1), traced with tools/dolphin/src/trace.ts";
-  const columns = battle ? ["buttons", "x", "y", "z", "spriteFrame", "state", "life", "invincible"] : ["buttons", "x", "y", "spriteFrame", "state"];
+    : four
+      ? "Dolphin 2606, G4SE01 rev 0, the case's savestate, traced with tools/dolphin/src/trace.ts"
+      : "Dolphin 2606, G4SE01 rev 0, ref/save-lake-hylia.sav (boss010 room 1), traced with tools/dolphin/src/trace.ts";
+  const columns = battle ? ["buttons", "x", "y", "z", "spriteFrame", "state", "life", "invincible"] : four ? ["x", "y", "spriteFrame", "state"] : ["buttons", "x", "y", "spriteFrame", "state"];
   if (append) {
     const old = JSON.parse(readFileSync(out, "utf8")) as { cases: typeof cases };
     cases.unshift(...old.cases.filter((c) => !cases.some((n) => n.name === c.name)));

@@ -65,9 +65,20 @@ export function dirOfFacing(f: Facing): number {
 /** A walking step's length along one axis (1/256 px): what a Link blocked by nothing moves in a tick. */
 export const FULL_STEP = WALK_SPEED;
 
-/** The four-Link switch's snap pose: its first sprite, and its ticks (the 9 sprites, 224-232, one a tick: assumed). */
-export const FOUR_SNAP_FRAME = 224;
-export const FOUR_SNAP_TICKS = 9;
+/**
+ * The four-Link switch's snap pose (logic.ts stepFourSwitch), traced: sprite 232 for 45 ticks, 220-231 two ticks each,
+ * 232 again to the end, 95 ticks in all.
+ */
+export const FOUR_SNAP_FRAME = 232;
+export const FOUR_SNAP_TICKS = 95;
+const FOUR_SNAP_HOLD = 45;
+const FOUR_SNAP_RISE = 220;
+
+/** The snap pose's sprite `tick` ticks in. */
+export function fourSnapFrame(tick: number): number {
+  const k = tick - FOUR_SNAP_HOLD;
+  return k >= 0 && k < 24 ? FOUR_SNAP_RISE + (k >> 1) : FOUR_SNAP_FRAME;
+}
 
 /** The player_sob frame a Link's adventure motion shows (motionFrame), the heavy lift's and the Fire Rod's first. */
 export function adventureFrame(game: AdventureGame, i: number): number {
@@ -76,8 +87,7 @@ export function adventureFrame(game: AdventureGame, i: number): number {
     if (w.tick <= 50) return 962 + Math.min(10, Math.floor(w.tick / 5)); // spinning down (traced 962-972)
     return SIDE_SWIM_FRAMES.down + (Math.floor(w.tick / SWIM_FRAME_TICKS) % 4);
   }
-  // The four-Link switch's snap (logic.ts catchFour): sprites 224-232 (traced "a while"; one a tick is assumed).
-  if (game.adventure.fourSnap >= 0) return FOUR_SNAP_FRAME + game.adventure.fourSnap;
+  if (game.adventure.fourSnap >= 0) return fourSnapFrame(game.adventure.fourSnap);
   const heavy = heavyFrame(game, i);
   if (heavy >= 0) return heavy;
   const got = getFrame(game);

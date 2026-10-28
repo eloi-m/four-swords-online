@@ -254,7 +254,7 @@ clear (`#route`, `window.fso.route`).
   Not done: villagers that talk by themselves when touched, the balloon placed over a speaker, a press while typing,
   the flows of `branch` 2.10 and 2.2C, `ifGems`, `ifItem` and a text's `then`.
 - **The Cave of No Return (boss011), by its route from its start to its goal.** `cavenoreturn.ts`, 12 milestones,
-  ~28,200 ticks, 2,116 Force Gems, in node (`cavenoreturn.realdisc.test.ts`) and the browser (`#stage=boss011&route`, game.ts): room 12's
+  ~27,600 ticks, 2,160 Force Gems, in node (`cavenoreturn.realdisc.test.ts`) and the browser (`#stage=boss011&route`, game.ts): room 12's
   rising door and spiral staircase; room 6's lamp from its pedestal and its two candles; room 7's movable block tiles,
   the fence's gate, four blocks onto their points (the ring of fire out), the chest's key and the locked door; room
   13's five `BLCK` blocks (their rules from main.dol, the decisive one measured), pots, the key's chest from below and
@@ -390,7 +390,7 @@ only the leader there (a follower walks its trail without collision): all four n
   crystal from (232, 226) facing down lays the bridge on the swing's first tick: the route's sequence holds.
   Taking an item swaps it with the one held (frame dumps: the lamp left on room 8's pedestal; holding nothing leaves
   it empty, assumed); the Links hold the item got up (apps/game `heldUpLook`), the HUD's item box shows the item held.
-- **Done** (`cavenoreturn.ts`, 12 milestones, ~28,200 ticks, 2,116 Force Gems for the 2000; measured in Dolphin up to
+- **Done** (`cavenoreturn.ts`, 12 milestones, ~27,600 ticks, 2,160 Force Gems for the 2000; measured in Dolphin up to
   room 3: measurements/adventure-world1.md "Adventure: the Cave of No Return"). Its Force Gems, in route order: room 6's
   two pots over floor points (`PONT` kind 3, 40), room 7's two candles (330) and its corner chest (a block pushed up,
   the one beside it right; 100), room 13's top chest (20), room 0's three chests (400; the third after two more color

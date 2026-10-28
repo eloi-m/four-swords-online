@@ -10,13 +10,13 @@
 //   a box (not done). Only the enemies the adventure animates count (enemies.ts ENEMY_TYPES).
 // - FOCS "focus" (update 0x802C9558): once its input switch ((p >> 22) & 31; none: at once) is on, the camera goes to
 //   it; once there it turns its own switch on and holds the camera p & 0xFFF ticks.
-// - YNSW "switch for four" (init 0x8034EAB4, update 0x8034E49C: a ±15 px box, the four Links checked): turns its switch
-//   on (kind 1: for good) when the four Links stand in its box: the box formation does it (16 px apart, the leader
-//   on its top-left quarter). Room 2's cave traced: the Links walking up onto it are each snapped onto their quarter
-//   (catchFour: the middle of each quarter of the switch's square, sprites 224-232 a while), so a formation a few px off
-//   the box still presses it. Assumed, not measured: the catch's range (±16 px, one Link in each quarter) and the
-//   pose's timing (9 ticks, a frame each). Trailing 18 px apart they can't all fit, so a leader stopping on it alone
-//   doesn't press it.
+// - YNSW "switch for four" (init 0x8034EAB4, update 0x8034E49C, its snap 0x8034E050; stepFourSwitch): watches a ±15 px
+//   box round its position, 2.5 px up; once the four Links' bodies (±7 px; on the ground, z ≤ 4, in the game: not
+//   checked here) have all met it 6 ticks running (it sees them as they stood before the tick's walk), each is snapped
+//   onto a corner 8 px off the box's middle and the four hold a pose 95 ticks, its switch turned on 79 ticks in.
+//   Traced (Lake Hylia room 2's cave, the box formation walking up onto the switch at (128, 96)): caught 6 ticks after
+//   the bottom Links' bodies reached the box, set at (120, 85.5), (136, 85.5), (120, 101.5), (136, 101.5) in one tick.
+//   Trailing 18 px apart they can't all fit, so a leader stopping on it alone doesn't press it.
 // - GOL2 "goal 2" (the stage's goal, four pads gc 603, lit 602, laid out by params & 0x1F): the stage is cleared when
 //   the Links have the Force Gem quota (pickups.ts GEM_QUOTA) and the leader steps on a pad. TODO(measure): its switch
 //   (the top bits: Lake Hylia's waits for 16, which nothing in its room sets: the quota is assumed), the pads' box, the
@@ -49,7 +49,7 @@ import { CRYSTAL_LIT_TILE, CRYSTAL_UNLIT_TILE } from "../arenatiles.ts";
 import { isRemoved, removeEntity, tileIndexAt } from "../entities.ts";
 import { ownSwitch, setSwitch, switchOn } from "../switches.ts";
 import { SUBPX } from "../player.ts";
-import { SURFACE_CODES, type World } from "../world.ts";
+import { slopeCell, SURFACE_CODES, type World } from "../world.ts";
 import { actorKey, currentArea, type AdventureGame } from "./adventure.ts";
 import { countsAsEnemy, enemyActive } from "./enemies.ts";
 import { recordTrail } from "./formation.ts";
@@ -72,11 +72,19 @@ const SPIKES_DOWN_TILE = 0;
 export const BRIDGE_TICKS = 121;
 export const GATE_TICKS = 31;
 /**
- * YNSW's catch (assumed, not measured): each of the four Links within ±16 px of the switch's middle (its 32 px square;
- * the init's ±15 box widened to the quarters' outer edges), one Link in each quarter of it. The four are then snapped
- * onto the quarters' middles, ±8 px about the middle (inside the init's ±15 box).
+ * YNSW (stepFourSwitch): its box's half size and how far up of the actor's position it lies (and the snap's corners),
+ * 1/256 px; the Links' bodies meeting it (FOUR_SWITCH_REACH: the box and the body's ±7) are counted; the ticks they
+ * must stay in before the snap, and the snap pose's tick its switch turns on (motion.ts FOUR_SNAP_TICKS its length).
+ * Read from main.dol (0x8034E49C: the box ±15 from the init, 2.5 px up, a 5-tick countdown, then 15 + 30 ticks,
+ * sprites 220-231 two ticks each, 232 ten more, the switch; 0x8034E050 the corners) and traced.
  */
-export const FOUR_SWITCH_CATCH = 16;
+export const FOUR_SWITCH_BOX = 15 * SUBPX;
+export const FOUR_SWITCH_LIFT = 640;
+export const FOUR_SWITCH_REACH = FOUR_SWITCH_BOX + 7 * SUBPX;
+export const FOUR_SWITCH_WAIT = 5;
+export const FOUR_SWITCH_ON_TICK = 79;
+/** Where the snap puts the Links about the box's middle, 1/256 px. */
+export const FOUR_SNAP_OFFSET = 8 * SUBPX;
 /** GOL2's pads, x offsets then y offsets by params & 0x1F (main.dol 0x8046EA10, 0x8046EA70). */
 export const GOAL_LAYOUTS: readonly (readonly number[])[] = [
   [0, 64, 0, 64, 0, 0, 64, 64],
@@ -168,7 +176,6 @@ export function stepLogic(game: AdventureGame, stage: AdventureStage): void {
   const a = game.adventure, b = game.battle;
   const area = currentArea(game, stage);
   const beaten = !a.enemies.some((e) => countsAsEnemy(e) && enemyActive(e)) && !(a.ganon && !a.ganon.gone);
-  if (a.fourSnap >= 0 && ++a.fourSnap >= FOUR_SNAP_TICKS) a.fourSnap = -1;
   for (const actor of area.actors) {
     const p = actor.params >>> 0;
     switch (actor.id) {
@@ -189,12 +196,6 @@ export function stepLogic(game: AdventureGame, stage: AdventureStage): void {
         if (kind > 1) break;
         if (beaten) setSwitch(b, ownSwitch(p), true);
         else if (mode === 1) setSwitch(b, ownSwitch(p), false);
-        break;
-      }
-      case "YNSW": {
-        const sw = ownSwitch(p);
-        if (!sw || switchOn(b, sw)) break;
-        if (b.fighters[0]!.mode === "active" && catchFour(game, actor)) setSwitch(b, sw, true);
         break;
       }
       case "GOL2": {
@@ -231,26 +232,50 @@ export function stepLogic(game: AdventureGame, stage: AdventureStage): void {
 }
 
 /**
- * YNSW's catch (FOUR_SWITCH_CATCH): when each of the Links is within the catch and in a quarter of its own, each is moved
- * onto his quarter's middle, his walk stopped, and the four show the snap's sprites (motion.ts adventureFrame). Returns
- * whether they were caught.
+ * The area's four-Link switch (YNSW), before the Links walk this tick: counts the ticks the four have stood in its box,
+ * snaps them onto its corners once they stayed FOUR_SWITCH_WAIT, then plays the pose out (its switch on
+ * FOUR_SWITCH_ON_TICK ticks in). Returns whether the Links are held in the pose this tick.
  */
-function catchFour(game: AdventureGame, actor: AreaActor): boolean {
-  const cx = actor.x + 8, cy = actor.y + 8;
-  // A quarter: bit 0 right of the middle, bit 1 below it.
-  const quarters = game.players.map((p) => {
-    const x = p.x / SUBPX, y = p.y / SUBPX;
-    if (Math.abs(x - cx) > FOUR_SWITCH_CATCH || Math.abs(y - cy) > FOUR_SWITCH_CATCH) return -1;
-    return (x < cx ? 0 : 1) + (y < cy ? 0 : 2);
-  });
-  if (quarters.includes(-1) || new Set(quarters).size < quarters.length) return false;
-  game.players.forEach((p, i) => {
-    const q = quarters[i]!;
-    Object.assign(p, { x: (cx + (q & 1 ? 8 : -8)) * SUBPX, y: (cy + (q & 2 ? 8 : -8)) * SUBPX, moving: false, walkTicks: 0 });
-    recordTrail(game, i);
-  });
-  game.adventure.fourSnap = 0;
+export function stepFourSwitch(game: AdventureGame, stage: AdventureStage): boolean {
+  const a = game.adventure, b = game.battle;
+  const actor = currentArea(game, stage).actors.find((s) => s.id === "YNSW" && ownSwitch(s.params >>> 0) && !switchOn(b, ownSwitch(s.params >>> 0)));
+  if (a.fourSnap >= 0) {
+    if (++a.fourSnap === FOUR_SWITCH_ON_TICK && actor) setSwitch(b, ownSwitch(actor.params >>> 0), true);
+    if (a.fourSnap >= FOUR_SNAP_TICKS) a.fourSnap = -1;
+    return a.fourSnap >= 0;
+  }
+  const x = actor ? actor.x * SUBPX : 0, y = actor ? actor.y * SUBPX - FOUR_SWITCH_LIFT : 0;
+  const all = !!actor && b.fighters[0]!.mode === "active" && game.players.length === 4 &&
+    game.players.every((p) => Math.abs(p.x - x) <= FOUR_SWITCH_REACH && Math.abs(p.y - y) <= FOUR_SWITCH_REACH);
+  if (!all) {
+    a.fourCatch = 0;
+    return false;
+  }
+  if (a.fourCatch++ < FOUR_SWITCH_WAIT) return false;
+  a.fourCatch = 0;
+  snapFour(game, actor.x * SUBPX, actor.y * SUBPX);
+  a.fourSnap = 0;
   return true;
+}
+
+/**
+ * The snap (0x8034E050): the corners left top, left bottom, right top, right bottom in turn each take the Link nearest
+ * a point 60 px out that way from the actor (of those left; the first of equals), put 8 px each way off the box's
+ * middle, his walk stopped.
+ */
+function snapFour(game: AdventureGame, x: number, y: number): void {
+  const left = game.players.map((_, i) => i);
+  for (const [sx, sy] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
+    const fx = x + sx * 60 * SUBPX, fy = y + sy * 60 * SUBPX;
+    const far = (i: number) => (game.players[i]!.x - fx) ** 2 + (game.players[i]!.y - fy) ** 2;
+    let best = 0;
+    left.forEach((i, k) => {
+      if (far(i) < far(left[best]!)) best = k;
+    });
+    const i = left.splice(best, 1)[0]!;
+    Object.assign(game.players[i]!, { x: x + sx * FOUR_SNAP_OFFSET, y: y - FOUR_SWITCH_LIFT + sy * FOUR_SNAP_OFFSET, moving: false, walkTicks: 0 });
+    recordTrail(game, i);
+  }
 }
 
 /**
@@ -279,6 +304,7 @@ export function rewriteWorld(world: World, tiles: ReadonlyMap<number, number>, s
   const hit = cache.get(key);
   if (hit) return hit;
   const solid = world.solid.slice(), surface = world.surface.slice();
+  let slopes = world.slopes?.slice();
   for (const [index, tile] of tiles) {
     const type = stage.typeOf(tile), mask = solidMask(type), code = SURFACE_CODES.indexOf(surfaceOf(type));
     const tx = index % LAYER_TILES, ty = Math.floor(index / LAYER_TILES);
@@ -287,9 +313,11 @@ export function rewriteWorld(world: World, tiles: ReadonlyMap<number, number>, s
       if (cx >= world.widthCells || cy >= world.heightCells) continue;
       solid[cy * world.widthCells + cx] = mask & (1 << q) ? 1 : 0;
       surface[cy * world.widthCells + cx] = code;
+      const slope = slopeCell(type, q);
+      if (slope || slopes) (slopes ??= new Uint8Array(solid.length))[cy * world.widthCells + cx] = slope;
     }
   }
-  const out: World = { ...world, solid, surface };
+  const out: World = { ...world, solid, surface, ...(slopes ? { slopes } : {}) };
   if (cache.size > 32) cache.clear();
   cache.set(key, out);
   return out;

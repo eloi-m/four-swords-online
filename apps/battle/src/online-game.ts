@@ -85,8 +85,10 @@ import {
  * 30: fire on the castle's soldiers (32 life: a fireball knocks one along its flight, the stream stuns it on the spot);
  *    a plain pit (Above the Clouds' outer void) puts a Link back where he last stood clear of it, no jump, 60 ticks
  *    standing.
+ * 31: slopes (tile types 0x08-0x0B, the Field's cliff corners): solid on one side of their diagonal by pixel, so a Link
+ *    walking into one slides along it.
  */
-export const ONLINE_VERSION = 30;
+export const ONLINE_VERSION = 31;
 
 /** A free room's match: free play on the free map, or a Shadow Battle for everyone who was on it. */
 export type MatchMode = "free" | "battle";

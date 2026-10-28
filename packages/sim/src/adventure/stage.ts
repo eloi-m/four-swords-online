@@ -11,7 +11,7 @@ import { LEDGE_MASKS } from "./ledge.ts";
 import type { Spawn } from "../battle.ts";
 import type { Facing } from "../player.ts";
 import { POT_TILES, SIDE_VIEW_TYPES, type ArenaProps, type Prop } from "../props.ts";
-import { CELL, ROOM_H, ROOM_W, SURFACE_CODES, type World } from "../world.ts";
+import { CELL, ROOM_H, ROOM_W, slopeCell, SURFACE_CODES, type World } from "../world.ts";
 
 /** The parts of a `Stage` (packages/formats) the adventure reads. */
 export interface StageSource {
@@ -268,6 +268,7 @@ export class AdventureStage {
     const widthCells = w / CELL, heightCells = h / CELL;
     const solid = new Uint8Array(widthCells * heightCells).fill(1);
     const surface = new Uint8Array(widthCells * heightCells);
+    let slopes: Uint8Array | undefined;
     if (base) {
       for (let ty = 0; ty < heightCells / 2; ty++) {
         for (let tx = 0; tx < LAYER_TILES; tx++) {
@@ -277,6 +278,8 @@ export class AdventureStage {
             const i = (ty * 2 + (q >> 1)) * widthCells + tx * 2 + (q & 1);
             solid[i] = mask & (1 << q) ? 1 : 0;
             surface[i] = code;
+            const slope = mask === 15 ? 0 : slopeCell(type, q);
+            if (slope) (slopes ??= new Uint8Array(widthCells * heightCells))[i] = slope;
           }
         }
       }
@@ -326,7 +329,7 @@ export class AdventureStage {
     }
     const world: World = {
       widthCells, heightCells, solid, surface, rooms,
-      ...(boxes.length ? { boxes } : {}), ...(currents ? { currents } : {}), ...(spikes ? { spikes } : {}),
+      ...(boxes.length ? { boxes } : {}), ...(currents ? { currents } : {}), ...(spikes ? { spikes } : {}), ...(slopes ? { slopes } : {}),
     };
     const top = this.source.layer(room, 2, sublayer);
     const sideView = sublayer > 0 && [base, top].some((l) => l?.some((t) => SIDE_VIEW_TYPES.has(this.tileTypes[t & 0x3ff]!)));

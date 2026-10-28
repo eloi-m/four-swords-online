@@ -39,7 +39,7 @@ import { colorBlockWorld, stepColorBlocks } from "./colorblocks.ts";
 import { spawnGanon, stepGanon, type Ganon } from "./phantomganon.ts";
 import { stepTingle, tingleHolds, type Tingle } from "./tingle.ts";
 import { carryingKey, doorWorld, keyThrowHolds, knockKeyOut, liftKey, shutDoors, stepDoors, stepKeyLift, stepKeyThrow, throwKey, type CarriedKey, type KeyThrow } from "./doors.ts";
-import { rewriteWorld, rewrittenTiles, savedSwitches, saveSwitches, stepLogic } from "./logic.ts";
+import { rewriteWorld, rewrittenTiles, savedSwitches, saveSwitches, stepFourSwitch, stepLogic } from "./logic.ts";
 import { barrierWorld, stepZoras, type Escort } from "./zoras.ts";
 import { spawnPickups, stepPickups, stepRains, type Pickup, type Rain } from "./pickups.ts";
 import { boomerangFetch, flyingWorld, giveGear, swordOnCrystals, friendlyFire, stepFire, stepFirePose, takeFromPedestal, useFireRod, type FireBolt, type GearKind } from "./gear.ts";
@@ -237,8 +237,10 @@ export interface AdventureState {
   /** Ledge jumps the leader made that followers are still to make where he did (ledge.ts): from (x, y) to (tx, ty),
    *  1/256 px; `left` = a bit per follower still to jump. */
   hops: { x: number; y: number; tx: number; ty: number; left: number; drop?: boolean }[];
-  /** Ticks into the four-Link switch's snap pose (logic.ts catchFour, motion.ts), -1 when none. */
+  /** Ticks into the four-Link switch's snap pose (logic.ts stepFourSwitch, motion.ts), -1 when none. */
   fourSnap: number;
+  /** Ticks the four Links have stood in the four-Link switch's box (logic.ts stepFourSwitch), 0 when not. */
+  fourCatch: number;
   nextId: number;
   /** The adventure's random generator (xorshift32), which also seeds each area's arena. */
   rng: number;
@@ -383,6 +385,7 @@ export function createAdventure(stage: AdventureStage, opts: AdventureStart = {}
     links: spawns.map(() => createMotion()),
     hops: [],
     fourSnap: -1,
+    fourCatch: 0,
     away: null,
     nextId: 1,
     rng: (opts.seed ?? 1) >>> 0 || 1,
@@ -451,6 +454,9 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
   // A message on show: the leader stands while it types and turns its pages; an item got: the pose first (dialogue.ts).
   if (a.talk) inputs = [stepTalk(game, stage, inputs[0] ?? 0), ...inputs.slice(1)];
   if (stepGet(game)) inputs = [0, ...inputs.slice(1)];
+  // The four-Link switch's snap holds the four in its pose (logic.ts).
+  const snapped = !a.edge && !a.warp && !a.stairs && stepFourSwitch(game, stage);
+  if (snapped) inputs = inputs.map(() => 0);
   // A key thrown flies on, whatever the leader does (doors.ts stepKeyThrow).
   if (a.keyThrow) stepKeyThrow(game, flyingWorld(areaWorld(game, stage), game, stage));
   if (a.edge) stepEdge(game, stage, inputs);
@@ -472,7 +478,7 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
     // The other Links follow first (the second one sees where the leader stood: measured), in order; knocked back or
     // falling they play that out instead. In a C-stick formation they move with him, after him (traced: in step).
     const rigid = a.formation !== "trail";
-    if (!rigid && !a.away) for (let i = 1; i < game.players.length; i++) stepOther(game, i, view, area.sideView);
+    if (!rigid && !a.away && !snapped) for (let i = 1; i < game.players.length; i++) stepOther(game, i, view, area.sideView);
     if (m.mode === "ashore") m.mode = "walk";
     if (stepFallsDrop(game) || fallsWaiting(game, inputs[0] ?? 0)) {
       // Over a waterfall: dropping into the pool, or waiting at the falls' foot for Down (falls.ts).
@@ -547,7 +553,7 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
     }
     // (The cross formation's spin let go: the whirl, the followers' first tick of it next.)
     startCrossSpin(game);
-    if (rigid && !a.away) for (let i = 1; i < game.players.length; i++) stepOther(game, i, view, area.sideView);
+    if (rigid && !a.away && !snapped) for (let i = 1; i < game.players.length; i++) stepOther(game, i, view, area.sideView);
     flyLinks(game, view, area.sideView);
     gatherDone(game);
     if (a.area === 0) {
