@@ -29,6 +29,11 @@ export interface World {
    * clear of pits, whatever its color (combat.ts safeX). Only the battle arenas have it (arena.ts).
    */
   readonly panels?: Uint8Array;
+  /**
+   * 1 where a cell is an empty bomb socket on the rim (entities.ts battleWorld): walked over, but no edge a fall's jump
+   * back out lands on (traced: past the Tower of Flames' socket at x 416-431, back at 409).
+   */
+  readonly ledges?: Uint8Array;
   /** Solid boxes on top of the cells, whole px, inclusive (the adventure's big rocks: they move by fifths of a px). */
   readonly boxes?: readonly { left: number; top: number; right: number; bottom: number }[];
   /**

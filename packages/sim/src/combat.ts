@@ -464,14 +464,16 @@ export function stepFighter(p: PlayerState, f: Fighter, buttons: number, world: 
 }
 
 /**
- * Is his whole body (x − 7 … x + 7, y − 7 … y + 7, the far sides open) off any pit, and off Above the Clouds' colored
- * panels, even of his own color (traced: back at 137 left of the ring after standing on his own panel 50 ticks)?
+ * Is his whole body (x − 7 … x + 7, y − 7 … y + 7, the far sides open) off any pit, off Above the Clouds' colored
+ * panels, even of his own color (traced: back at 137 left of the ring after standing on his own panel 50 ticks), and
+ * off empty bomb sockets (World.ledges)?
  */
-function offPits(p: PlayerState, world: World): boolean {
+function offPits(p: Pick<PlayerState, "x" | "y">, world: World): boolean {
   const half = 7 * SUBPX, l = Math.floor((p.x - half) / SUBPX), r = Math.ceil((p.x + half) / SUBPX) - 1;
   const t = Math.floor((p.y - half) / SUBPX), b = Math.ceil((p.y + half) / SUBPX) - 1;
   for (const [x, y] of [[l, t], [r, t], [l, b], [r, b]] as const) {
-    if (surfaceAt(world, x, y) === "pit" || world.panels?.[Math.floor(y / CELL) * world.widthCells + Math.floor(x / CELL)]) return false;
+    const cell = Math.floor(y / CELL) * world.widthCells + Math.floor(x / CELL);
+    if (surfaceAt(world, x, y) === "pit" || world.panels?.[cell] || world.ledges?.[cell]) return false;
   }
   return true;
 }
@@ -561,6 +563,9 @@ export function startFall(p: PlayerState, f: Fighter, world?: World, opts: { pla
     }
   }
   if (f.plainFall) [tx, ty, f.flyX, f.flyY] = [f.safeX, f.safeY, run[0]!, run[1]!];
+  // Come in over an empty bomb socket, the jump lands back where he last stood clear of it (traced: in the lava at 440
+  // past the Tower of Flames' socket at 416-431, back at 409).
+  else if (world?.ledges && !offPits({ x: tx, y: ty }, world)) [tx, ty] = [f.safeX, f.safeY];
   // The jump's step a tick; a plain pit's way back (from where he falls: one run step on from here).
   const steps = f.plainFall ? 1 : FALL_JUMP_TICKS;
   f.pushX = Math.round((tx - p.x - run[0]!) / steps);

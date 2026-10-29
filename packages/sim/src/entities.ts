@@ -5,7 +5,7 @@
 import type { BattleState } from "./battle.ts";
 import type { PixelBox } from "./combat.ts";
 import { SUBPX, type Facing } from "./player.ts";
-import type { World } from "./world.ts";
+import { isSolidAt, type World } from "./world.ts";
 
 /**
  * Items a Link can hold (one at a time), from item orbs; a heart is used up on the spot. "bombchu" is only a crystal
@@ -260,14 +260,16 @@ type Patch = { open: readonly number[]; pits: readonly number[] };
 const patched = new WeakMap<World, Map<string, World>>();
 
 /**
- * The arena's collision with this battle's changes applied: cut bush tiles no longer block, and open trapdoor tiles
- * are pits. Built once per distinct set of changes and cached (the state stays plain data; this is derived from it).
+ * The arena's collision with this battle's changes applied: cut bush tiles and empty bomb sockets no longer block, and
+ * open trapdoor tiles are pits. Built once per distinct set of changes and cached (the state stays plain data; this is
+ * derived from it).
  */
 export function battleWorld(world: World, b: BattleState): World {
   const floors = b.entities.filter((e) => e.kind === "trapdoor" && e.timer > 0);
   const pits = [...floors.flatMap((e) => trapdoorTiles(e)), ...lavaTiles(b)];
-  if (!b.cut.length && !pits.length) return world;
-  const patch: Patch = { open: b.cut, pits };
+  const sockets = emptySockets(world, b);
+  if (!b.cut.length && !pits.length && !sockets.length) return world;
+  const patch: Patch = { open: sockets.length ? [...b.cut, ...sockets] : b.cut, pits };
   const key = `${patch.open.join(",")}|${patch.pits.join(",")}`;
   let cache = patched.get(world);
   if (!cache) patched.set(world, (cache = new Map()));
@@ -283,13 +285,33 @@ export function battleWorld(world: World, b: BattleState): World {
   };
   for (const tile of patch.open) cells(tile, (i) => (solid[i] = 0));
   for (const tile of patch.pits) cells(tile, (i) => (surface[i] = PIT_SURFACE));
-  const out: World = { ...world, solid, surface, ...(floors.length ? { widePits: floors.map(trapdoorBox) } : {}) };
+  let ledges: Uint8Array | undefined;
+  if (sockets.length) {
+    ledges = new Uint8Array(solid.length);
+    for (const tile of sockets) cells(tile, (i) => (ledges![i] = 1));
+  }
+  const out: World = { ...world, solid, surface, ...(floors.length ? { widePits: floors.map(trapdoorBox) } : {}), ...(ledges ? { ledges } : {}) };
   if (cache.size > 16) cache.clear();
   cache.set(key, out);
   return out;
 }
 
 const PIT_SURFACE = 1; // index of "pit" in world.ts SURFACE_CODES
+
+/**
+ * The bomb sockets (HBMB props on the solid rim, collision type 0x0C: arena.ts RIM) whose bomb isn't sitting in them:
+ * an empty socket is walked over (traced: a Link lifted the Tower of Flames' socket bomb in front of him at x 409 and
+ * walked on over the rim into the lava). Tile indices.
+ */
+function emptySockets(world: World, b: BattleState): number[] {
+  const out: number[] = [];
+  b.props.actors.forEach((a, k) => {
+    if (a.id !== "HBMB" || !isSolidAt(world, a.x, a.y)) return;
+    const x = a.x * SUBPX, y = a.y * SUBPX;
+    if (!b.entities.some((e) => e.kind === "bomb" && e.home === k && e.phase === "rest" && e.x === x && e.y === y && e.z === 0 && !isRemoved(e))) out.push(tileIndexAt(a.x, a.y));
+  });
+  return out;
+}
 
 /**
  * The Tower of Flames' lava stripes: each `PNPC` ("panel rewriting NPC") turns its tile into lava (tile 0x0D, type 0x0E: a

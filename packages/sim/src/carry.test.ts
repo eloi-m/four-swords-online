@@ -165,6 +165,23 @@ describe("lifting and throwing Links", () => {
   });
 });
 
+describe("bomb sockets", () => {
+  it("a socket on the rim is a wall while its bomb sits in it; lifted, it's walked over (traced: the Tower of Flames)", () => {
+    // A rim socket tile at (128, 96)-(143, 111) with its HBMB in the middle; its cells solid, as arena.ts makes the rim.
+    const w = arena([16, 12, 2, 2, "#"]);
+    const game = start(w, [{ x: 113, y: 104, facing: "right" }, { x: 60, y: 200, facing: "up" }], { actors: [{ id: "HBMB", x: 136, y: 104, params: 0 }], bushes: [] });
+    const b = game.battle!;
+    run(game, w, 20, [Button.Right]);
+    expect(px(game.players[0]!.x)).toBeLessThan(121); // against the socket
+    expect(isSolidAt(battleWorld(w, b), 132, 100)).toBe(true);
+    press(game, w, 0, Button.Action);
+    expect(entityById(b, b.fighters[0]!.carryEntity)?.kind).toBe("bomb");
+    expect(isSolidAt(battleWorld(w, b), 132, 100)).toBe(false);
+    run(game, w, LIFT_TICKS + 20, [Button.Right]);
+    expect(px(game.players[0]!.x)).toBeGreaterThan(130); // carried over it
+  });
+});
+
 describe("bushes", () => {
   // A bush tile at (128, 96)-(143, 111): tile index 6 * 32 + 8. Its cells are solid in the arena's collision.
   const BUSH = 6 * 32 + 8;
