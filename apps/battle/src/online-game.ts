@@ -87,8 +87,11 @@ import {
  *    standing.
  * 31: slopes (tile types 0x08-0x0B, the Field's cliff corners): solid on one side of their diagonal by pixel, so a Link
  *    walking into one slides along it.
+ * 32: the arenas against Dolphin: Above the Clouds' colored panels fall as a plain pit, a sword soldier's touch goes
+ *    through the shield (its own box), the rim's bomb sockets walked over once empty, carrying a Link at 1.25 px/tick,
+ *    a roll's standing tick, the soldiers' and captain's wall boxes.
  */
-export const ONLINE_VERSION = 31;
+export const ONLINE_VERSION = 32;
 
 /** A free room's match: free play on the free map, or a Shadow Battle for everyone who was on it. */
 export type MatchMode = "free" | "battle";
