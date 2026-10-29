@@ -217,6 +217,7 @@ export class ArenaView {
     else this.riverBed.hide();
     const baseMesh = base ? roomQuad(base, tiles, filter, origin, 1) : null;
     if (baseMesh) this.arena.add(baseMesh);
+    for (const a of this.stage.actors(room)) if (a.id === "BLDF" && a.sublayer === 0) this.arena.add(blindfold(actorPixel(a), 0.8));
     const types = this.tileTypes;
     const bases = new Map<number, THREE.Mesh>(baseMesh ? [[0, baseMesh]] : []);
     const layers = new Map<number, Uint16Array>(collision ? [[0, collision]] : []);
@@ -749,6 +750,17 @@ function tileExtent(layer: Uint16Array, y0: number): { left: number; top: number
   }
   if (right === 0) [left, top] = [0, 0];
   return { left: left * 16, top: y0 + top * 16, right: right * 16, bottom: y0 + Math.min(bottom, ARENA_H / 16) * 16 };
+}
+
+/**
+ * A `BLDF` ("blindfold"): data.arc timg/black.bti, 16 px square on its anchor, under the tiles, so the Tower of Flames'
+ * side holes show black through their tile where the lava backdrop would (seen in Dolphin). Its fading while a Link
+ * stands in it (main.dol) isn't drawn.
+ */
+function blindfold(at: { x: number; y: number }, z: number): THREE.Mesh {
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+  mesh.position.set(at.x, -at.y, z);
+  return mesh;
 }
 
 function boxMesh(color: number): THREE.Mesh {

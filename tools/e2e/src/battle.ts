@@ -298,7 +298,7 @@ async function pitCheck(page: Page, tick: (n?: number) => Promise<void>, game: (
   const back = g.players[0]!, hearts = g.battle.fighters[0]!.hearts;
   await tick(1);
   const hud = await page.evaluate(() => (window as unknown as Win).fso.hud.snapshot()[0]!.hearts.join(","));
-  if (hud !== "4,2,-,-,-,-,-,-") problems.push(`pit: HUD shows ${hud} for 1.5 of 2 hearts`);
+  if (hud !== "4,2,dot,dot,-,-,-,-") problems.push(`pit: HUD shows ${hud} for 1.5 of 2 hearts (and two empty up to the maximum)`);
   // Back on the edge he walked off (15 px out from where the fall put him), not at his start.
   if (g.battle.fighters[0]!.mode !== "active" || hearts !== 6 || Math.abs(back.x - fell.x) > 20 * 256 || back.y !== fell.y) {
     problems.push(`pit: not back on the edge with 6 life (${back.x / 256}, ${back.y / 256}, ${hearts})`);
@@ -370,7 +370,8 @@ async function fight(page: Page, tick: (n?: number) => Promise<void>, game: () =
   expectedHits = Math.ceil(8 / (8 - quarters));
   await tick(3);
   const hud = await page.evaluate(() => (window as unknown as Win).fso.hud.snapshot()[1]!.hearts.join(","));
-  const expected = [0, 1].map((h) => { const q = Math.max(0, Math.min(4, quarters - 4 * h)); return q ? String(q) : "dot"; }).join(",") + ",-,-,-,-,-,-";
+  // (Slots up to the maximum life, 4 hearts: the empty ones are dots.)
+  const expected = [0, 1, 2, 3].map((h) => { const q = Math.max(0, Math.min(4, quarters - 4 * h)); return q ? String(q) : "dot"; }).join(",") + ",-,-,-,-";
   console.log(`  P2's HUD hearts: ${hud}`);
   if (hud !== expected) problems.push(`fight: P2's HUD shows ${hud}, expected ${expected}`);
   await page.screenshot({ path: join(out, "battle-hit.png") });
@@ -381,7 +382,7 @@ async function fight(page: Page, tick: (n?: number) => Promise<void>, game: () =
   if (!over || g.battle.fighters[1]!.hearts !== 0 || g.battle.fighters[0]!.hearts !== 8) problems.push("fight: P2 wasn't defeated cleanly");
   await tick(40);
   const fade = await page.evaluate(() => (window as unknown as Win).fso.hud.snapshot()[1]!);
-  if (fade.hearts.join(",") !== "dot,dot,-,-,-,-,-,-" || Math.abs(fade.fade - 0.6) > 1e-6) problems.push(`fight: P2's corner after the KO: ${JSON.stringify(fade)}`);
+  if (fade.hearts.join(",") !== "dot,dot,dot,dot,-,-,-,-" || Math.abs(fade.fade - 0.6) > 1e-6) problems.push(`fight: P2's corner after the KO: ${JSON.stringify(fade)}`);
   await page.screenshot({ path: join(out, "battle-ko.png") });
   // The game's round screens (apps/battle timeline.ts): "P2 down!" 117 ticks after the knockout, "P1 WIN!" from 294,
   // then (the match over, 423) "PRESS START" until a press, then the Total screen with the results over its buttons.

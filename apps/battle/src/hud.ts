@@ -6,7 +6,7 @@
 // any (rolled back) state can be drawn.
 import { walkPanes, type BloPane, type BloScreen } from "@fso/formats";
 import { screenCamera, ScreenView, SpriteMesh, type ScreenAssets, type SpriteAtlas } from "@fso/render";
-import { COUNTDOWN_TICKS, HEART, screenAt, type BattleState, type GameState, type ItemKind } from "@fso/sim";
+import { COUNTDOWN_TICKS, HEART, maxLife, screenAt, type BattleState, type GameState, type ItemKind } from "@fso/sim";
 import * as THREE from "three";
 import { cornerShown } from "./timeline.ts";
 
@@ -263,8 +263,9 @@ export class BattleHud {
     this.corners.forEach((corner, i) => {
       const f = b.fighters[i];
       if (i >= this.players || !f) return;
-      // (A cucco can bring a Link past his starting life, up to 16: packages/sim cucco.ts.)
-      const max = Math.min(HEART_SLOTS, Math.max(Math.ceil(b.rules.hearts), Math.ceil(f.hearts / HEART)));
+      // Slots up to his maximum life (16 with 3 hearts: an empty fourth heart is the dot after the third, as in Dolphin; a
+      // cucco can fill it: packages/sim cucco.ts maxLife).
+      const max = Math.min(HEART_SLOTS, Math.max(Math.ceil(maxLife(b) / HEART), Math.ceil(f.hearts / HEART)));
       corner.hearts.forEach((s, h) => {
         const quarters = h < max ? Math.min(4, Math.max(0, Math.round(((f.hearts - h * HEART) * 4) / HEART))) : 0;
         const texture = HEART_TEXTURES[quarters];
