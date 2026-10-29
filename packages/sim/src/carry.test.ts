@@ -244,8 +244,10 @@ describe("rolling", () => {
     expect(fighterFrame(p, f, linkFrame)).toBe(ROLL.frames.right[0]);
     run(game, world, ROLL_TICKS - 1, [Button.Right]);
     expect([f.move, p.x - xr]).toEqual(["roll", ROLL_TICKS * (ROLL_SPEED + ROLL_STEER)]); // 63 px
-    run(game, world, 1, [Button.Right]); // still holding the way he rolled: he walks on at once (traced in battle)
-    expect([f.move, p.x - xr]).toEqual(["none", 63 * SUBPX + WALK_SPEED]);
+    run(game, world, 1, [Button.Right]); // still holding the way he rolled: a standing tick (traced in battle)…
+    expect([f.move, p.x - xr]).toEqual(["none", 63 * SUBPX]);
+    run(game, world, 1, [Button.Right]); // …then he walks, without a turn tick
+    expect(p.x - xr).toBe(63 * SUBPX + WALK_SPEED);
   });
 
   it("the stick against the roll slows it to 1 px/tick; the roll keeps its starting facing", () => {

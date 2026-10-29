@@ -161,6 +161,8 @@ const EXPECT: Readonly<Record<string, { pos?: number; sprites?: number; players?
   // The Tower of Flames' socket bomb lifted at the rim (stopped 0.5 px short of it, as flamesRim) and carried over the
   // empty socket into the lava (its HBMB props only).
   flamesSocket: { pos: 0.51, sprites: 2, props: ["HBMB"] }, // (falling in, the game still shows his carry 2 ticks)
+  // A roll in the open, the way held: a standing tick, then walking (the walk cycle's frames off by one tick twice).
+  fieldRollStand: { sprites: 2 },
   fieldCarryLink: { pos: 0.02 }, // carrying a Link diagonally: 226/256 for 0.884 px a tick
 };
 

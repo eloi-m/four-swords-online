@@ -8,7 +8,7 @@
 // slowing the roll (traced).
 import { stepLink } from "./actions.ts";
 import type { Fighter } from "./combat.ts";
-import { stopActing } from "./combat.ts";
+import { SEPARATE_DISTANCE, SEPARATE_STEP, stopActing } from "./combat.ts";
 import { FACING_STEP } from "./entities.ts";
 import type { GameState } from "./game.ts";
 import { EMPTY_LIFT, ROLL, sumTicks } from "./moveframes.ts";
@@ -56,12 +56,15 @@ export function stepRoll(state: GameState, i: number, buttons: number, world: Wo
     case "roll":
       if (++f.moveTick >= ROLL_TICKS) {
         end(f);
-        // Still holding the way he rolled, Link walks on at once (traced in battle); otherwise an idle tick first.
+        // Still holding the way he rolled: in the open a standing tick, then he walks without the turn tick a walk
+        // from standing takes (traced: state 0 at 276.5, then 278, 279.5 … at 1.5 px); against a Link (the Links'
+        // pushes on him) he walks on at once (traced: rolled into a standing Link). Otherwise an idle tick first.
         const [sx, sy] = FACING_STEP[p.facing];
         const along = (sx > 0 && buttons & Button.Right) || (sx < 0 && buttons & Button.Left) || (sy > 0 && buttons & Button.Down) || (sy < 0 && buttons & Button.Up);
         if (along) {
           p.moving = true;
-          return false; // walks this tick (stepLink)
+          if (againstLink(state, i)) return false; // walks this tick (stepLink)
+          p.walkTicks = 0;
         }
         p.held = buttons;
         return true;
@@ -72,6 +75,12 @@ export function stepRoll(state: GameState, i: number, buttons: number, world: Wo
     default:
       return false;
   }
+}
+
+/** Is another Link close enough to be pushing Link `i` (combat.ts separateLinks: bodies within a push of touching)? */
+function againstLink(state: GameState, i: number): boolean {
+  const p = state.players[i]!, reach = SEPARATE_DISTANCE + 2 * SEPARATE_STEP;
+  return state.players.some((q, j) => j !== i && state.battle!.fighters[j]!.hearts > 0 && Math.abs(q.x - p.x) <= reach && Math.abs(q.y - p.y) <= reach);
 }
 
 function end(f: Fighter): void {
