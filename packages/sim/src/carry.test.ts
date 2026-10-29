@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { linkFrame } from "./actions.ts";
-import { CARRY_HEIGHT, ESCAPE_PRESSES, HOLD_HEIGHT_LINK, LIFT_TICKS, LINK_FLIGHT, SLAM_LINK_TICK, THROW_TICKS, THROWN_LAND_DAMAGE } from "./carry.ts";
+import { CARRY_HEIGHT, CARRY_LINK_SPEEDS, ESCAPE_PRESSES, HOLD_HEIGHT_LINK, LIFT_TICKS, LINK_FLIGHT, SLAM_LINK_TICK, THROW_TICKS, THROWN_LAND_DAMAGE } from "./carry.ts";
 import { FALL_TICKS, fighterFrame, fighterHeight, HEART, KNOCK_SLOW, PIT_DAMAGE, SWORD_DAMAGE, vulnerable } from "./combat.ts";
 import { battleWorld, entityById } from "./entities.ts";
 import { stepGame } from "./game.ts";
@@ -14,7 +14,7 @@ import { isSolidAt } from "./world.ts";
 const FULL = RULES.hearts * HEART;
 
 describe("lifting and throwing Links", () => {
-  it("lifts the Link in front along the measured path, carries him at walking speed, and throws him", () => {
+  it("lifts the Link in front along the measured path, carries him at 1.25 px/tick, and throws him", () => {
     const world = arena();
     const game = start(world, [{ x: 100, y: 100, facing: "right" }, { x: 116, y: 100, facing: "up" }]);
     const p0 = game.players[0]!, p1 = game.players[1]!;
@@ -37,10 +37,10 @@ describe("lifting and throwing Links", () => {
     expect([f0.move, f1.z]).toEqual(["carry", HOLD_HEIGHT_LINK]); // P+25
     expect([LIFT_TICKS, HOLD_HEIGHT_LINK]).toEqual([24, 20 * SUBPX]);
 
-    // Carrying moves from the first input tick, at walking speed; the held Link bobs.
+    // Carrying moves from the first input tick, at 1.25 px/tick (traced); the held Link bobs.
     const x0 = p0.x;
     run(game, world, 10, [Button.Right, 0]);
-    expect(p0.x - x0).toBe(10 * WALK_SPEED);
+    expect(p0.x - x0).toBe(10 * CARRY_LINK_SPEEDS[0]);
     expect([p1.x, p1.y]).toEqual([p0.x, p0.y + 2 * SUBPX]);
     expect(CARRY.walk.right).toContain(fighterFrame(p0, f0, linkFrame));
     expect(fighterHeight(f1) - HOLD_HEIGHT_LINK / SUBPX).toBe(CARRY.bob[Math.floor(p0.walkTicks / 3) % 8]);

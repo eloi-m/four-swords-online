@@ -158,6 +158,10 @@ const EXPECT: Readonly<Record<string, { pos?: number; sprites?: number; players?
   // start counting): standing on one as it turned P2's color, and walking onto one of P2's color.
   cloudsRingStand: { sprites: 2, props: ["RBPN"] },
   cloudsRingWalk: { sprites: 2, props: ["RBPN"] },
+  // The Tower of Flames' socket bomb lifted at the rim (stopped 0.5 px short of it, as flamesRim) and carried over the
+  // empty socket into the lava (its HBMB props only).
+  flamesSocket: { pos: 0.51, sprites: 2, props: ["HBMB"] }, // (falling in, the game still shows his carry 2 ticks)
+  fieldCarryLink: { pos: 0.02 }, // carrying a Link diagonally: 226/256 for 0.884 px a tick
 };
 
 describe.skipIf(!existsSync(boss500))("sim vs Dolphin Shadow Battle traces", () => {

@@ -25,6 +25,11 @@ import { strikeAt } from "./strike.ts";
 import type { World } from "./world.ts";
 
 export const LIFT_REACH = 16; // px ahead of the anchor: the point that must be on the object (measured)
+/**
+ * Carrying a Link walks at 1.25 px/tick, 0.884 per axis on a diagonal (traced in The Field: 288.75, 287.5 … then
+ * 213.23, 212.35 …); carrying a thing at walking speed, 1.5 (traced with the Tower of Flames' socket bomb).
+ */
+export const CARRY_LINK_SPEEDS = [320, 226] as const;
 export const LIFT_TICKS = sumTicks(LIFT.ticks); // 24 (measured)
 export const THROW_TICKS = sumTicks(THROW.ticks); // 24 (measured)
 export const SLAM_TICKS = sumTicks(SLAM.ticks); // 22 (measured)
@@ -102,6 +107,7 @@ export function tryLift(state: GameState, i: number): boolean {
   const target = liftTarget(state, i);
   if (!target) return false;
   const b = state.battle!, f = b.fighters[i]!;
+  state.players[i]!.walkTicks = 0; // (the carry's walk cycle starts over: traced, 704 on its first step)
   if ("link" in target) {
     liftLink(state, i, target.link);
     return true;
@@ -260,15 +266,17 @@ export function stepCarry(state: GameState, i: number, buttons: number, world: W
   switch (f.move) {
     case "lift":
       p.held = buttons;
-      if (++f.moveTick >= LIFT_TICKS) begin(f, "carry");
-      return true;
+      if (++f.moveTick < LIFT_TICKS) return true;
+      // The lift's last tick is the carry's first: he walks on it already (traced: state 18 and a step on one tick).
+      begin(f, "carry");
+    // falls through
     case "carry":
       p.held = buttons;
       if (pressed & (Button.Action | Button.Item)) begin(f, "throw", -1); // plays from the next tick
       else if (pressed & Button.Sword) begin(f, "slam", -1);
-      // Carrying walks at walking speed from the first input tick (no turn tick).
+      // Carrying walks from the first input tick (no turn tick): at walking speed with a thing, slower with a Link.
       if (buttons & (Button.Up | Button.Down | Button.Left | Button.Right)) p.moving = true;
-      stepPlayer(p, buttons, world);
+      stepPlayer(p, buttons, world, f.carryLink >= 0 ? CARRY_LINK_SPEEDS : undefined);
       return true;
     case "throw":
       p.held = buttons;

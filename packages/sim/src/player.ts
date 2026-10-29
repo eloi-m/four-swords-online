@@ -84,8 +84,8 @@ export function nextFacing(current: Facing, buttons: number): Facing {
   return (["left", "right", "up", "down"] as const).find((d) => held[d]) ?? current;
 }
 
-/** Advances one 60 Hz tick. Mutates and returns `p`. */
-export function stepPlayer(p: PlayerState, buttons: number, world: World): PlayerState {
+/** Advances one 60 Hz tick (at `speeds`: straight and per axis on a diagonal). Mutates and returns `p`. */
+export function stepPlayer(p: PlayerState, buttons: number, world: World, speeds: readonly [number, number] = [WALK_SPEED, WALK_SPEED_DIAGONAL]): PlayerState {
   const dx = (buttons & Button.Right ? 1 : 0) - (buttons & Button.Left ? 1 : 0);
   const dy = (buttons & Button.Down ? 1 : 0) - (buttons & Button.Up ? 1 : 0);
   if (dx === 0 && dy === 0) {
@@ -101,7 +101,7 @@ export function stepPlayer(p: PlayerState, buttons: number, world: World): Playe
     return p;
   }
   p.walkTicks++;
-  const speed = dx !== 0 && dy !== 0 ? WALK_SPEED_DIAGONAL : WALK_SPEED;
+  const speed = dx !== 0 && dy !== 0 ? speeds[1] : speeds[0];
   const slide = dx === 0 || dy === 0; // corner sliding only happens when walking straight
   moveAxis(p, world, dx * speed, "x", slide);
   moveAxis(p, world, dy * speed, "y", slide);
