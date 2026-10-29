@@ -118,13 +118,13 @@ measurements below). Everything not listed is `TODO(measure)` in the code.
 | Sim | Value | Source |
 |---|---|---|
 | carry.ts `LIFT_REACH`, `LIFT_TICKS`, `loadPose` | 16 px; 24 ticks from P+1 (moveTick −1 on P); the load 16 px in front z 0 → 12 px z 8 → on the head z 16 → carried z 18 + the walk bob | measured (bush, bomb) |
-| `stepCarry` "carry" | walking speed from the first input tick | measured |
+| `stepCarry` "carry" | from the first input tick (and on the lift's last tick): walking speed with a thing, 1.25 px/tick with a Link (`CARRY_LINK_SPEEDS`, 0.884 diagonal) | measured; traced in battle ("The arenas against Dolphin, fixed") |
 | `THROW_TICKS`, `THROW_RELEASE_TICK`, throw path | 24 ticks, released on P+11 from z 20 | measured |
 | `THROW_SPEED`, `THROW_GRAVITY` | 1024, 26 (0.1 px/tick² rounded; lands on the same tick: 20, 80 px) | measured (bush); pots and orbs assumed alike; a Link flies otherwise (`LINK_FLIGHT`, below) |
 | `BOMB_THROW_SPEED`, `BOMB_THROW_GRAVITY`, `BOMB_BOUNCE` | 1536, 38 (16 ticks, 96 px); bounce 461 along, 768 up, 256 gravity, 7 ticks | measured |
 | `WALL_PROBE` | thrown things stop at walls with a ±4 px box | measured (bush) |
 | slam (`SLAM`, `loadPose` "slam") | 22 ticks; the load down 16 px in front from its 10th tick; a held Link slammed onto another stuns him (90 ticks, no damage) on its 9th | measured facing up; a Link on a Link traced in battle |
-| roll.ts | decided on P+2, 21 ticks from P+3, 512 along the facing + 256 along the stick (181 diagonal), stops at walls and plays out; else the empty lift (21 ticks); walks on at once with the stick held along; into a Link only the Links' separation | measured; battle traced |
+| roll.ts | decided on P+2, 21 ticks from P+3, 512 along the facing + 256 along the stick (181 diagonal), stops at walls and plays out; else the empty lift (21 ticks); with the stick held along, a standing tick then walking (against a Link: walking at once); into a Link only the Links' separation | measured; battle traced |
 | combat.ts `KNOCK_DEFAULT`, `KNOCKBACK_GRAVITY`, `HURT_TICKS` | 384 away from the source at any angle, hop 768, gravity 64: 25 ticks until landing | measured (Octorok rock); traced for every sword hit on a Link up to 4 damage |
 | `KNOCK_HARD`, `KNOCK_BOMB`, `KNOCK_SLOW` | 384, hop 1024 (above 4 damage: a level-2 lunge's 5); 256, hop 1024 (another Link's bomb); 192, hop 1024: 33 ticks (a thrown Link hitting a third) | traced in battle; the own bomb's 0.75 in the adventure |
 | combat.ts `SWORD_DAMAGE`, `LUNGE_DAMAGE`, `SPIN_DAMAGE`, `CHARGE_DAMAGE`; attacks.ts | 2, 4, 4, 1 (half the power 4 / 8 / 8 / 2, + 2 power at sword level 2); the two boxes per direction, when they're live | traced in battle ("Battle measurements: combat") |
@@ -216,7 +216,8 @@ line between them, again until they don't (so 2 px each from 12 px apart); a com
 becomes 0.1 (the lower player index +, the other −). Not between Links more than ~16 px apart in height (a knocked-back
 Link 17.5 px up passed over one; at 14.5 px he was pushed 3 px). A pushed idle Link shows walk frames on alternate
 frames. **A roll into a Link** does nothing else: no damage, no stun; the roll goes on slowed and pushes him along. A
-roll ending with the stick still held along it walks on at once (no idle frame).
+roll ending against that Link with the stick still held along it walks on at once (no idle frame); in the open it
+stands a tick first ("The arenas against Dolphin, fixed").
 
 **Lifting and throwing a Link** (`lift-hold` 500 frames held, `lift-throw`, `throw3` 3 players, `escape-A` A mashed,
 `escape-LR` left/right each frame, `escape-slow` every 4 frames, `escape-up`, `slam3b`):
@@ -356,7 +357,8 @@ from a thrower 60 px away and 24 px from one 78 px away (either level).
 (collision type 0x0C) at x 409, and at y 233 walking down; pressing on, he goes into the push state (state 13: no
 movement, a diagonal slides no more) and his x jitters by 0.4 px. Type 0x0C rings the tower's floor (32 tiles); the
 Dark World tower (room 6) has none, The Field one (0x59 at (128, 240)). Applied: arena.ts `RIM` (solid on the arenas'
-TV only; the type is all over the adventure's stages too, untested there).
+TV only; the type is all over the adventure's stages too, untested there). The rim tiles are bomb sockets: an empty
+one is walked over ("The arenas against Dolphin, fixed").
 
 **Hyrule Castle's soldiers** (`castle-2p`, P1 moved next to the soldier at (128, 128), stabbing): one stab killed it
 (+0x108 life 1 → 0, state 4 for 38 frames, then gone), and it never came back at home (1077 frames); new SLR1s came
@@ -595,6 +597,60 @@ set up again: the ticks to the hit, the life, the knock, the BLZE).
   (TODO(measure)).
 
 The charged pound's missing `DOSN` switch: not looked at again (none of these traces pounds).
+
+### The arenas against Dolphin, fixed (2026-10-29)
+The arena comparison's findings (BACKLOG B2 "The arenas against Dolphin"), each played again with `clip.ts` from the
+round-start states (`--lead 8` Above the Clouds and the Tower of Flames, `--lead 9` The Field: the state's control
+frame) and the soldiers' and circles' fields with `actor-trace.ts`; `ONLINE_VERSION` 32. Replayed traces in
+`dolphin-battle-traces.json`: cloudsRingStand, cloudsRingWalk (with the RBPN props), flamesSocket (the HBMB props),
+fieldCarryLink, fieldRollStand.
+- **Above the Clouds' colored panels are a plain pit** (`clouds-2p`; the BACKLOG's "pit inside the green ring" is a
+  panel of another player's color, not a pit tile): walking right onto one of P2's color (x 143 → 144.5) he's put
+  8 px in from its side (152), walks one 1.5 px step on the 3rd tick (153.5), is put back with state 30 on the 4th,
+  falls the 58 frames and is back at **137** (137 + 7 = the ring's edge at 144), 2 life, 60 ticks standing (state 31).
+  Standing on his own panel when the ring turned P2's color (164, 265.5): put 8 px in from the panel's **nearest** side
+  (y 264: the ring's bottom at 272, not the side behind him), no step, the fall, back at 137 too: **a panel, even of
+  his own color, isn't clear ground** for the spot he's put back on. After state 31 he faced right in all six plain
+  falls (left off the island, down, burning, both panels), whatever the way he came: taken as the round start's
+  facing toward the middle (arena.ts `startFacing`; the right half not seen). Applied: panels.ts (startFall with a
+  plain fall and the panels of other colors as the pit), combat.ts (`offPits` counts `World.panels`; a plain pit's
+  edge is the nearest; the walking step; the facing).
+- **A sword soldier's touch goes through the shield** (read): SLR1's attack 0x801F2B7C tests each Link's body box
+  (+0x4C0…+0x4CC, his position ±7, set by 0x80276538) against its box (+0x60…+0x6C around +0xC/+0x10, edges included:
+  0x8023B190 → 0x802732C4) and calls the hit 0x80238548 without asking the shield: 0x80272224 (the shield) is called
+  only by Link on Link (0x80232A0C), 0x80239A74 and 0x80239B64 (through 0x801F2A10, which SLR1 never calls). Its box
+  read live: x −4 … 4, y −6 … 2 (its init sets −8, −4, 8, 8, later narrowed). Traced (`castle-2p`, two idle Links
+  facing down, 1200 frames): hurt at 10.72 px across, missed at 11.16; hurt with the soldier 12.4 px below the Link
+  and 8.64 above, missed at 9.27 above; again every 60 ticks while it stays on him (117 → 177). Applied: hazards.ts
+  `SOLDIER_TOUCH` (not blockable).
+- **The Tower of Flames' rim is its bomb sockets** (`flames-2p`): every rim tile (type 0x0C) holds an HBMB. Walking
+  right from P1's start he stops at 409 with his side on the socket bomb at (424, 232); R there **lifts the bomb**
+  (state 17, then 18), and carrying it he walks on over the empty socket (409 → 431.5 at 1.5 px/tick) into the lava
+  (440, state 50); the jump back lands at **409**, where he last stood clear of the socket. A roll from 363 stops at
+  the rim (409, the bombs in place). The BACKLOG's "roll over the rim" was this lift and carry (states 17/18).
+  Applied: entities.ts `battleWorld` opens a socket while its bomb isn't sitting in it (`World.ledges`: walked over,
+  not clear ground for a fall's jump back, which then lands where he last stood clear). Not traced: a knockback or a
+  thrown Link at an empty socket (taken as walking: open), a socket's new bomb growing under a Link.
+- **Carrying a Link walks at 1.25 px/tick**, 0.884 per axis diagonally (`field-2p`, P2 lifted and carried left then
+  up-left: 288.75, 287.5 …; 213.23 → 208.81 in 5 ticks); carrying the socket bomb 1.5 (Tower of Flames). The carry
+  walks on the lift's last tick already (state 18 and a step on one frame: 409 → 410.5), its walk cycle from its first
+  frame (704). Applied: carry.ts `CARRY_LINK_SPEEDS`, `stepCarry`.
+- **A roll ends with a standing tick**, the way still held (`field-2p`, rolling right in the open: 20 … 40 at
+  3 px/tick, state 0 on 41 at 276.5, walking from 42: 278, 279.5 …: no turn tick after it). Rolled into P2 standing
+  (the Links' pushes slowing it), he walked on at once (state 2 on the next frame, 303.5 → 303.0 with the push), as the
+  older `roll` trace: so a pushed Link skips the standing tick (applied as another Link within a push of touching).
+  The comparison's "stops dead 16 px from a Link" wasn't seen: rolled into P2 the sim matched within 0.42 px.
+- **Hyrule Castle's magic circle** (not changed): CIRC's box is ±8 (init 0x8028BB14), tested by 0x8023B0F4 →
+  0x802730D8 against the Link's ±7 body edges included: 15 px, as the sim's. The comparison's take at 16 px on both axes
+  wasn't reproduced (the circles stayed closed in 1500 frames); a frame of lag (the Link's box from before his move) or
+  the knockback would explain it. Left.
+- **The castle's soldiers' wall boxes**: SLR1's +0x80…+0x8C is ±8 (init 0x80153AA4), the captain's ±10 (the adventure's
+  trace); battle's sword soldiers and captain now walk with them (castlesoldiers.ts `SOLDIER_WALL_BOX`, `moveInBox`,
+  shared with the adventure). Their knockback keeps the Links' ±7 (a fireball's knock was traced 8 px into the wall).
+- Seen on the way, not fixed: a press of R while walking toward a thing to lift walks one more step before the lift
+  (The Field, 191 → 189.5, then state 17), where the sim lifts at once; in the Tower of Flames R walking right at 394
+  (15 px short of the rim) lifted something (state 17) where the sim rolls: what wasn't looked at (the socket bombs
+  nearest were at (424, 232) and (408, 248)). The rim stop is 0.5 px short in the sim (408.5 for 409).
 
 ### Read from main.dol (2026-10-11; the traces above confirm or correct it)
 Both appear only in Hyrule Castle's side rooms (generator mask 0x97E2), items 5 and 6 (`LSTI` draws `enemy_both2` 69

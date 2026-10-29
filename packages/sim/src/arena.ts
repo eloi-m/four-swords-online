@@ -26,8 +26,9 @@ export const WALL_ACTORS: readonly string[] = ["TOMI"];
 /**
  * Collision type 0x0C: the Tower of Flames' rim (tile 0x85 round its floor, the void beyond it), a wall (traced: a Link
  * walking right from his start stopped with his body's side on it, at x 409, and walking down at y 233; formats'
- * solidMask leaves the type open). Applied to the arenas' TV only; the type is all over the adventure's stages too,
- * untested there. The Dark World tower has no rim.
+ * solidMask leaves the type open). Its tiles are bomb sockets (an HBMB on each): one whose bomb was lifted is walked
+ * over (traced; entities.ts battleWorld). Applied to the arenas' TV only; the type is all over the adventure's stages
+ * too, untested there. The Dark World tower has no rim.
  */
 export const RIM = 0x0c;
 

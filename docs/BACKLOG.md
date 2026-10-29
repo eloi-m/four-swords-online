@@ -210,23 +210,30 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
 - **The arenas against Dolphin (2026-10-29,** `tools/dolphin` `compare.ts` and `clip.ts` from the round-start
   savestates of The Field, Tower of Flames, Tower of Winds, Hyrule Castle and Above the Clouds, 2-4 players; the Dark
   World arenas have no savestate). Matching: the actors at the round start, the sword, the shield and the push apart,
-  the bees, 4-player fights, the orb's drop frame. Different, worst first:
-  1. Above the Clouds: the pit inside the green ring sends a Link back to his round start; Dolphin moves him 9 px in,
-     one 1.5 px step, the fall, then back 15 px behind the edge (2 life, ~180 invincible), as a plain pit
-     (`combat.ts` `pitEdge` gives null there).
-  2. Hyrule Castle: a soldier's touch hurts a shielded Link from the front (2 life, again every 60 ticks while it stays
-     on him; Dolphin's idle Links lose 4-8 life in 300 ticks, ours 2-4 in total); its reach is ~10.6 px across and
-     8.5-9.9 px up or down, ours 14 (`hazards.ts` soldier touch `blockable`).
-  3. Tower of Flames: a roll goes over the rim (0x0C, solid to walking) into the lava (x 409 → 443, state 50); ours
-     stops at 408.5 (`arena.ts` `RIM` solid to every move).
+  the bees, 4-player fights, the orb's drop frame. Different, worst first (1, 2, 3, 5, 8 done 2026-10-29, with the
+  castle soldiers' wall boxes: docs/measurements/battle-combat.md "The arenas against Dolphin, fixed"; ONLINE_VERSION
+  32):
+  1. (done) Above the Clouds: the "pit inside the green ring" is a colored panel of another player's color; it now
+     falls as a plain pit (in from its nearest side, back where the Link last stood clear of every panel, facing the
+     middle). Clips exact.
+  2. (done) Hyrule Castle: a soldier's touch goes through the shield (read: its attack never asks the shield), with its
+     own box (x −4 … 4, y −6 … 2 against the Link's ±7: 11 across, 13 / 9 up and down; traced).
+  3. (done) Tower of Flames: not a roll; the rim's tiles are bomb sockets, and a Link lifting the socket bomb in front
+     of him walks on over the empty socket into the lava; the jump lands where he last stood clear of it. Clip within
+     0.5 px (the sim stops 0.5 px short of the rim). Left: a lift pressed while walking walks one more step first; at
+     394 the game lifted something 15 px short of the rim where the sim rolls.
   4. The Field: the house door is walked straight in at x 249.5-255.5 with no push (state 28); at x 242 Dolphin pushes
      34+ ticks and never enters, ours slides to x 256 and enters (`siderooms.ts` `openDoors`; check against the earlier
      trace in battle-open-items.md).
-  5. Carrying a Link walks at 1.25 px/tick, ours 1.5 (`carry.ts`).
+  5. (done) Carrying a Link walks at 1.25 px/tick (a thing 1.5, traced with the socket bomb); the carry walks on the
+     lift's last tick.
   6. Tower of Winds: Up held at a ladder's top: Dolphin stands (y 233.3, states 0/2 every 3 frames); ours jitters 5 px
      (settles B2's "a ladder's top").
-  7. Hyrule Castle: a magic circle takes a Link 16 px off on both axes; ours needs 15 (`takeIntoCircle`).
-  8. A roll ends with one standing tick before walking on, and stops dead 16 px from a Link (`roll.ts`).
+  7. Hyrule Castle: a magic circle takes a Link 16 px off on both axes; ours needs 15 (`takeIntoCircle`). Read: the
+     circle's box is ±8 against the Link's ±7, edges included (15, as ours); not reproduced (the circles stayed shut),
+     maybe a frame's lag of the Link's box. Needs a trace with a circle open.
+  8. (done) A roll in the open ends with one standing tick before walking on (against a Link it walks on at once, as
+     traced before). "Stops dead 16 px from a Link" not seen: rolled into a Link, the sim matched within 0.42 px.
   9. Smaller: the Flames basement's landing dips 4 px over 19 frames (state 76); a plain pit's edge: snapped onto the
      spot, a walking frame, a standing frame, one 1.5 px step, then the fall (settles B2's "stop and step"); pushing up-left into a
      corner drifts 0.4 px; a push turned diagonal moves a tick sooner than ours; the side room's hen (NIWA) wanders
