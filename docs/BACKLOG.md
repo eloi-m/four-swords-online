@@ -207,6 +207,33 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
 - **Presentation:** the round screens are the game's own now (above); left are the details listed there. The HUD's
   force gem counter is hidden in battle, as the game code does.
 
+- **The arenas against Dolphin (2026-10-29,** `tools/dolphin` `compare.ts` and `clip.ts` from the round-start
+  savestates of The Field, Tower of Flames, Tower of Winds, Hyrule Castle and Above the Clouds, 2-4 players; the Dark
+  World arenas have no savestate). Matching: the actors at the round start, the sword, the shield and the push apart,
+  the bees, 4-player fights, the orb's drop frame. Different, worst first:
+  1. Above the Clouds: the pit inside the green ring sends a Link back to his round start; Dolphin moves him 9 px in,
+     one 1.5 px step, the fall, then back 15 px behind the edge (2 life, ~180 invincible), as a plain pit
+     (`combat.ts` `pitEdge` gives null there).
+  2. Hyrule Castle: a soldier's touch hurts a shielded Link from the front (2 life, again every 60 ticks while it stays
+     on him; Dolphin's idle Links lose 4-8 life in 300 ticks, ours 2-4 in total); its reach is ~10.6 px across and
+     8.5-9.9 px up or down, ours 14 (`hazards.ts` soldier touch `blockable`).
+  3. Tower of Flames: a roll goes over the rim (0x0C, solid to walking) into the lava (x 409 → 443, state 50); ours
+     stops at 408.5 (`arena.ts` `RIM` solid to every move).
+  4. The Field: the house door is walked straight in at x 249.5-255.5 with no push (state 28); at x 242 Dolphin pushes
+     34+ ticks and never enters, ours slides to x 256 and enters (`siderooms.ts` `openDoors`; check against the earlier
+     trace in battle-open-items.md).
+  5. Carrying a Link walks at 1.25 px/tick, ours 1.5 (`carry.ts`).
+  6. Tower of Winds: Up held at a ladder's top: Dolphin stands (y 233.3, states 0/2 every 3 frames); ours jitters 5 px
+     (settles B2's "a ladder's top").
+  7. Hyrule Castle: a magic circle takes a Link 16 px off on both axes; ours needs 15 (`takeIntoCircle`).
+  8. A roll ends with one standing tick before walking on, and stops dead 16 px from a Link (`roll.ts`).
+  9. Smaller: the Flames basement's landing dips 4 px over 19 frames (state 76); a plain pit's edge: snapped onto the
+     spot, a walking frame, a standing frame, one 1.5 px step, then the fall (settles B2's "stop and step"); pushing up-left into a
+     corner drifts 0.4 px; a push turned diagonal moves a tick sooner than ours; the side room's hen (NIWA) wanders
+     (x 120 → 92 → 153 over 5 s); the Field's frame-155 case (a Link blocked pushing up, then left+B, stays 2 frames
+     and swings in place); the Flames' BLDF hole covers are black (ours a lava smudge); a white dot after the HUD's
+     third heart; the castle's CKSW at (32, 0) and Clouds' at (64, 0) are gone after frame 0.
+
 ### B3. Visual and audio fidelity
 - **Visuals:**
   - **Bugs (open):** (done 2026-10-09: an item fetched by the boomerang rides under it, its spot not measured;
