@@ -517,7 +517,7 @@ export function sideViewAt(b: BattleState, y: number): boolean {
 
 /**
  * Is a Link on a ladder: his anchor or his feet (7 px under it) on its tiles? (So he climbs it until he stands level
- * with the ground beside its top, and walks over its top as over the ground. TODO(measure): a ladder's top.)
+ * with the ground beside its top, and walks over its top as over the ground; Up held there, he stands: stepSideView.)
  */
 export const onLadder = (world: World, p: { x: number; y: number }): boolean => {
   const x = Math.floor(p.x / SUBPX), y = Math.floor(p.y / SUBPX);
@@ -538,10 +538,16 @@ export function stepSideView(state: GameState, i: number, buttons: number, world
   const climb = ladder && p.action === "none" ? ((buttons & Button.Down) ? 1 : 0) - ((buttons & Button.Up) ? 1 : 0) : 0;
   if (climb) {
     p.facing = climb < 0 ? "up" : "down";
-    p.moving = true;
-    p.walkTicks++;
     p.held = buttons;
+    const x = p.x, y = p.y;
     moveAxis(p, world, climb * CLIMB_SPEED, "y", true); // (round a ledge's corner as walking does)
+    // Not up off its top: a step that would leave him off the ladder isn't taken, and he stands there level with the
+    // ground beside it, Up held (traced on the Tower of Winds' TV: 234.7, 233.2, then standing).
+    if (climb < 0 && !onLadder(world, p)) [p.x, p.y, p.moving] = [x, y, false];
+    else {
+      p.moving = true;
+      p.walkTicks++;
+    }
     return true;
   }
   // Up or Down with a side: walking along it (TODO(measure): at full speed, or the diagonal's), sliding round corners

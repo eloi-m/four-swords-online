@@ -114,6 +114,7 @@ const EXPECT: Readonly<Record<string, { pos?: number; sprites?: number; players?
   windsGate: { pos: 0.6, sprites: 1 },
   windsLadder: { pos: 0.6 },
   windsLadderDown: { pos: 0.6 },
+  windsLadderTop: { pos: 0.6 },
   windsHit: { pos: 0.6 },
   // Sliding off the ledge's corner (3.3 and 2.2 px a frame in the game), 0.6 px apart at most.
   windsKnockOff: { pos: 0.7 },
