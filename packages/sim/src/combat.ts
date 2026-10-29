@@ -8,10 +8,10 @@ import { PLAYER_ANIMATIONS } from "./animations.ts";
 import { attackMeets, attacksMeet, bodyBox, bootsAttack, swordAttack, type SwordAttack } from "./attacks.ts";
 import { isqrt, velocityAlong, type ItemKind } from "./entities.ts";
 import { moveFrame } from "./moveframes.ts";
-import { Button, moveAxis, playerFrame, STAND_FRAME, SUBPX, WALK_FRAME_TICKS, type Facing, type PlayerState } from "./player.ts";
+import { Button, moveAxis, playerFrame, STAND_FRAME, SUBPX, WALK_FRAME_TICKS, WALK_SPEED, WALK_SPEED_DIAGONAL, type Facing, type PlayerState } from "./player.ts";
 import { createPush, pushingFrame, type PushState } from "./push.ts";
 import { sameScreen } from "./siderooms.ts";
-import { CELL, isSolidAt, surfaceAt, type World } from "./world.ts";
+import { CELL, isSolidAt, ROOM_W, surfaceAt, type World } from "./world.ts";
 
 export const HEART = 4; // health is counted in quarter hearts (an Octorok hit, atcp 2, takes 16 life to 14: measured)
 /**
@@ -103,18 +103,18 @@ export const FALL_SEQUENCE = { frames: [183, 184, 185, 186, 187, 188, 187, 186],
 export const FALL_START_TICKS = 2;
 export const FALL_JUMP_TICKS = 64;
 export const FALL_JUMP_HOP = 8 * SUBPX;
-const FALL_DROP_TICKS = FALL_SEQUENCE.ticks.reduce((a, b) => a + b, 0); // 58
+export const FALL_DROP_TICKS = FALL_SEQUENCE.ticks.reduce((a, b) => a + b, 0); // 58
 /** Ticks from falling in to landing back on the edge (the landing tick is the last). */
 export const FALL_TICKS = FALL_START_TICKS + FALL_DROP_TICKS + FALL_JUMP_TICKS + 1;
 /**
  * A plain pit (tile type 0x03: Above the Clouds' outer void; traced walking off the island left, down, and left after
- * standing at its edge, and a burning Link running off it): placed 8 px inside the edge too, but 4 ticks before he
+ * standing at its edge, and a burning Link running off it): placed 8 px inside its nearest edge, but 4 ticks before he
  * falls (state 30: the same 58 frames; meanwhile the game's walking Link stops, stands, walks a step and is put back
  * where he was placed; a burning one runs on 2 ticks, stops, and is put back a step), then no jump: on the next tick
  * he's back where he last stood with his whole body (x − 7 … x + 7, y − 7 … y + 7) off the pit (traced at 1.5 and
  * 2 px a tick: 71 and 72 left of the edge at 64; not where he was a few ticks before), with PIT_DAMAGE and 180
  * invincibility, and stands there (state 31, his standing frame, blinking) 60 ticks more, out of control, his
- * invincibility set back to 180 on the last of them (blinking at once); then he faces away from the pit.
+ * invincibility set back to 180 on the last of them (blinking at once); then he faces the arena's middle.
  */
 export const PLAIN_FALL_START_TICKS = 4;
 export const PLAIN_FALL_STAND_TICKS = 60;
@@ -463,11 +463,16 @@ export function stepFighter(p: PlayerState, f: Fighter, buttons: number, world: 
   }
 }
 
-/** Is his whole body (x − 7 … x + 7, y − 7 … y + 7, the far sides open) off any pit? */
+/**
+ * Is his whole body (x − 7 … x + 7, y − 7 … y + 7, the far sides open) off any pit, and off Above the Clouds' colored
+ * panels, even of his own color (traced: back at 137 left of the ring after standing on his own panel 50 ticks)?
+ */
 function offPits(p: PlayerState, world: World): boolean {
   const half = 7 * SUBPX, l = Math.floor((p.x - half) / SUBPX), r = Math.ceil((p.x + half) / SUBPX) - 1;
   const t = Math.floor((p.y - half) / SUBPX), b = Math.ceil((p.y + half) / SUBPX) - 1;
-  for (const [x, y] of [[l, t], [r, t], [l, b], [r, b]] as const) if (surfaceAt(world, x, y) === "pit") return false;
+  for (const [x, y] of [[l, t], [r, t], [l, b], [r, b]] as const) {
+    if (surfaceAt(world, x, y) === "pit" || world.panels?.[Math.floor(y / CELL) * world.widthCells + Math.floor(x / CELL)]) return false;
+  }
   return true;
 }
 
@@ -480,6 +485,9 @@ export function overPit(p: PlayerState, world: World): boolean {
   return surfaceAt(world, Math.floor(p.x / SUBPX) + PIT_PROBE.x, Math.floor(p.y / SUBPX) + PIT_PROBE.y) === "pit";
 }
 
+/** Is this world pixel a pit to the falling Link? (Above the Clouds' panels are, unless of his color: panels.ts.) */
+export type PitAt = (x: number, y: number) => boolean;
+
 /** How far a fall looks back for the pit's edge (px): a trick floor is 64 px across. */
 const PIT_EDGE_REACH = 96;
 
@@ -490,7 +498,7 @@ const PIT_EDGE_REACH = 96;
  * arena's border). Returns the axis, the edge coordinate (px: the first pit pixel's side) and which way is outside, or
  * null inside a pit wider than PIT_EDGE_REACH.
  */
-function pitEdge(p: PlayerState, f: Fighter, world: World): { axis: "x" | "y"; edge: number; out: number } | null {
+function pitEdge(p: PlayerState, f: Fighter, world: World, pitAt: PitAt, plain: boolean): { axis: "x" | "y"; edge: number; out: number } | null {
   const px = Math.floor(p.x / SUBPX), py = Math.floor(p.y / SUBPX);
   const cx = Math.floor(px / CELL) * CELL, cy = Math.floor(py / CELL) * CELL;
   const held = (a: number, b: number) => (p.held & a ? 1 : 0) - (p.held & b ? 1 : 0);
@@ -510,7 +518,7 @@ function pitEdge(p: PlayerState, f: Fighter, world: World): { axis: "x" | "y"; e
       const [probeX, probeY] = axis === "x" ? [probe, py] : [px, probe];
       if (probeX < 0 || probeY < 0 || probeX >= world.widthCells * CELL || probeY >= world.heightCells * CELL) return null;
       if (isSolidAt(world, probeX, probeY)) return null;
-      if (surfaceAt(world, probeX, probeY) === "pit") continue;
+      if (pitAt(probeX, probeY)) continue;
       // A trick floor's pit reaches a pixel past its tiles on its right and bottom (traced: back down at 280, not 279).
       const wide = out > 0 && world.widePits?.some((r) => (axis === "x" ? r.right === edge - 1 && py >= r.top && py <= r.bottom : r.bottom === edge - 1 && px >= r.left && px <= r.right));
       return { axis, edge: wide ? edge + 1 : edge, out, d: Math.abs((axis === "x" ? p.x : p.y) - edge * SUBPX) };
@@ -519,7 +527,9 @@ function pitEdge(p: PlayerState, f: Fighter, world: World): { axis: "x" | "y"; e
   };
   const sides = [side("x", 1), side("x", -1), side("y", 1), side("y", -1)].filter((e): e is Side => e !== null);
   const behind = sides.filter((e) => (e.axis === "x" ? fx !== 0 && e.out === -fx : fy !== 0 && e.out === -fy));
-  const pool = behind.length ? behind : sides;
+  // (A plain pit: the nearest edge, whichever way he went. Traced: a Link standing on a panel as it turned another's
+  // color was put 8 px in from its nearer side beside him, not from the side behind him.)
+  const pool = behind.length && !plain ? behind : sides;
   return pool.reduce<Side | null>((best, e) => (!best || e.d < best.d ? e : best), null);
 }
 
@@ -530,9 +540,9 @@ function pitEdge(p: PlayerState, f: Fighter, world: World): { axis: "x" | "y"; e
  * with no floor next to the pit, where he is, the jump aiming at his start). The jump's step per tick goes in
  * pushX/pushY.
  */
-export function startFall(p: PlayerState, f: Fighter, world?: World): void {
-  const edge = world ? pitEdge(p, f, world) : null;
-  f.plainFall = !!world && plainPitAt(world, p);
+export function startFall(p: PlayerState, f: Fighter, world?: World, opts: { plain?: boolean; pitAt?: PitAt } = {}): void {
+  f.plainFall = !!world && (opts.plain ?? plainPitAt(world, p));
+  const edge = world ? pitEdge(p, f, world, opts.pitAt ?? ((x, y) => surfaceAt(world, x, y) === "pit"), f.plainFall) : null;
   // A burning Link runs on into a plain pit (firerod.ts: his run's step).
   const run = f.plainFall && f.move === "burning" && f.z === 0 ? [f.flyX, f.flyY] : [0, 0];
   f.pushX = f.pushY = 0;
@@ -590,7 +600,16 @@ function stepFall(p: PlayerState, f: Fighter): void {
 
 function stepPlainFall(p: PlayerState, f: Fighter): void {
   const t = ++f.modeTick - PLAIN_FALL_START_TICKS - FALL_DROP_TICKS; // 0 back on the edge, then standing
-  // A burning Link's run goes on 2 ticks, then he's put back a step as he falls (traced).
+  // A burning Link's run goes on 2 ticks, then he's put back a step as he falls (traced). A walking one stops, stands,
+  // takes one walking step the way he holds on the 3rd tick and is put back as he falls (traced at 1.5 px: walking
+  // right onto a panel, left off the island; standing still, no step).
+  if (f.modeTick === PLAIN_FALL_START_TICKS - 1 && !f.flyX && !f.flyY) {
+    const dx = (p.held & Button.Right ? 1 : 0) - (p.held & Button.Left ? 1 : 0), dy = (p.held & Button.Down ? 1 : 0) - (p.held & Button.Up ? 1 : 0);
+    const speed = dx && dy ? WALK_SPEED_DIAGONAL : WALK_SPEED;
+    [f.flyX, f.flyY] = [dx * speed, dy * speed];
+    p.x += f.flyX;
+    p.y += f.flyY;
+  }
   const run = f.modeTick <= 2 ? 1 : f.modeTick === PLAIN_FALL_START_TICKS ? -1 : 0;
   if (run) {
     p.x += run * f.flyX;
@@ -610,10 +629,12 @@ function stepPlainFall(p: PlayerState, f: Fighter): void {
   }
   if (t < PLAIN_FALL_STAND_TICKS) return;
   // His invincibility starts over, blinking at once (traced: 179 on this tick, hidden), and he's back in control from
-  // the next, turned away from the pit (traced coming back right: facing right).
+  // the next, turned toward the arena's middle as at a round's start (arena.ts startFacing; traced: right, coming back
+  // right off the island's left edge and left out of the colored panels' ring, both left of the middle; TODO(measure)
+  // the right half).
   makeInvincible(f, RESPAWN_INVINCIBLE_TICKS, 0);
   f.invincible--;
-  if (f.pushX || f.pushY) p.facing = Math.abs(f.pushX) >= Math.abs(f.pushY) ? (f.pushX > 0 ? "right" : "left") : f.pushY > 0 ? "down" : "up";
+  p.facing = p.x < (ROOM_W / 2) * SUBPX ? "right" : "left";
   f.pushX = f.pushY = 0;
   f.plainFall = false;
   setMode(f, "active");

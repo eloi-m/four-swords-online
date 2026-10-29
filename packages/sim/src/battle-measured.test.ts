@@ -13,7 +13,7 @@ import { fighterFrame, fighterVisible } from "./combat.ts";
 import type { ItemKind } from "./entities.ts";
 import { stepGame } from "./game.ts";
 import { SUBPX, type Facing } from "./player.ts";
-import { NO_PROPS, sideRoomsOf, stageWarps, type ArenaProps } from "./props.ts";
+import { arenaProps, NO_PROPS, sideRoomsOf, stageWarps, type ArenaProps } from "./props.ts";
 import type { World } from "./world.ts";
 
 type Row = [buttons: number, x: number, y: number, z: number, sprite: number, state: number, life: number, invincible: number];
@@ -91,7 +91,7 @@ const boss500 = new URL("files/GC4Sword_usa/Boss/boss500.arc", root);
  * the tick a Link falls into
  * a pit still shows his walk frame, a carrier shows his carry pose on the tick his load wriggles free.
  */
-const EXPECT: Readonly<Record<string, { pos?: number; sprites?: number; players?: number[] }>> = {
+const EXPECT: Readonly<Record<string, { pos?: number; sprites?: number; players?: number[]; props?: string[] }>> = {
   charge: { sprites: 1 },
   blockLunge: { pos: 0.02 },
   // P2, pushed away down-right, slides round the corner of the beehive tree's base by P2's start (combat.ts slideBy:
@@ -148,12 +148,16 @@ const EXPECT: Readonly<Record<string, { pos?: number; sprites?: number; players?
   fireStream: { pos: 0.26 },
   hammerTap: { pos: 0.51 },
   // A plain pit (Above the Clouds' outer void): the 4 ticks before he falls, the game's walking Link shows his walk,
-  // stops, stands and walks a step (1.5 px) before he's put back and falls, where the sim's holds the spot he was
-  // placed on, drawn standing; a burning Link shows his run on those ticks.
-  cloudsPitLeft: { pos: 1.51, sprites: 2 },
-  cloudsPitDown: { pos: 1.51, sprites: 2 },
-  cloudsPitWait: { pos: 1.51, sprites: 2 },
+  // stops, stands and walks a step before he's put back and falls, where the sim's is drawn standing; a burning Link
+  // shows his run on those ticks.
+  cloudsPitLeft: { sprites: 2 },
+  cloudsPitDown: { sprites: 2 },
+  cloudsPitWait: { sprites: 2 },
   fireCloudsPit: { sprites: 4 },
+  // Above the Clouds' colored panels (their RBPN props only; the cases start 8 frames in, where the round's panels
+  // start counting): standing on one as it turned P2's color, and walking onto one of P2's color.
+  cloudsRingStand: { sprites: 2, props: ["RBPN"] },
+  cloudsRingWalk: { sprites: 2, props: ["RBPN"] },
 };
 
 describe.skipIf(!existsSync(boss500))("sim vs Dolphin Shadow Battle traces", () => {
@@ -171,7 +175,8 @@ describe.skipIf(!existsSync(boss500))("sim vs Dolphin Shadow Battle traces", () 
   for (const c of fixture.cases) {
     it(`${c.name}: ${c.script.length > 90 ? c.script.slice(0, 87) + "…" : c.script}`, () => {
       const want = EXPECT[c.name] ?? {};
-      const r = replay(c, world(c.room), propsOf(c.room), want.players);
+      const props = want.props ? { ...propsOf(c.room), actors: arenaProps(stage, tileTypes, c.room).actors.filter((a) => want.props!.includes(a.id)) } : propsOf(c.room);
+      const r = replay(c, world(c.room), props, want.players);
       expect(r.pos, `worst at frame ${r.posAt}`).toBeLessThan(want.pos ?? 0.015);
       expect(r.z).toBeLessThan(0.01);
       expect(r.life).toEqual([]);

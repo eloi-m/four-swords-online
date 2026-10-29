@@ -3,12 +3,15 @@
 // color (tile 0x8B + color, types 0x4C-0x4F), and a panel is solid ground only for the Link of its color: any other
 // Link standing on it falls as into a pit (in a 2- or 3-player match, the absent players' colors are pits for all).
 // With the arenas' params (0) all panels change together every 120 frames, P1 → P2 → P3 → P4 → P1.
+// The fall is a plain pit's (combat.ts: traced walking onto a panel of P2's color and standing on one as it turned):
+// put 8 px in from the panel's nearest side, 4 + 58 ticks, then back where he last stood clear of every panel.
 import type { BattleState } from "./battle.ts";
 import { onGround, PIT_PROBE, startFall } from "./combat.ts";
 import { tileIndexAt } from "./entities.ts";
 import type { GameState } from "./game.ts";
 import { SUBPX } from "./player.ts";
 import { switchOn } from "./switches.ts";
+import { surfaceAt, type World } from "./world.ts";
 
 export const PANEL_TILE = 0x8b; // + color
 export const PANEL_DEFAULT_PERIOD = 120; // frames, for params & 0x7F = 0
@@ -39,7 +42,7 @@ function panelTiles(b: BattleState): Map<number, number> {
 }
 
 /** One tick: the panels' timers, then Links standing on a panel of another player's color fall. */
-export function stepPanels(state: GameState): void {
+export function stepPanels(state: GameState, world: World): void {
   const b = state.battle!;
   if (!b.panels.length) return;
   let k = 0;
@@ -63,6 +66,11 @@ export function stepPanels(state: GameState): void {
     if (f.mode !== "active" && f.mode !== "recoil" && f.mode !== "hurt") return;
     if (!onGround(f)) return;
     const panel = tiles.get(tileIndexAt(Math.floor(p.x / SUBPX) + PIT_PROBE.x, Math.floor(p.y / SUBPX) + PIT_PROBE.y));
-    if (panel !== undefined && panelColor(b, panel) !== i) startFall(p, f);
+    if (panel === undefined || panelColor(b, panel) === i) return;
+    const pitAt = (x: number, y: number) => {
+      const k = tiles.get(tileIndexAt(x, y));
+      return k !== undefined ? panelColor(b, k) !== i : surfaceAt(world, x, y) === "pit";
+    };
+    startFall(p, f, world, { plain: true, pitAt });
   });
 }

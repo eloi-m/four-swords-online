@@ -31,6 +31,9 @@ export const WALL_ACTORS: readonly string[] = ["TOMI"];
  */
 export const RIM = 0x0c;
 
+/** Collision types 0x4C-0x4F: Above the Clouds' colored panels (panels.ts), one per player color. */
+export const PANEL_TYPES = [0x4c, 0x4f] as const;
+
 /**
  * Collision for one arena room, alone at the world origin, and its side rooms below it (the top 24 tile rows of each
  * sublayer's base layer at siderooms.ts sideRoomY; the rows between them stay solid).
@@ -43,6 +46,7 @@ export function buildArenaWorld(stage: Stage, tileTypes: Uint16Array, room: numb
   }
   const { rooms } = sideRoomsOf(stage, tileTypes, room);
   const plainPit = new Uint8Array(world.widthCells * world.heightCells);
+  const panels = new Uint8Array(world.widthCells * world.heightCells);
   for (let k = 0; k < 8; k++) {
     const base = k === 0 || rooms & (1 << k) ? stage.layer(room, 1, k) : null;
     const top = sideRoomY(k) / CELL;
@@ -54,6 +58,7 @@ export function buildArenaWorld(stage: Stage, tileTypes: Uint16Array, room: numb
         for (let q = 0; q < 4; q++) {
           const i = (top + ty * 2 + (q >> 1)) * world.widthCells + tx * 2 + (q & 1);
           plainPit[i] = type === TileType.Pit ? 1 : 0;
+          panels[i] = type >= PANEL_TYPES[0] && type <= PANEL_TYPES[1] ? 1 : 0;
           if (k === 0 && type === RIM) world.solid[i] = 1;
           if (k === 0) continue; // (the TV: buildWorld's)
           world.solid[i] = mask & (1 << q) ? 1 : 0;
@@ -62,7 +67,7 @@ export function buildArenaWorld(stage: Stage, tileTypes: Uint16Array, room: numb
       }
     }
   }
-  Object.assign(world, { plainPit });
+  Object.assign(world, { plainPit, panels });
   // A door is open under its box (the Tower of Flames' doors and the side rooms' ways out are walked straight into),
   // but The Field's house door: its tiles (0x19C/0x19D, type 1) stop a Link at y 183 until he has pushed them open
   // (traced: siderooms.ts openDoors).

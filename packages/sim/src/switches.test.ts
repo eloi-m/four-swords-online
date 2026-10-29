@@ -4,15 +4,15 @@ import { describe, expect, it } from "vitest";
 import { tileOverrides, CRYSTAL_LIT_TILE, CRYSTAL_UNLIT_TILE } from "./arenatiles.ts";
 import { ROUND_OVER_TICKS } from "./battle.ts";
 import { BOMB_FUSE } from "./bombs.ts";
-import { FALL_TICKS, HEART, SWORD_DAMAGE } from "./combat.ts";
+import { FALL_DROP_TICKS, FALL_TICKS, HEART, PIT_DAMAGE, PLAIN_FALL_STAND_TICKS, PLAIN_FALL_START_TICKS, SWORD_DAMAGE } from "./combat.ts";
 import { isRemoved, spawnEntity, type Entity } from "./entities.ts";
 import type { GameState } from "./game.ts";
 import { PANEL_DEFAULT_PERIOD, PANEL_TILE, panelColor } from "./panels.ts";
-import { SUBPX } from "./player.ts";
+import { Button, SUBPX, WALK_SPEED } from "./player.ts";
 import type { ArenaProps, Prop } from "./props.ts";
 import { GEN3_SPAWN_TICK, RNSW_PERIOD_UNIT, setSwitch, switchOn, CRYSTAL_LOCKOUT } from "./switches.ts";
 import { strikeEntity } from "./strike.ts";
-import { arena, run, RULES, start, until } from "./testarena.ts";
+import { arena, px, run, RULES, start, until } from "./testarena.ts";
 
 const props = (...actors: Prop[]): ArenaProps => ({ actors, bushes: [] });
 const of = (game: GameState, kind: Entity["kind"]) => game.battle!.entities.filter((e) => e.kind === kind && e.hp >= 0);
@@ -218,10 +218,31 @@ describe("Above the Clouds' colored panels", () => {
     until(game, world, () => b.fighters[1]!.mode === "falling", 5);
     expect(b.fighters.map((f) => f.mode)).toEqual(["active", "falling"]); // color 0 = P1's
     expect(b.fighters[1]!.hearts).toBe(RULES.hearts * HEART); // a pit's damage comes when he lands back (combat.ts)
-    b.fighters[1]!.spawnX = 200; // he climbs back out away from the panels
     run(game, world, 60);
-    run(game, world, PANEL_DEFAULT_PERIOD); // they turn P2's color: now P1 falls (and again where he climbs back out)
-    run(game, world, FALL_TICKS);
+    run(game, world, PANEL_DEFAULT_PERIOD); // they turn P2's color: now P1 falls
+    run(game, world, PLAIN_FALL_START_TICKS + FALL_DROP_TICKS);
     expect(b.fighters[0]!.hearts).toBeLessThan(RULES.hearts * HEART);
+  });
+
+  it("are a plain pit: put 8 px in from the nearest side, then back where he last stood clear of every panel", () => {
+    // (Traced in Above the Clouds' ring: walking right onto a panel of P2's color at x 144.5, put at 152, one walking
+    // step on the 3rd tick, the fall, then back at 137 (137 + 7 = the panels' edge), 2 life, facing the middle.)
+    const base = arena();
+    const panelCells = new Uint8Array(base.widthCells * base.heightCells);
+    for (let y = 64; y < 96; y += 8) for (let x = 64; x < 96; x += 8) panelCells[(y / 8) * base.widthCells + x / 8] = 1;
+    const world = { ...base, panels: panelCells };
+    const game = start(world, [{ x: 40, y: 200, facing: "right" }, { x: 30, y: 72, facing: "right" }], props(...panels));
+    const b = game.battle!, p2 = game.players[1]!;
+    until(game, world, () => b.fighters[1]!.mode === "falling", 60, [0, Button.Right]);
+    expect(px(p2.x)).toBe(72); // the panel's left side (64) + 8
+    run(game, world, PLAIN_FALL_START_TICKS - 1, [0, Button.Right]);
+    expect(p2.x).toBe(72 * SUBPX + WALK_SPEED); // the walking step
+    run(game, world, 1, [0, Button.Right]);
+    expect(p2.x).toBe(72 * SUBPX);
+    run(game, world, FALL_DROP_TICKS);
+    expect(p2.x).toBe(57 * SUBPX); // the last spot clear: 57 + 7 = the panels' edge, 58.5 + 7 past it
+    expect(b.fighters[1]!.hearts).toBe(RULES.hearts * HEART - PIT_DAMAGE);
+    run(game, world, PLAIN_FALL_STAND_TICKS);
+    expect([b.fighters[1]!.mode, p2.facing]).toEqual(["active", "right"]);
   });
 });

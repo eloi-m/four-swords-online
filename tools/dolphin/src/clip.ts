@@ -3,7 +3,9 @@
 // table every few frames. Ours is fed what Dolphin's game read each frame (the GBA keys in battle, the pad in the
 // adventure), as the sim's regression fixtures are (fixture.ts).
 //   node tools/dolphin/src/clip.ts <state.sav> --script "<script>" [--name <name>] [--tol 1] [--every 10]
-//        [--user <dolphin user dir>] [--port <gdb port> (2490)]
+//        [--user <dolphin user dir>] [--port <gdb port> (2490)] [--lead <frames>] [--reuse]
+// A battle round state's lead (sim.ts ROUND_STATE_LEAD) isn't the same in every state: when ours walks off a frame or
+// two after Dolphin's, pass the lead that lines the first step up.
 // Output: out/dolphin-compare/<name>/report.md and clip.json (per frame, per Link: Dolphin's and our x, y, state).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
@@ -49,6 +51,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       every: { type: "string", default: "10" },
       user: { type: "string" },
       port: { type: "string", default: "2490" },
+      lead: { type: "string" },
+      reuse: { type: "boolean" },
     },
   });
   const state = positionals[0];
@@ -64,15 +68,20 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const ports = existsSync(`${state}.json`) ? readRecipe(state).recipe.ports : battleStateName(state) ? ["gba", "gba", "gba", "gba"] : ["gc"];
   console.log(`${state}: ${describePlace(place)}`);
 
-  const trace = runTrace(["--savestate", state, "--ports", ports.join(","), "--script", script, "--link", "3b4:4"], join(out, "dolphin.json"), {
-    user: userDirFor({ ports } as never, values.user),
-    port: values.port!,
-  });
+  // --reuse: Dolphin's side from the last run of this clip (the same state and script), to try ours again.
+  const saved = join(out, "clip.json");
+  const reuse = values.reuse && existsSync(saved) && existsSync(join(out, "dolphin.json")) && JSON.parse(readFileSync(saved, "utf8")).script === script;
+  const trace: ReturnType<typeof runTrace> = reuse
+    ? JSON.parse(readFileSync(join(out, "dolphin.json"), "utf8"))
+    : runTrace(["--savestate", state, "--ports", ports.join(","), "--script", script, "--link", "3b4:4"], join(out, "dolphin.json"), {
+        user: userDirFor({ ports } as never, values.user),
+        port: values.port!,
+      });
   const frames = trace.frames;
   // Ours from where Dolphin's Links stand on the clip's first frame.
   const first = frames[0]!;
   const start = { ...place, links: first.links.map(withScreen) };
-  const sim: Sim = place.arena ? battleSim(EXTRACTED, start, { live: first.links }) : adventureSim(loadAdventureStage(EXTRACTED, place.stage), start);
+  const sim: Sim = place.arena ? battleSim(EXTRACTED, start, { live: first.links, ...(values.lead ? { lead: Number(values.lead) } : {}) }) : adventureSim(loadAdventureStage(EXTRACTED, place.stage), start);
   const players = sim.game.players.length;
   // Battle: the players in the round are the first ones (absent Links trail).
   const dolphinLinks = (f: (typeof frames)[number]): ClipLink[] =>

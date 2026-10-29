@@ -638,5 +638,5 @@ export function stepHazards(state: GameState, world: World): void {
         break;
     }
   }
-  stepPanels(state);
+  stepPanels(state, world);
 }

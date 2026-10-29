@@ -24,6 +24,11 @@ export interface World {
    * that cross the one and not the other (bombchus.ts). Only the battle arenas have it (arena.ts).
    */
   readonly plainPit?: Uint8Array;
+  /**
+   * 1 where a cell is one of Above the Clouds' colored panels (tile types 0x4C-0x4F, panels.ts): a Link on one isn't
+   * clear of pits, whatever its color (combat.ts safeX). Only the battle arenas have it (arena.ts).
+   */
+  readonly panels?: Uint8Array;
   /** Solid boxes on top of the cells, whole px, inclusive (the adventure's big rocks: they move by fifths of a px). */
   readonly boxes?: readonly { left: number; top: number; right: number; bottom: number }[];
   /**
