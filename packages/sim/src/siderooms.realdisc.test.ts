@@ -19,7 +19,7 @@ import { CIRCLE_GROW_TICKS, firebarSpeed } from "./hazards.ts";
 import { MESSAGE } from "./messages.ts";
 import { Button, SUBPX } from "./player.ts";
 import { arenaProps } from "./props.ts";
-import { CIRCLE_TICKS, DARK_TICKS, HOLE_TICKS, launchFlying, screenAt, sideRoomY, SPOT_STYLE, WARP_TICKS } from "./siderooms.ts";
+import { cannonDip, CIRCLE_TICKS, DARK_TICKS, HOLE_TICKS, launchFlying, screenAt, sideRoomY, SPOT_STYLE, WARP_TICKS } from "./siderooms.ts";
 import { setSwitch, switchOn } from "./switches.ts";
 import type { World } from "./world.ts";
 
@@ -215,7 +215,7 @@ describe.skipIf(!existsSync(boss500) || !existsSync(dol))("side rooms on the rea
     expect(walk(game, world, 0, () => f.move === "none", HOLE_TICKS + 1)).toBe(HOLE_TICKS); // traced: 119 frames
     expect([p.x / SUBPX, p.y / SUBPX - sideRoomY(2)]).toEqual([152, 8]); // traced: (152, 8) on screen 9
     expect(walk(game, world, 0, () => f.move === "cannon")).toBe(23); // traced: 4 px a frame to y 100, then in
-    expect(p.y / SUBPX - sideRoomY(2)).toBe(96);
+    expect(p.y / SUBPX - sideRoomY(2)).toBe(100); // (left where the fall took him on the catch's tick: cannonDip)
     stepGame(game, [Button.Item, 0], world); // the GBA's A fires it
     stepGame(game, [0, 0], world);
     expect([f.move, p.y / SUBPX - sideRoomY(2)]).toEqual(["launch", 83]); // traced: 96 → 83 on the first tick
@@ -229,6 +229,11 @@ describe.skipIf(!existsSync(boss500) || !existsSync(dol))("side rooms on the rea
     walk(game, world, Button.Down, () => f.move === "none", 200);
     expect([screenAt(p.y), f.hearts, f.mode]).toEqual([0, 12, "active"]);
     expect(p.y / SUBPX).toBeGreaterThan(180);
+  });
+
+  it("a cannon: the Link sinks into it and comes back up (traced in the Tower of Flames' basement)", () => {
+    const dips = Array.from({ length: 21 }, (_, k) => Math.round((cannonDip(k) / SUBPX) * 10) / 10);
+    expect(dips).toEqual([0, 0.9, 1.7, 2.4, 3, 3.5, 3.9, 4.2, 4.4, 4.5, 4.5, 4.4, 4.2, 3.9, 3.5, 3, 2.4, 1.7, 0.9, 0, 0]);
   });
 
   it("Above the Clouds' room: with its cannon taken, the next Link lands on the floor, climbs the ladder and is out", () => {

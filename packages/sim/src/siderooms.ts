@@ -201,6 +201,14 @@ export const CANNON_CATCH = 12; // px over its anchor where a falling Link gets 
 export const CANNON_REACH = 8; // px either side
 export const CANNON_SPEED = SUBPX;
 export const CANNON_FUSE = 300;
+/**
+ * Getting in, he sinks into it and comes back up: the tick after the catch (which leaves him where his fall took him)
+ * he's k − k(k + 1) / 20 px under his ride spot on the k-th tick, 0.9, 1.7 … 4.5, 4.5 … 0.9, then 0 from the 19th
+ * (traced in the Tower of Flames' basement: state 76 from y 2688.9 down to 2692.5 and back). 1/256 px.
+ */
+export function cannonDip(k: number): number {
+  return k > 0 && k < 19 ? Math.round((64 * (19 * k - k * k)) / 5) : 0;
+}
 /** The shot (state 77): up 13 px on the first tick, 0.25 px less each tick (measured: 13, 12.75, 12.5 … 11). */
 export const SHOT_SPEED = 13 * SUBPX;
 export const SHOT_SLOWING = SUBPX / 4;
@@ -653,10 +661,12 @@ export function stepCannon(state: GameState, e: Entity): void {
         e.vx = -e.vx;
       }
     }
-    [rider.x, rider.y] = [e.x, e.y - CANNON_RIDE * SUBPX];
     const pressed = rider.held & ~e.param & Button.Item;
     e.param = rider.held; // (the rider's buttons last tick: a press of Item fires)
-    if (pressed || ++e.timer >= CANNON_FUSE) {
+    const fire = pressed || ++e.timer >= CANNON_FUSE;
+    // (Fired at once, he's shot from the spot itself: traced under Above the Clouds' hole, 96 → 83.)
+    [rider.x, rider.y] = [e.x, e.y - CANNON_RIDE * SUBPX + (fire ? 0 : cannonDip(f.moveTick))];
+    if (fire) {
       Object.assign(f, { move: "launch", moveTick: 0, warp: -1, vz: -SHOT_SPEED, z: 0 });
       e.owner = -1;
       e.timer = 0;
@@ -672,7 +682,7 @@ export function stepCannon(state: GameState, e: Entity): void {
     if (dx > CANNON_REACH * SUBPX || above > CANNON_CATCH * SUBPX || above < 0) return;
     stopActing(p);
     Object.assign(g, { move: "cannon", moveTick: 0 });
-    [p.x, p.y, p.facing] = [e.x, e.y - CANNON_RIDE * SUBPX, "right"];
+    [p.x, p.facing] = [e.x, "right"]; // (on the spot from the next tick: cannonDip)
     e.owner = i;
     e.timer = 0;
     e.param = p.held;
