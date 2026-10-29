@@ -66,7 +66,9 @@ Index of the docs: [README.md](README.md).
 - **Clip diff:** `node tools/dolphin/src/clip.ts <state.sav> --script "<script>"` plays the script in Dolphin, feeds
   ours what Dolphin's game read each frame (the GBA keys, or the pad: B sword, A item, R action, the C stick's
   formations) from the same place, and reports the first frame a Link is more than 1 px off (`--tol`), with a table
-  every 10 frames (`--every`) and around it.
+  every 10 frames (`--every`) and around it. A battle round state's control frame isn't the same in every state: when
+  ours walks off a frame or two late, `--lead` lines it up (8 for Above the Clouds and the Tower of Flames, 9 for The
+  Field); `--reuse` keeps Dolphin's side of the last run of the same clip to try ours again.
 - Output in `out/dolphin-compare/<name>/` (report.md, diff.json or clip.json, the frames); defaults GDB port 2490,
   user folders `ref/dolphin-user-compare` (GBA ports) and `ref/dolphin-user-compare-adventure` (`--user`, `--port`).
   Dolphin's camera is not ours (zoom in the report), and the live reader sees only actors spawned by ID.
