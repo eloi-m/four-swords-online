@@ -26,7 +26,7 @@ import { initialPanels, stepPanels } from "./panels.ts";
 import { moveAxis, SUBPX, type Facing } from "./player.ts";
 import type { Prop } from "./props.ts";
 import { COVER_TILES } from "./arenatiles.ts";
-import { ballSoldierContact, soldierContact, stepBallSoldier, stepBowSoldier, stepCaptain, stepSoldierArrow } from "./castlesoldiers.ts";
+import { ballSoldierContact, moveInBox, SOLDIER_WALL_BOX, soldierContact, stepBallSoldier, stepBowSoldier, stepCaptain, stepSoldierArrow } from "./castlesoldiers.ts";
 import { spawnShadowLink, stepBigBomb, stepShadowLink } from "./giantbomb.ts";
 import { CIRCLE_SETTLE, screenAt, sideViewAt, stepCannon, takeIntoCircle } from "./siderooms.ts";
 import { newSoldier, SOLDIER_FIRST_LOOK, SOLDIER_STUN_DECAY, SOLDIER_STUN_TICKS } from "./strike.ts";
@@ -504,8 +504,9 @@ function stepSoldier(state: GameState, e: Entity, world: World): void {
     e.facing = Math.abs(e.vx) >= Math.abs(e.vy) ? (e.vx > 0 ? "right" : "left") : e.vy > 0 ? "down" : "up";
     // Soldiers don't walk into pits.
     const ahead = (v: number) => Math.sign(v) * 6;
-    if (surfaceAt(world, Math.floor((e.x + e.vx) / SUBPX) + ahead(e.vx), Math.floor(e.y / SUBPX)) !== "pit") moveAxis(e, world, e.vx, "x");
-    if (surfaceAt(world, Math.floor(e.x / SUBPX), Math.floor((e.y + e.vy) / SUBPX) + ahead(e.vy)) !== "pit") moveAxis(e, world, e.vy, "y");
+    // (Against the walls with its own ±8 px box: castlesoldiers.ts SOLDIER_WALL_BOX.)
+    if (surfaceAt(world, Math.floor((e.x + e.vx) / SUBPX) + ahead(e.vx), Math.floor(e.y / SUBPX)) !== "pit") moveInBox(e, world, SOLDIER_WALL_BOX.SLR1, e.vx, "x");
+    if (surfaceAt(world, Math.floor(e.x / SUBPX), Math.floor((e.y + e.vy) / SUBPX) + ahead(e.vy)) !== "pit") moveInBox(e, world, SOLDIER_WALL_BOX.SLR1, e.vy, "y");
   }
   for (const i of touchingBox(state, e.x, e.y, SOLDIER_TOUCH)) {
     const b = state.battle!;

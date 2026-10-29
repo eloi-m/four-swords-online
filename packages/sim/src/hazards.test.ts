@@ -271,6 +271,15 @@ describe("Hyrule Castle", () => {
     expect([touches(0, 13, "down"), touches(0, 13.25, "down"), touches(0, -9, "up"), touches(0, -9.25, "up")]).toEqual([true, false, true, false]);
   });
 
+  it("a soldier keeps its ±8 px wall box off the walls (the adventure's traced box: castlesoldiers.ts SOLDIER_WALL_BOX)", () => {
+    const world = arena([20, 0, 2, 30, "#"]); // a wall from x 160
+    const game = start(world, [{ x: 40, y: 200, facing: "left" }, FAR], props({ id: "SLR1", x: 140, y: 100, params: 0x1002 }));
+    const [soldier] = of(game, "soldier");
+    Object.assign(soldier!, { phase: "active", timer: 100, vx: 16 * SUBPX, vy: 0 }); // stopping: 8, 4, 2 … px a tick
+    run(game, world, 20);
+    expect(soldier!.x).toBe((160 - 8) * SUBPX);
+  });
+
   it("a soldier that sees a Link winds up, stands, then steers at him at about 1 px a tick (measured: seen on 47, moving on 89)", () => {
     const world = arena();
     const game = start(world, [{ x: 150, y: 170, facing: "left" }, FAR], props({ id: "SLR1", x: 220, y: 100, params: 0x1002 }));

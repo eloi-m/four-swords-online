@@ -208,13 +208,50 @@ function easeTo(v: number, target: number, ease: number, max: number): number {
   return v + Math.max(-max, Math.min(max, step));
 }
 
-/** Moves it by its velocity, a pit ahead stopping it as a wall does (as the sword soldiers). True when it was stopped. */
-function moveBlocked(e: Entity, world: World): boolean {
+/**
+ * Moves it by its velocity, a pit ahead stopping it as a wall does (as the sword soldiers). True when it was stopped.
+ * With `half`, against the walls with its own square wall box (the captain's, SOLDIER_WALL_BOX), else as a Link.
+ */
+function moveBlocked(e: Entity, world: World, half = 0): boolean {
   const x0 = e.x, y0 = e.y;
   const ahead = (v: number) => Math.sign(v) * 6;
-  if (e.vx && surfaceAt(world, Math.floor((e.x + e.vx) / SUBPX) + ahead(e.vx), Math.floor(e.y / SUBPX)) !== "pit") moveAxis(e, world, e.vx, "x");
-  if (e.vy && surfaceAt(world, Math.floor(e.x / SUBPX), Math.floor((e.y + e.vy) / SUBPX) + ahead(e.vy)) !== "pit") moveAxis(e, world, e.vy, "y");
+  const move = (v: number, axis: "x" | "y") => (half ? moveInBox(e, world, half, v, axis) : moveAxis(e, world, v, axis));
+  if (e.vx && surfaceAt(world, Math.floor((e.x + e.vx) / SUBPX) + ahead(e.vx), Math.floor(e.y / SUBPX)) !== "pit") move(e.vx, "x");
+  if (e.vy && surfaceAt(world, Math.floor(e.x / SUBPX), Math.floor((e.y + e.vy) / SUBPX) + ahead(e.vy)) !== "pit") move(e.vy, "y");
   return (e.vx !== 0 && e.x - x0 !== e.vx) || (e.vy !== 0 && e.y - y0 !== e.vy);
+}
+
+// The soldiers' wall boxes (+0x80..+0x8C, square: SLR1 ±8 from its init 0x80153AA4, SLR4 ±10; traced in the adventure's
+// room 9, docs/measurements/adventure-enemies.md "Adventure: the sword soldiers": they stop 8 and 10 px off the fence).
+// The battle's sword soldiers and captain are the same actors.
+/** Half the wall box (px) of a sword soldier and a captain. */
+export const SOLDIER_WALL_BOX = { SLR1: 8, SLR4: 10 } as const;
+
+/** Is a square box (half size px, its bottom and right edges exclusive) at (x, y) (1/256 px) in a wall along the side
+ *  leading along `axis` in direction `dir` (sampled every 8 px)? */
+export function boxSideHits(world: World, x: number, y: number, half: number, axis: "x" | "y", dir: number): boolean {
+  const h = half * SUBPX, edge = (dir > 0 ? h - 1 : -h) + (axis === "x" ? x : y);
+  const across = axis === "x" ? y : x;
+  for (let o = -h; ; o = Math.min(o + 8 * SUBPX, h - 1)) {
+    const a = Math.floor(edge / SUBPX), b = Math.floor((across + o) / SUBPX);
+    if (axis === "x" ? isSolidAt(world, a, b) : isSolidAt(world, b, a)) return true;
+    if (o === h - 1) return false;
+  }
+}
+
+/** Moves `e` along one axis against the walls with its square wall box (half size px), in steps of at most 4 px (no wall
+ *  is thinner than 8 px), a step into a wall backed off 0.5 px at a time; true when a wall stopped it. */
+export function moveInBox(e: { x: number; y: number }, world: World, half: number, delta: number, axis: "x" | "y"): boolean {
+  const dir = Math.sign(delta), n = Math.ceil(Math.abs(delta) / (4 * SUBPX));
+  for (let k = 1, done = 0; k <= n; k++) {
+    const step = Math.round((delta * k) / n) - done, from = e[axis];
+    done += step;
+    e[axis] += step;
+    while (Math.sign(e[axis] - from) === dir && boxSideHits(world, e.x, e.y, half, axis, dir)) e[axis] -= dir * (SUBPX / 2);
+    if (Math.sign(e[axis] - from) !== dir) e[axis] = from;
+    if (e[axis] - from !== step) return true;
+  }
+  return false;
 }
 
 /** A new bow soldier's fields (SLR2 init: a random facing, walking). */
@@ -386,7 +423,7 @@ export function stepCaptain(state: GameState, e: Entity, world: World): void {
         e.angle = marching && e.param === CAPTAIN_ORDER.gather ? (toward + 0x8000) & 0xffff : toward;
       }
       [e.vx, e.vy] = along(e.angle, marching ? CAPTAIN.march : CAPTAIN.chase);
-      moveBlocked(e, world);
+      moveBlocked(e, world, SOLDIER_WALL_BOX.SLR4);
       if (e.vx || e.vy) e.facing = facingTo(e.vx, e.vy);
       return;
     }
@@ -396,7 +433,7 @@ export function stepCaptain(state: GameState, e: Entity, world: World): void {
       [e.vx, e.vy] = FACING_STEP[e.facing].map((d) => d * CAPTAIN.lungeSpeed) as [number, number];
       return setPhase(e, "lunge");
     case "lunge": {
-      moveBlocked(e, world);
+      moveBlocked(e, world, SOLDIER_WALL_BOX.SLR4);
       const slow = (v: number) => (v > 0 ? Math.max(0, v - CAPTAIN.lungeSlow) : Math.min(0, v + CAPTAIN.lungeSlow));
       [e.vx, e.vy] = [slow(e.vx), slow(e.vy)];
       if (e.vx || e.vy) return;

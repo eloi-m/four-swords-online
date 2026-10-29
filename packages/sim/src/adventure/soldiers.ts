@@ -5,7 +5,7 @@
 // params' top byte names its captain's group (the captain's own top byte), not a rail. Records and the common rules are
 // enemies.ts's; velocities 1/256 px per tick.
 import { BOMB_FUSE } from "../bombs.ts";
-import { ARROW_FROM, BALL_SOLDIER, ballAt, ballHandAt, ballSoldierSees, ballWalkFrame, BOWMAN, BOWMAN_WALK_TICKS, CAPTAIN, CAPTAIN_MARCH_TICKS, SPEAR } from "../castlesoldiers.ts";
+import { ARROW_FROM, BALL_SOLDIER, ballAt, ballHandAt, ballSoldierSees, ballWalkFrame, boxSideHits, BOWMAN, BOWMAN_WALK_TICKS, CAPTAIN, CAPTAIN_MARCH_TICKS, moveInBox, SOLDIER_WALL_BOX, SPEAR } from "../castlesoldiers.ts";
 import { cos4096, sin4096, spawnEntity, TRIG_ONE, velocityAlong } from "../entities.ts";
 import { angleTo } from "../hazards.ts";
 import { BLOCK_PUSH_SPEED, onGround, SLIDE_SCALE, stopActing, vulnerable } from "../combat.ts";
@@ -412,8 +412,8 @@ function moveSoldier(e: Enemy, world: World, half?: number): boolean {
 // (+0xBC: SLR1 2, SLR4 3) at least its own, in the order they updated: 1 px at a time (up to 8 times while they
 // overlap) from the other's position give or take 0x2000, unless that step would put its wall box in a wall (0x801F23BC).
 // So the soldiers' centres keep about 8 px apart on an axis, and they give way to their captain, who shoves through them.
-/** Half the wall box (px) of a sword soldier and a captain. */
-export const SOLDIER_WALL_BOX = { SLR1: 8, SLR4: 10 } as const;
+// (The wall boxes and their moves are the battle's too: castlesoldiers.ts SOLDIER_WALL_BOX, moveInBox.)
+export { moveInBox, SOLDIER_WALL_BOX };
 /** The bodies that shove (px: left, top, right, bottom) and their weights. */
 export const SOLDIER_BODY = {
   SLR1: { box: [-4, -6, 4, 2], weight: 2 },
@@ -423,32 +423,6 @@ type Shover = keyof typeof SOLDIER_BODY;
 const shoves = (e: Enemy): e is Enemy & { type: Shover } => e.type in SOLDIER_BODY;
 export const SHOVE = { step: SUBPX, steps: 8, spread: 0x2000 };
 
-/** Is a square box (half size px, its bottom and right edges exclusive) at (x, y) (1/256 px) in a wall along the side
- *  leading along `axis` in direction `dir` (sampled every 8 px)? */
-function boxSideHits(world: World, x: number, y: number, half: number, axis: "x" | "y", dir: number): boolean {
-  const h = half * SUBPX, edge = (dir > 0 ? h - 1 : -h) + (axis === "x" ? x : y);
-  const across = axis === "x" ? y : x;
-  for (let o = -h; ; o = Math.min(o + 8 * SUBPX, h - 1)) {
-    const a = Math.floor(edge / SUBPX), b = Math.floor((across + o) / SUBPX);
-    if (axis === "x" ? isSolidAt(world, a, b) : isSolidAt(world, b, a)) return true;
-    if (o === h - 1) return false;
-  }
-}
-
-/** Moves `e` along one axis against the walls with its square wall box (half size px), in steps of at most 4 px (no wall
- *  is thinner than 8 px), a step into a wall backed off 0.5 px at a time; true when a wall stopped it. */
-export function moveInBox(e: Pick<Enemy, "x" | "y">, world: World, half: number, delta: number, axis: "x" | "y"): boolean {
-  const dir = Math.sign(delta), n = Math.ceil(Math.abs(delta) / (4 * SUBPX));
-  for (let k = 1, done = 0; k <= n; k++) {
-    const step = Math.round((delta * k) / n) - done, from = e[axis];
-    done += step;
-    e[axis] += step;
-    while (Math.sign(e[axis] - from) === dir && boxSideHits(world, e.x, e.y, half, axis, dir)) e[axis] -= dir * (SUBPX / 2);
-    if (Math.sign(e[axis] - from) !== dir) e[axis] = from;
-    if (e[axis] - from !== step) return true;
-  }
-  return false;
-}
 
 /** Is a square box (half size px) at (x, y) (1/256 px) in a wall anywhere along its sides? */
 const boxInWall = (world: World, x: number, y: number, half: number) =>
