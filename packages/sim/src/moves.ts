@@ -3,7 +3,8 @@
 // to lift rolls or does an empty lift (roll.ts); Item uses the item in hand (items.ts). Moves in progress run here too
 // (a door walk into or out of a side room: siderooms.ts). Presses only count while the sword is idle.
 import { stepBoots } from "./boots.ts";
-import { stepCarry, tryLift } from "./carry.ts";
+import { stepLink } from "./actions.ts";
+import { liftTarget, stepCarry, tryLift } from "./carry.ts";
 import { stepFireRod } from "./firerod.ts";
 import { stepHammer } from "./hammer.ts";
 import type { MoveHook } from "./combat.ts";
@@ -13,7 +14,9 @@ import { stepTake, tryTake } from "./orbs.ts";
 import { Button } from "./player.ts";
 import { pushingIdle, stepPushing } from "./push.ts";
 import { startReady, stepRoll } from "./roll.ts";
-import { stepCircle, stepInCannon, stepLaunch, stepSideView, stepWarp } from "./siderooms.ts";
+import { sideViewAt, stepCircle, stepInCannon, stepLaunch, stepSideView, stepWarp } from "./siderooms.ts";
+
+const DIRECTIONS = Button.Up | Button.Down | Button.Left | Button.Right;
 
 /** The move hook for one battle tick. */
 export function moveHook(state: GameState): MoveHook {
@@ -40,7 +43,17 @@ export function moveHook(state: GameState): MoveHook {
       const pressed = buttons & ~p.held;
       // (Flattened by a hammer, the Action button does nothing: hammer.ts.)
       if (pressed & Button.Action && f.flat === 0) {
-        if (tryTake(state, i) || tryLift(state, i)) {
+        if (tryTake(state, i)) {
+          p.held = buttons;
+          return true;
+        }
+        // What's in front where he stands decides the lift; the press tick still walks its step, and the lift plays
+        // from the next (traced: walking left at 191 he stepped to 189.5, then lifted the bush; walking right at 382
+        // he stepped to 383.5, then lifted a socket bomb).
+        const target = liftTarget(state, i);
+        if (target) {
+          if (!sideViewAt(state.battle!, p.y)) stepLink(p, buttons & DIRECTIONS, world);
+          tryLift(state, i, target);
           p.held = buttons;
           return true;
         }

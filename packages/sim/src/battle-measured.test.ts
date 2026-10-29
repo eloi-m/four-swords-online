@@ -161,6 +161,11 @@ const EXPECT: Readonly<Record<string, { pos?: number; sprites?: number; players?
   cloudsRingWalk: { sprites: 2, props: ["RBPN"] },
   // The Tower of Flames' socket bomb lifted at the rim (stopped 0.5 px short of it, as flamesRim) and carried over the
   // empty socket into the lava (its HBMB props only).
+  // R pressed walking: the step, then the lift of the socket bomb 16 px below the line (or, a step short, the roll).
+  flamesLiftWalking: { pos: 0.51, props: ["HBMB"] }, // (the rim's 0.5 px, below)
+  // (Its sprites: the roll's decision tick shows the walk in the game, and rolled into the rim he leans on it, 666, where
+  // the sim walks on the spot: neither modelled.)
+  flamesRollNear: { pos: 0.51, sprites: 16, props: ["HBMB"] },
   flamesSocket: { pos: 0.51, sprites: 2, props: ["HBMB"] }, // (falling in, the game still shows his carry 2 ticks)
   // A roll in the open, the way held: a standing tick, then walking (the walk cycle's frames off by one tick twice).
   fieldRollStand: { sprites: 2 },

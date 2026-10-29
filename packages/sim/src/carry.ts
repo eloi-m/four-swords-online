@@ -13,7 +13,7 @@
 // as the carrier likes, and wriggles free on his 17th press of a direction. Thrown or wriggling free, he hops off
 // along the carrier's facing at 3.3 px/tick from 18 px up (13 ticks, 42.9 px), bowls over the first other Link he
 // flies into (projectiles.ts) and lands unhurt, or falls if he lands over a pit. Getting hurt or falling drops the load.
-import { BOMB_FUSE } from "./bombs.ts";
+import { BOMB_FUSE, SOCKET_BOMB_HALF } from "./bombs.ts";
 import type { BattleState } from "./battle.ts";
 import { hurtbox, stopActing, stunFighter, vulnerable, type Fighter } from "./combat.ts";
 import { boxAround, boxesOverlap, entityById, FACING_STEP, isRemoved, pointInBox, setPhase, spawnEntity, TILE, tileIndexAt, ROOM_TILES_X, type Entity } from "./entities.ts";
@@ -66,8 +66,14 @@ export const WALL_PROBE = 4; // thrown things stop at walls with a ±4 px box (m
 
 /** Things Link can pick up. */
 export const LIFTABLE = new Set(["bush", "pot", "bomb", "orb"]);
-/** The box around an entity that the lift point must be in (a bomb's hit box is ±7 px: measured). */
+/** The box around an entity that the lift point must be in (a bomb's hit box is ±7 px: measured; a socket's ±10). */
 export const LIFT_HALF = 7;
+/**
+ * Across the facing, the lift point reaches a thing this far either side (traced in the Tower of Flames: walking right
+ * along y 232 he lifted the socket bomb at (408, 248) with R pressed at x 382, 16 px below the line, but not at 380.5:
+ * the point is 16 px ahead along the facing and at least 6 px wide across; ±8 taken, the sword's box's width).
+ */
+export const LIFT_ACROSS = 8;
 
 type Target = { link: number } | { entity: Entity } | { tile: number };
 
@@ -87,7 +93,14 @@ export function liftTarget(state: GameState, i: number): Target | null {
       pointInBox(x, y, hurtbox(state.players[j]!)),
   );
   if (link >= 0) return { link };
-  const entity = b.entities.find((e) => LIFTABLE.has(e.kind) && e.phase === "rest" && e.z === 0 && !isRemoved(e) && pointInBox(x, y, boxAround(e.x, e.y, LIFT_HALF, LIFT_HALF)));
+  const reach = { left: x - (sx ? 0 : LIFT_ACROSS), right: x + (sx ? 0 : LIFT_ACROSS), top: y - (sy ? 0 : LIFT_ACROSS), bottom: y + (sy ? 0 : LIFT_ACROSS) };
+  const half = (e: Entity) => (e.kind === "bomb" && e.home >= 0 ? SOCKET_BOMB_HALF : LIFT_HALF);
+  // (Two in reach, the one nearest the point: walking right into the socket bomb at (424, 232), the one above it at
+  // (424, 216) is in reach too, and the game lifted the one in front.)
+  const near = (e: Entity) => Math.abs(Math.floor(e.x / SUBPX) - x) + Math.abs(Math.floor(e.y / SUBPX) - y);
+  const entity = b.entities
+    .filter((e) => LIFTABLE.has(e.kind) && e.phase === "rest" && e.z === 0 && !isRemoved(e) && boxesOverlap(reach, boxAround(e.x, e.y, half(e))))
+    .reduce<Entity | undefined>((best, e) => (!best || near(e) < near(best) ? e : best), undefined);
   if (entity) return { entity };
   const tile = tileIndexAt(x, y);
   if ((b.props.bushes.includes(tile) || b.props.pots?.includes(tile)) && !b.cut.includes(tile)) return { tile };
@@ -103,11 +116,9 @@ function begin(f: Fighter, move: Fighter["move"], tick = 0): void {
  * Lifts what's in front of Link `i` (on the press tick: the lift plays from the next one). Returns false when there's
  * nothing to lift.
  */
-export function tryLift(state: GameState, i: number): boolean {
-  const target = liftTarget(state, i);
+export function tryLift(state: GameState, i: number, target = liftTarget(state, i)): boolean {
   if (!target) return false;
   const b = state.battle!, f = b.fighters[i]!;
-  state.players[i]!.walkTicks = 0; // (the carry's walk cycle starts over: traced, 704 on its first step)
   if ("link" in target) {
     liftLink(state, i, target.link);
     return true;
@@ -266,6 +277,8 @@ export function stepCarry(state: GameState, i: number, buttons: number, world: W
   switch (f.move) {
     case "lift":
       p.held = buttons;
+      // (The carry's walk cycle starts over: traced, 704 on its first step; the press tick still showed the walk.)
+      if (f.moveTick < 0) p.walkTicks = 0;
       if (++f.moveTick < LIFT_TICKS) return true;
       // The lift's last tick is the carry's first: he walks on it already (traced: state 18 and a step on one tick).
       begin(f, "carry");

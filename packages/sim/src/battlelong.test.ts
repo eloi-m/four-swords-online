@@ -52,7 +52,7 @@ const spawns: Spawn[] = [
 const RULES = { hearts: 3, timeLimit: 25 * 60, wins: 3 };
 const TICKS = 9000, FORK = 3700;
 // The bots' seed: one whose match holds every rule checked below (many do; a rules change can call for another).
-const BOT = 3;
+const BOT = 4;
 
 // Round 1 starts with an item each (orbs give more later), so bombs, arrows, the boomerang and seeds always get used.
 function newBattle(): GameState {
