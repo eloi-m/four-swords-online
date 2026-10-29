@@ -117,7 +117,7 @@ measurements below). Everything not listed is `TODO(measure)` in the code.
 
 | Sim | Value | Source |
 |---|---|---|
-| carry.ts `LIFT_REACH`, `LIFT_TICKS`, `loadPose` | 16 px; 24 ticks from P+1 (moveTick −1 on P); the load 16 px in front z 0 → 12 px z 8 → on the head z 16 → carried z 18 + the walk bob | measured (bush, bomb) |
+| carry.ts `LIFT_REACH`, `LIFT_ACROSS`, `LIFT_TICKS`, `loadPose` | 16 px ahead, ±8 across (a thing's ±7 box, a socket bomb's ±10; the nearest), decided where he stands, P still walking; 24 ticks from P+1 (moveTick −1 on P); the load 16 px in front z 0 → 12 px z 8 → on the head z 16 → carried z 18 + the walk bob | measured (bush, bomb) |
 | `stepCarry` "carry" | from the first input tick (and on the lift's last tick): walking speed with a thing, 1.25 px/tick with a Link (`CARRY_LINK_SPEEDS`, 0.884 diagonal) | measured; traced in battle ("The arenas against Dolphin, fixed") |
 | `THROW_TICKS`, `THROW_RELEASE_TICK`, throw path | 24 ticks, released on P+11 from z 20 | measured |
 | `THROW_SPEED`, `THROW_GRAVITY` | 1024, 26 (0.1 px/tick² rounded; lands on the same tick: 20, 80 px) | measured (bush); pots and orbs assumed alike; a Link flies otherwise (`LINK_FLIGHT`, below) |
@@ -146,7 +146,7 @@ measurements below). Everything not listed is `TODO(measure)` in the code.
 | bombs.ts `BLAST_KNOCK`, `BOMB_REGROW_TICKS` | 256, hop 1024 (hit type 5, 4 damage); 60 ticks to a new socket bomb | measured (The Field's socket bomb) |
 | timeup.ts | Vaati flies in (2 px/tick, 60 ticks), loops, leaves; everyone out 454 ticks after the time-out | measured (the Vaati rule forced on) |
 | apps/battle camera.ts | the camera's box, holds, margins and zoom | measured |
-| siderooms.ts side view (`stepSideView`, `sideViewFall`, `fallEntities`, gates) | falling 4 px/tick (walked or knocked off a ledge); Up/Down climb ladders at walking speed and otherwise only turn; things fall 0.15 px/tick²; a throw's height becomes screen y; the gates (style 21) on a fresh Up/Down press, 1/32 px a tick, 40 + 30 + 40 ticks | traced on the Tower of Winds ("Side rooms"); fixture cases windsGate, windsHit, windsKnockOff, windsLadder, windsLadderDown |
+| siderooms.ts side view (`stepSideView`, `sideViewFall`, `fallEntities`, gates) | falling 4 px/tick (walked or knocked off a ledge); Up/Down climb ladders at walking speed and otherwise only turn, Up at a ladder's top stands; things fall 0.15 px/tick²; a throw's height becomes screen y; the gates (style 21) on a fresh Up/Down press, 1/32 px a tick, 40 + 30 + 40 ticks | traced on the Tower of Winds ("Side rooms"); fixture cases windsGate, windsHit, windsKnockOff, windsLadder, windsLadderDown, windsLadderTop |
 | bombchus.ts | 2.5 px/tick, fuse 300, harmless 30 (side view 10), 2 damage (sword knockback) on touch and in a 32-tick ±16 px blast; bouncing top-down, crawling in side view; GEN3 spawns and the orbs' roulette | read from main.dol; the Tower of Flames' eight traced |
 | giantbomb.ts | BBSL's states and timings, BBMB's growth, flight (3.0 up, 0.2/tick²), squash, 600-tick fuse (hits −60), the TV blast | read from main.dol; the 1021-tick sequence traced |
 
@@ -647,10 +647,61 @@ fieldCarryLink, fieldRollStand.
 - **The castle's soldiers' wall boxes**: SLR1's +0x80…+0x8C is ±8 (init 0x80153AA4), the captain's ±10 (the adventure's
   trace); battle's sword soldiers and captain now walk with them (castlesoldiers.ts `SOLDIER_WALL_BOX`, `moveInBox`,
   shared with the adventure). Their knockback keeps the Links' ±7 (a fireball's knock was traced 8 px into the wall).
-- Seen on the way, not fixed: a press of R while walking toward a thing to lift walks one more step before the lift
-  (The Field, 191 → 189.5, then state 17), where the sim lifts at once; in the Tower of Flames R walking right at 394
-  (15 px short of the rim) lifted something (state 17) where the sim rolls: what wasn't looked at (the socket bombs
-  nearest were at (424, 232) and (408, 248)). The rim stop is 0.5 px short in the sim (408.5 for 409).
+- Seen on the way: a press of R while walking toward a thing to lift walks one more step before the lift, and in the
+  Tower of Flames R walking right at 394 lifted something where the sim rolled (both fixed: below). The rim stop is
+  0.5 px short in the sim (408.5 for 409; left).
+
+### The arenas against Dolphin, the rest (2026-10-29)
+The comparison's other findings and the previous section's leftovers, each played again with `clip.ts` (`--lead 9`
+The Field, 8 the others; GDB port 2470) and, for the door, `trace.ts` with P1 poked under it (`--write 12:81175224:…`,
+as the earlier trace) and `--break`; `ONLINE_VERSION` 33. Replayed in `dolphin-battle-traces.json`: windsLadderTop,
+flamesLiftWalking, flamesRollNear; `siderooms.realdisc.test.ts` for the door and the cannon.
+- **The Field's house door opens as a Link faces it, not to a push.** main.dol: every tick the Link's update
+  (0x8028860C) passes (x, y − 10) to 0x8029E508 when he faces up; on a 0x19C / 0x19D there it rewrites both halves
+  unless some player's GBA is busy (0x8029E58C: three calls per player). Traced: P1 put under it on frame 12 and walking
+  up stopped at 183 on frame 28 and walked on from 59, pushing from 49 or (Up held from 36 instead) not pushing at all;
+  put there on frame 90 he walked straight in, no stop (the break on the opening path hit on frame 58 in both early
+  runs). So the round's start keeps the GBAs busy until its 48th tick (`DOOR_LOCKED_TICKS`); the earlier "12th push
+  tick" was this. The open tiles 0x19E / 0x19F are types 0x2A / 0x2B, solid on their outer 8 px: walking up at
+  x 249.5 he slides right into the doorway (as the game: 249.5 → 256 over 5 ticks), at 240.5 or 242 he pushes the
+  post for good (34+ ticks traced). Clips door-240, door-249, door-255 exact. Applied: siderooms.ts `openDoors`,
+  entities.ts `battleWorld` (the posts). Not modelled: a GBA busy later in the round (the knock).
+- **Up held at a ladder's top stands** (`winds-2p`, P1 walked onto the middle ladder's top at x 231.4, Up held 90
+  ticks): one 1.5 px step up (234.7 → 233.2, his feet still on the ladder's top row), then standing there, states 0 and
+  2 every other frame; the sim climbed off the ladder, fell 4 px and climbed again (a 5 px, 15-tick loop). Applied:
+  stepSideView doesn't take a climbing step up that leaves him off the ladder. Clip winds-top2 within 0.7 px (the side
+  view's standing jitter).
+- **Lifting** (`flames-2p` walking right along y 232 with R pressed at x 377.5 … 392.5; `field-2p` walking left at
+  191): the press tick still walks its step (382 → 383.5, 191 → 189.5), the lift (state 17) from the next tick; what's
+  lifted is decided where he stood before that step: R at 382 lifted the socket bomb at (408, 248), 16 px below his
+  line, R at 380.5 rolled. Read as the point 16 px ahead (398 = the socket's ±10 box's edge) reaching at least 6 px
+  across the facing (238, the box's top, from 232); ±8 taken, and the nearest thing when two are in reach (walking into
+  the socket bomb at (424, 232) at 409, the one at (424, 216) is in reach too; the game lifted the one in front). The
+  "394" lift was this bomb. The press tick shows the walk (the carry's walk cycle starts over on the lift's first
+  tick). Applied: moves.ts, carry.ts `liftTarget` (`LIFT_ACROSS`, `SOCKET_BOMB_HALF`). Clips lift-step,
+  flames-lift-11 … 19, flames-394 within 0.5 px.
+- **A cannon's catch and dip** (`flames-2p`, P1 into the side hole at (392, 168), down the basement onto its cannon):
+  the fall's last step goes 4 px past the ride spot (2692) and the catch leaves him there; from the next tick (state
+  76) he's k − k(k + 1)/20 px under the spot on its k-th tick, 0.9 … 4.5, 4.5 … 0.9, 0 from the 19th. Fired on the
+  tick after the catch (Above the Clouds' trace) he's shot from the spot itself. Applied: siderooms.ts `cannonDip`.
+  Clip flames-basement exact.
+- **A plain pit's edge** (`clouds-2p`, walking left off the island): exact since the panels' fix (clip
+  clouds-pit-left).
+- **Drawings** (apps/battle): the Tower of Flames' `BLDF` covers (data.arc timg/black.bti, 16 px on their anchors)
+  are black squares under the tiles, which the side holes' tiles show through where ours showed the lava backdrop; the
+  HUD's heart slots go up to the maximum life (16 with 3 hearts: the empty fourth heart is the white dot after the
+  third, as Dolphin draws it). BLDF's fading while a Link stands in it isn't drawn.
+- Not fixed, written up:
+  - **The push's count along a wall**: stopped walking down into The Field's shore (x 200, y 345), then down-left, he
+    slides left 15 ticks and pushes (state 13) 21 ticks after the stop, at 185.2, where the sim slides on to 183 (it
+    counts a tick with any progress as progress). The game counts the blocked axis, its y wobbling 0.4 px meanwhile
+    (likely the comparison's "0.4 px drift" pushing into a corner); counting the facing's axis by position broke the adventure's block
+    pushes (the sim's slide moves y a little), so it wants the collision's own "blocked" flag (clip field-push-diag).
+  - **Carrying a Link into a corner** (clip field-carry, frame 195): the carrier jitters 0.3 px and the held Link sits
+    (−1, +1) off his usual (0, +2): 1.06 px. Not looked into.
+  - The Field's frame-155 case (blocked pushing up, then left + B) and a push turned diagonal a tick sooner: not
+    reproduced in this pass (no clip of the comparison's left to replay); the hen (NIWA) wandering in the side room:
+    not done.
 
 ### Read from main.dol (2026-10-11; the traces above confirm or correct it)
 Both appear only in Hyrule Castle's side rooms (generator mask 0x97E2), items 5 and 6 (`LSTI` draws `enemy_both2` 69

@@ -90,8 +90,11 @@ import {
  * 32: the arenas against Dolphin: Above the Clouds' colored panels fall as a plain pit, a sword soldier's touch goes
  *    through the shield (its own box), the rim's bomb sockets walked over once empty, carrying a Link at 1.25 px/tick,
  *    a roll's standing tick, the soldiers' and captain's wall boxes.
+ * 33: the arenas against Dolphin, more: The Field's house door opens as a Link faces it (not before the round's 48th
+ *    tick), only its doorway walked through; Up at a ladder's top stands; a lift decided where the Link stands, its
+ *    press tick walking on, reaching ±8 px across (a socket bomb ±10); a cannon's catch and its 19-tick dip.
  */
-export const ONLINE_VERSION = 32;
+export const ONLINE_VERSION = 33;
 
 /** A free room's match: free play on the free map, or a Shadow Battle for everyone who was on it. */
 export type MatchMode = "free" | "battle";

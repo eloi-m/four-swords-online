@@ -124,7 +124,8 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   player inside gets a GBA inset by his HUD corner (`apps/battle/src/siderooms.ts`). The Tower of Winds (side view, its
   gates and gallery, the giant-bomb Shadow Link) and bombchus are done (above). Left:
   - (done 2026-10-05: things thrown or shot through doors and holes, above);
-  - guesses: a ladder's top (the game's pushing pose), the side-view sword's boxes up and down, a bombchu crawling in
+  - guesses: (a ladder's top: Up held there stands, traced 2026-10-29; climbing into its top's door the game's pushing
+    pose isn't drawn) the side-view sword's boxes up and down, a bombchu crawling in
     side view and two bombchus meeting (read, not traced), steering a cannon shot, the cannon's easing at its ends, the
     TV marker on the timed return from the dark side, the giant bomb's fuse effects' exact spot (2026-10-10: not
     reached; the run went to the arena check and the boots);
@@ -179,7 +180,7 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   walls (sim unchanged there); a plain pit (tile type 0x03) puts a Link back where he last stood clear of it, no jump,
   then 60 ticks standing. Left (TODO(measure)): fire on the archers, the captain and the ball-and-chain soldier
   (applied alike, not reached in Dolphin), a burning Link's flame and `BLZE` flames on soldiers, the walking Link's
-  stop and step on a plain pit's edge before he falls, the hammer's Action-button lock while flat, why the charged
+  stop and step on a plain pit's edge before he falls (matches Dolphin since 2026-10-29: B2), the hammer's Action-button lock while flat, why the charged
   pound sets no `DOSN` switch, the effects' look. `DOSN` thud
   switches: The Field only ((128, 64) → 3, (256, 128)
   → 4, (144, 256) and (352, 256) → 1).
@@ -212,7 +213,7 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   World arenas have no savestate). Matching: the actors at the round start, the sword, the shield and the push apart,
   the bees, 4-player fights, the orb's drop frame. Different, worst first (1, 2, 3, 5, 8 done 2026-10-29, with the
   castle soldiers' wall boxes: docs/measurements/battle-combat.md "The arenas against Dolphin, fixed"; ONLINE_VERSION
-  32):
+  32; 4, 6 and most of 9 done after: "The arenas against Dolphin, the rest", ONLINE_VERSION 33):
   1. (done) Above the Clouds: the "pit inside the green ring" is a colored panel of another player's color; it now
      falls as a plain pit (in from its nearest side, back where the Link last stood clear of every panel, facing the
      middle). Clips exact.
@@ -220,26 +221,27 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
      own box (x −4 … 4, y −6 … 2 against the Link's ±7: 11 across, 13 / 9 up and down; traced).
   3. (done) Tower of Flames: not a roll; the rim's tiles are bomb sockets, and a Link lifting the socket bomb in front
      of him walks on over the empty socket into the lava; the jump lands where he last stood clear of it. Clip within
-     0.5 px (the sim stops 0.5 px short of the rim). Left: a lift pressed while walking walks one more step first; at
-     394 the game lifted something 15 px short of the rim where the sim rolls.
-  4. The Field: the house door is walked straight in at x 249.5-255.5 with no push (state 28); at x 242 Dolphin pushes
-     34+ ticks and never enters, ours slides to x 256 and enters (`siderooms.ts` `openDoors`; check against the earlier
-     trace in battle-open-items.md).
+     0.5 px (the sim stops 0.5 px short of the rim). (Since: a lift pressed while walking walks its step first, and the
+     "394" lift was the socket bomb 16 px below his line: the lift point reaches ±8 px across.)
+  4. (done) The Field's house door opens as a Link faces it from below (no push), but not before the round's 48th tick
+     (the GBAs busy: the earlier "12th push tick" was this); open, only its doorway is walked through (at x 242 he pushes
+     its post for good). Clips exact.
   5. (done) Carrying a Link walks at 1.25 px/tick (a thing 1.5, traced with the socket bomb); the carry walks on the
      lift's last tick.
-  6. Tower of Winds: Up held at a ladder's top: Dolphin stands (y 233.3, states 0/2 every 3 frames); ours jitters 5 px
-     (settles B2's "a ladder's top").
+  6. (done) Tower of Winds: Up held at a ladder's top stands (no climbing off and falling back).
   7. Hyrule Castle: a magic circle takes a Link 16 px off on both axes; ours needs 15 (`takeIntoCircle`). Read: the
      circle's box is ±8 against the Link's ±7, edges included (15, as ours); not reproduced (the circles stayed shut),
      maybe a frame's lag of the Link's box. Needs a trace with a circle open.
   8. (done) A roll in the open ends with one standing tick before walking on (against a Link it walks on at once, as
      traced before). "Stops dead 16 px from a Link" not seen: rolled into a Link, the sim matched within 0.42 px.
-  9. Smaller: the Flames basement's landing dips 4 px over 19 frames (state 76); a plain pit's edge: snapped onto the
-     spot, a walking frame, a standing frame, one 1.5 px step, then the fall (settles B2's "stop and step"); pushing up-left into a
-     corner drifts 0.4 px; a push turned diagonal moves a tick sooner than ours; the side room's hen (NIWA) wanders
-     (x 120 → 92 → 153 over 5 s); the Field's frame-155 case (a Link blocked pushing up, then left+B, stays 2 frames
-     and swings in place); the Flames' BLDF hole covers are black (ours a lava smudge); a white dot after the HUD's
-     third heart; the castle's CKSW at (32, 0) and Clouds' at (64, 0) are gone after frame 0.
+  9. Smaller (done: the Flames basement's 4 px dip, a cannon's catch and 19-tick dip; a plain pit's edge, exact since
+     the panels; the BLDF hole covers, black; the white dot after the third heart, the empty fourth heart up to the
+     maximum life). Left: pushing along a wall with a diagonal, the game pushes 21 ticks after the stop where ours
+     slides on (it counts the blocked axis, its y wobbling 0.4 px meanwhile, likely the "corner drift"; wants the collision's
+     blocked flag); carrying a Link into a corner (the held Link 1 px off); a push turned diagonal a tick sooner and the
+     Field's frame-155 case (blocked pushing up, then left+B: stays 2 frames and swings in place), not reproduced; the
+     side room's hen (NIWA) wanders (x 120 → 92 → 153 over 5 s); the castle's CKSW at (32, 0) and Clouds' at (64, 0)
+     are gone after frame 0.
 
 ### B3. Visual and audio fidelity
 - **Visuals:**

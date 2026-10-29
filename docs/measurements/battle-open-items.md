@@ -46,10 +46,10 @@ progress (from the tick after the last part step) he leans on it, state 13, fram
 facing down 674, 675, 676, 677, 674, 678, 679, 680 (an 8-step cycle of 7 frames), up 681, 682 …; a diagonal into the
 wall doesn't slide him (his position jitters by 0.44 px every 8 ticks); with the stick released he pushes on 6 ticks,
 standing on the 7th (Shadow Battle trace bombL2: 50-55 pushing, 56 standing); turned, one tick pushing the new way
-(667 facing right), one standing, walking from the third. The house door: on his 12th tick pushing it (facing up, its
-tiles 10 px over him) it opens and he walks on (stopped at 183 on frame 26, pushing from 47, moving on 59, taken by the
-door at 178.5 on 61). As the adventure's push (same code, state 13), now shared: push.ts; siderooms.ts `openDoors`
-(the door shut until then: arena.ts no longer opens its box).
+(667 facing right), one standing, walking from the third. As the adventure's push (same code, state 13), now shared:
+push.ts. The house door (stopped at 183 on frame 26, pushing from 47, moving on 59) opened then for another reason
+than the push: corrected in battle-combat.md "The arenas against Dolphin, the rest" (it opens as a Link faces it,
+from the round's 48th tick).
 
 **The trick floor's respawn spot** (`field-2p`, switch 2 poked on while P2 stood on it): walked right onto it to
 (229.5, 240) (5.5 px in from its left edge 224), he's put 8 px in (232) and jumps back out to (216, 240); walked up onto

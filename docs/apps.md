@@ -92,7 +92,7 @@ Index of the docs: [README.md](README.md).
   21), the message window's requests the state can't tell afterwards `messages.ts` (`BattleState.messages`: the castle
   circle's, an orb's content taken in a side room, the giant bomb landing, the angry cuccos; `ONLINE_VERSION` 13), things
   thrown or shot through doors and holes (siderooms.ts `thingWarps`), the push state `push.ts` (leaning on a wall; shared
-  with the adventure; The Field's house door opens to a push), The Field's cave cucco and its angry cuccos `hens.ts`,
+  with the adventure; The Field's house door opens as a Link faces it), The Field's cave cucco and its angry cuccos `hens.ts`,
   free play `freeplay.ts` (its map: stage 4-2's field, `freeWorld`; its spawns, and
   `createFreePlay` with the Links that stay where they stood), all on the plain
   entities of `entities.ts`; CPU players `cpu.ts` (a battle AI giving the same button mask a pad does, its memory in
