@@ -241,7 +241,7 @@ describe("Hyrule Castle", () => {
     const world = arena();
     const game = start(world, [{ x: 150, y: 100, facing: "left" }, FAR], props({ id: "SLR1", x: 220, y: 100, params: 0x1002 }));
     const [soldier] = of(game, "soldier");
-    until(game, world, () => fighter(game, 0).mode === "hurt", 300); // (a soldier passing 15 px above misses the ±7 px body)
+    until(game, world, () => fighter(game, 0).mode === "hurt", 600); // (it wobbles round him: its touch reaches 9-13 px)
     expect(fighter(game, 0).hearts).toBe(FULL - SOLDIER_DAMAGE);
     expect(px(soldier!.x)).toBeLessThan(220);
     until(game, world, () => fighter(game, 0).mode === "active" && fighter(game, 0).invincible === 0, 120);
@@ -255,6 +255,20 @@ describe("Hyrule Castle", () => {
     expect(of(game, "soldier")).toEqual([]);
     run(game, world, 1200); // (traced: the castle's new ones come from its GEN3 spawners)
     expect(of(game, "soldier")).toEqual([]);
+  });
+
+  it("a soldier's touch goes through the shield, with its own box: 11 px across, 13 below the Link, 9 above (traced)", () => {
+    const touches = (dx: number, dy: number, facing: "left" | "right" | "up" | "down") => {
+      const world = arena();
+      const game = start(world, [{ x: 150, y: 100, facing }, FAR], props({ id: "SLR1", x: 150, y: 150, params: 0x1002 }));
+      const [soldier] = of(game, "soldier");
+      // Stopping where it's put (its velocity halving), far from its wind-up's end.
+      Object.assign(soldier!, { phase: "active", timer: 100, vx: 0, vy: 0, x: (150 + dx) * SUBPX, y: (100 + dy) * SUBPX });
+      run(game, world, 1);
+      return fighter(game, 0).hearts === FULL - SOLDIER_DAMAGE;
+    };
+    expect([touches(11, 0, "right"), touches(11.25, 0, "right"), touches(-11, 0, "left"), touches(-11.25, 0, "left")]).toEqual([true, false, true, false]);
+    expect([touches(0, 13, "down"), touches(0, 13.25, "down"), touches(0, -9, "up"), touches(0, -9.25, "up")]).toEqual([true, false, true, false]);
   });
 
   it("a soldier that sees a Link winds up, stands, then steers at him at about 1 px a tick (measured: seen on 47, moving on 89)", () => {

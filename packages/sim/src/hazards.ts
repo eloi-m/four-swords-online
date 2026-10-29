@@ -16,7 +16,7 @@
 // Damage values and knockbacks are the ones the actors' attack calls pass in main.dol (0x801F2B7C: damage, hit type;
 // docs/measurements/battle-constants.md "Battle constants from main.dol"); everything marked TODO(measure) is a placeholder.
 import type { BattleState } from "./battle.ts";
-import { hurtbox, hurtFighter, KNOCK_HARD, KNOCK_SLOW, onGround, vulnerable, type Knock, type PixelBox } from "./combat.ts";
+import { HURTBOX, hurtbox, hurtFighter, KNOCK_HARD, KNOCK_SLOW, onGround, vulnerable, type Knock, type PixelBox } from "./combat.ts";
 import { boxAround, boxesOverlap, cos4096, distance2, FACING_STEP, isRemoved, randomInt, removeEntity, setPhase, sin4096, spawnEntity, stepToward, TILE, tileIndexAt, TRIG_ONE, velocityAlong, type Entity } from "./entities.ts";
 import type { GameState } from "./game.ts";
 import { orbFirstDelay, spawnFromGenerator, stepOrbGenerator } from "./orbs.ts";
@@ -114,6 +114,14 @@ export const SOLDIER_LOOKS: Readonly<Record<Facing, readonly Facing[]>> = {
 /** After a chase's stop it chases again with a Link this near, or patrols. TODO(measure) (state 7's rule wasn't read). */
 export const SOLDIER_KEEP_SIGHT = 128;
 export const SOLDIER_DAMAGE = 2; // SLR1: its atcp 2 (its attack call passes -100 = its own atcp), hit type 1
+/**
+ * SLR1's touch: its box (+0x60…+0x6C, px around it: x −4 … 4, y −6 … 2, read live) against the Link's ±7 body
+ * (+0x4C0…+0x4CC), edges included (0x802732C4): up to 11 px across, 13 with the soldier below the Link, 9 above him
+ * (traced in Hyrule Castle: hurt at 10.72 across, missed at 11.16; hurt with it 12.4 below, 8.64 above; missed 9.27
+ * above). Its attack (0x801F2B7C) never asks the Link's shield (0x80272224 has no caller on that path): a shielded
+ * Link is hurt from the front too, again every 60 ticks while it stays on him.
+ */
+export const SOLDIER_TOUCH = { left: -4, top: -6, right: 4, bottom: 2 } as const;
 export const CIRCLE_GROW_TICKS = 50; // a magic circle opens (and closes) over 50 ticks: its size ±0.02 per tick
 /** A magic circle that starts open (no switch) waits this long before it takes anyone (CIRC +0x248 at init). */
 export const CIRCLE_FIRST_SETTLE = 120;
@@ -214,6 +222,24 @@ export function stepRespawns(b: BattleState): void {
 export function touching(state: GameState, box: PixelBox): number[] {
   const b = state.battle!;
   return b.fighters.flatMap((f, i) => (vulnerable(f) && onGround(f) && boxesOverlap(box, hurtbox(state.players[i]!)) ? [i] : []));
+}
+
+/**
+ * The Links an actor's box (px around (x, y), 1/256 px) meets, as the game tests it: the box and each Link's ±7 body
+ * at their exact positions, edges included (0x802732C4).
+ */
+export function touchingBox(state: GameState, x: number, y: number, box: PixelBox): number[] {
+  const b = state.battle!;
+  return b.fighters.flatMap((f, i) => {
+    const p = state.players[i]!;
+    if (!vulnerable(f) || !onGround(f)) return [];
+    const meets =
+      p.x + HURTBOX.left * SUBPX <= x + box.right * SUBPX &&
+      x + box.left * SUBPX <= p.x + HURTBOX.right * SUBPX &&
+      p.y + HURTBOX.top * SUBPX <= y + box.bottom * SUBPX &&
+      y + box.top * SUBPX <= p.y + HURTBOX.bottom * SUBPX;
+    return meets ? [i] : [];
+  });
 }
 
 function burn(state: GameState, i: number, x: number, y: number, cause: string, damage: number, knock?: Knock): void {
@@ -481,9 +507,9 @@ function stepSoldier(state: GameState, e: Entity, world: World): void {
     if (surfaceAt(world, Math.floor((e.x + e.vx) / SUBPX) + ahead(e.vx), Math.floor(e.y / SUBPX)) !== "pit") moveAxis(e, world, e.vx, "x");
     if (surfaceAt(world, Math.floor(e.x / SUBPX), Math.floor((e.y + e.vy) / SUBPX) + ahead(e.vy)) !== "pit") moveAxis(e, world, e.vy, "y");
   }
-  for (const i of touching(state, boxAround(e.x, e.y, 7))) {
+  for (const i of touchingBox(state, e.x, e.y, SOLDIER_TOUCH)) {
     const b = state.battle!;
-    const hit = hurtFighter(state.players[i]!, b.fighters[i]!, i, SOLDIER_DAMAGE, e.x, e.y, { cause: "soldier", blockable: true });
+    const hit = hurtFighter(state.players[i]!, b.fighters[i]!, i, SOLDIER_DAMAGE, e.x, e.y, { cause: "soldier" });
     if (hit) b.hits.push(hit);
   }
 }
