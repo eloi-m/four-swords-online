@@ -31,8 +31,7 @@ const ENDS: readonly { room: number; area: number; gear?: string; check?: (game:
   { room: 58, area: 0, check: (g) => g.adventure.gems >= 500 && g.adventure.formation === "trail" && g.players[0]!.x > 380 * 256 },
   // (Room 58's big gem waits for switch 18, its enemies beaten: its Zora, which the route leaves.)
   { room: 6, area: 6, check: (g) => g.adventure.gems >= 900 },
-  // (Area 6's hovering gem, 100, swings up and down (pickups.ts HOVER_SHUTTLE): the route goes by while it's away.)
-  { room: 6, area: 0, check: (g) => g.adventure.gems >= 900 && ((g.battle.switches >>> 16) & 1) === 1 },
+  { room: 6, area: 0, check: (g) => g.adventure.gems >= 1000 && ((g.battle.switches >>> 16) & 1) === 1 },
   { room: 6, area: 0, check: (g) => g.players[0]!.x < 100 * 256 },
   { room: 9, area: 0, check: (g) => g.adventure.gems >= 1300 && ((savedSwitches(g, 5) >>> 16) & 1) === 1 },
   // The goal: the quota met, the stage cleared.

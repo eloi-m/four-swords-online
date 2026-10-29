@@ -320,6 +320,9 @@ export const LAKE_HYLIA_MILESTONES: readonly { name: string; goals: readonly Goa
       holdUntil("into the lower cave", Up, (g) => g.adventure.area === 5 && !g.adventure.warp, 300),
       holdUntil("into the cannon", Right, (g) => g.adventure.links[0]!.mode === "cannon", 200),
       wait(10),
+      // The cave's hovering gem (100) shuttles from the cannon's column 160 px to one side and back (pickups.ts): shot
+      // as it comes back over it.
+      waitUntil("the hovering gem over the cannon", (g) => !g.adventure.pickups.some((p) => p.from === "HNRY" && Math.abs(p.x / 256 - 120) > 6), 420),
       press(Item, 2, 20),
       holdUntil("shot up and steered onto the ledge", Left, (g) => g.adventure.links[0]!.mode === "walk", 200),
       walkTo(32, 104.8, 1),
@@ -426,6 +429,9 @@ export const LAKE_HYLIA_MILESTONES: readonly { name: string; goals: readonly Goa
       formation("wide"),
       waitUntil("the block pushed", (g) => g.adventure.rocks.some((r) => r.type === "BLCK" && r.state === "set"), 1200, Down),
       formation("box"),
+      // The hovering gem (100) over the pit swings up and down across the raft's way (pickups.ts): the raft taken so it
+      // reaches its column (x 200), ~200 ticks on, as the gem crosses y 82.
+      waitUntil("the hovering gem's swing", (g) => !g.adventure.pickups.some((p) => p.from === "HNRY" && !(p.shuttle!.tvy > 0 && p.y >= 74 * 256)), 420),
       travelTo(340, 80, { tol: 1 }),
       waitUntil("the raft across", (g) => g.adventure.rocks.some((r) => r.type === "OBLF" && r.state === "set"), 600),
       travelTo(100, 80),
