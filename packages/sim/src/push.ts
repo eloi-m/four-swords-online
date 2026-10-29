@@ -5,7 +5,7 @@
 // 666-687: 4 frames right and left, an 8-step cycle of 7 frames down and up); with the stick released it goes on 6
 // more ticks, then he stands; with the stick turned he pushes one tick the new way, stands one tick, then walks; a
 // press of the sword, the item or Action ends it at once. Shadow Battle's Links push walls as the adventure's leader
-// does (traced on The Field's south wall); The Field's house door opens once a Link has pushed it 12 ticks.
+// does (traced on The Field's south wall).
 // The state is a plain record (`PushState`) in the battle's Fighter and the adventure's state.
 import type { Fighter } from "./combat.ts";
 import { Button, nextFacing, type Facing, type PlayerState } from "./player.ts";

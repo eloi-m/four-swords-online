@@ -276,14 +276,18 @@ export function battleWorld(world: World, b: BattleState): World {
   const hit = cache.get(key);
   if (hit) return hit;
   const solid = world.solid.slice(), surface = world.surface.slice();
-  const cells = (tile: number, f: (i: number) => void) => {
+  const cells = (tile: number, f: (i: number, q: number) => void) => {
     const tx = tile % ROOM_TILES_X, ty = Math.floor(tile / ROOM_TILES_X);
     for (let q = 0; q < 4; q++) {
       const cx = tx * 2 + (q & 1), cy = ty * 2 + (q >> 1);
-      if (cx < world.widthCells && cy < world.heightCells) f(cy * world.widthCells + cx);
+      if (cx < world.widthCells && cy < world.heightCells) f(cy * world.widthCells + cx, q);
     }
   };
-  for (const tile of patch.open) cells(tile, (i) => (solid[i] = 0));
+  const doors = b.props.doors ?? [];
+  for (const tile of patch.open) {
+    const post = doors.includes(tile) ? (doors.includes(tile - 1) ? OPEN_DOOR_RIGHT : OPEN_DOOR_LEFT) : 0;
+    cells(tile, (i, q) => (solid[i] = (post >> q) & 1));
+  }
   for (const tile of patch.pits) cells(tile, (i) => (surface[i] = PIT_SURFACE));
   let ledges: Uint8Array | undefined;
   if (sockets.length) {
@@ -297,6 +301,13 @@ export function battleWorld(world: World, b: BattleState): World {
 }
 
 const PIT_SURFACE = 1; // index of "pit" in world.ts SURFACE_CODES
+
+/**
+ * The open house door's posts (quarters solid, bit q = (q & 1) right, (q >> 1) lower): its left half 0x19E (type 0x2A)
+ * is solid on its left 8 px, its right half 0x19F (0x2B) on its right 8 px; the doorway is the 16 px between. A door's
+ * left half is the one with no door tile on its left.
+ */
+const OPEN_DOOR_LEFT = 0b0101, OPEN_DOOR_RIGHT = 0b1010;
 
 /**
  * The bomb sockets (HBMB props on the solid rim, collision type 0x0C: arena.ts RIM) whose bomb isn't sitting in them:

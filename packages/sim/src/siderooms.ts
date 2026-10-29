@@ -393,22 +393,28 @@ export function thingWarps(state: GameState): void {
 /** How far over a Link's anchor the tile he opens is (px). */
 const DOOR_REACH = 10;
 
-/** How long a Link pushes the house door before it opens (traced: the push's 12th tick; he walks on from the next). */
-export const DOOR_PUSH_TICKS = 12;
+/**
+ * The round's tick from which the house door opens (traced from the round-start state: a Link walking into it from
+ * frame 48 stood until the game's 58th, then walked on, pushing or not; from frame 90 on it opened as he touched it).
+ * The game's door test asks whether some player's GBA is busy (0x8029E58C: three calls per player), as they are while
+ * the round starts; later busy spells (a GBA screen's own business) aren't modelled.
+ */
+export const DOOR_LOCKED_TICKS = 48;
 
 /**
- * The Field's house door (props.ts DOOR_TILES): a Link pushing it (push.ts: 20 ticks walking into it, then leaning on
- * it), facing up with one of its halves 10 px over him, opens both for good on his 12th tick of pushing (traced; the
- * Link's update, main.dol 0x8028860C → 0x8029E508: the tiles become the open door, JA_SE_OBJ_DOOR_OPEN; nothing shuts it
- * again), and walks on. Its tiles then count as cut (arenatiles.ts: drawn open, not solid). (The game knocks instead
- * while some player's GBA is busy: not modelled.)
+ * The Field's house door (props.ts DOOR_TILES): a Link facing up with one of its halves 10 px over him opens both for
+ * good at once, walking, pushing or standing (main.dol: every tick the Link's update 0x8028860C passes his (x, y − 10)
+ * to 0x8029E508, which rewrites a 0x19C / 0x19D there into the open door 0x19E / 0x19F, JA_SE_OBJ_DOOR_OPEN, unless a
+ * GBA is busy; nothing shuts it again), but not while the round is starting (`DOOR_LOCKED_TICKS`). Its tiles then count
+ * as cut: drawn open (arenatiles.ts), and only the doorway between the door's posts is walked through (entities.ts
+ * battleWorld; traced: walking up at x 242 he pushes the open door's post for good).
  */
 function openDoors(state: GameState): void {
   const b = state.battle!, doors = b.props.doors;
-  if (!doors?.length) return;
+  if (!doors?.length || b.phaseTick < DOOR_LOCKED_TICKS) return;
   state.players.forEach((p, i) => {
     const f = b.fighters[i]!;
-    if (p.facing !== "up" || f.hearts <= 0 || !f.push.on || f.push.tick < DOOR_PUSH_TICKS) return;
+    if (p.facing !== "up" || f.hearts <= 0) return;
     const tile = tileIndexAt(Math.floor(p.x / SUBPX), Math.floor(p.y / SUBPX) - DOOR_REACH);
     if (!doors.includes(tile) || b.cut.includes(tile)) return;
     for (const half of [tile - 1, tile, tile + 1]) if (doors.includes(half) && !b.cut.includes(half)) b.cut.push(half);

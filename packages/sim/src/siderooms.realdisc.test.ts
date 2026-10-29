@@ -51,21 +51,41 @@ describe.skipIf(!existsSync(boss500) || !existsSync(dol))("side rooms on the rea
     const { game, world } = match(0, [{ x: 200, y: 280 }, { x: 312, y: 280 }]);
     const p = game.players[0]!, f = game.battle!.fighters[0]!;
     walk(game, world, Button.Right, () => p.x >= 255 * SUBPX);
-    // The shut door stops him at y 183; 20 ticks walking into it, then he pushes, and on the push's 12th tick it opens
-    // (both halves, tiles (15, 10) and (16, 10): main.dol) and he walks on (traced: stopped on frame 26, pushing from
-    // 47, moving again on 59).
-    walk(game, world, Button.Up, () => p.y <= 183 * SUBPX);
-    const stopped = game.tick;
-    expect(walk(game, world, Button.Up, () => game.battle!.cut.length > 0)).toBe(20 + 12); // (the 21st tick is the push's first)
-    expect([[...game.battle!.cut].sort(), p.y / SUBPX, game.tick - stopped]).toEqual([[10 * 32 + 15, 10 * 32 + 16], 183, 32]);
+    // Past the round's start the door opens as he comes under it (both halves, tiles (15, 10) and (16, 10): main.dol)
+    // and he walks straight on (traced: 182.5, 181, 179.5, 178, then the door walk).
+    walk(game, world, Button.Up, () => game.battle!.cut.length > 0);
+    expect([[...game.battle!.cut].sort(), p.y / SUBPX]).toEqual([[10 * 32 + 15, 10 * 32 + 16], 185.5]); // (175 px: the door's row)
     walk(game, world, Button.Up, () => f.move === "warp");
-    expect(p.y / SUBPX).toBe(178.5); // traced: 181.5, 180, 178.5, then the door walk (178 on the next frame)
+    expect(p.y / SUBPX).toBe(178);
     walk(game, world, 0, () => f.move === "none", WARP_TICKS + 1);
     expect([p.x / SUBPX, p.y / SUBPX - sideRoomY(2), screenAt(p.y)]).toEqual([80, 116, 2]); // traced: (80, 116) on screen 9
     walk(game, world, Button.Down, () => f.move === "warp");
     expect(p.y / SUBPX - sideRoomY(2)).toBe(125); // traced: the way out took him at y 125
     walk(game, world, 0, () => f.move === "none", WARP_TICKS + 1);
     expect([p.x / SUBPX, p.y / SUBPX]).toEqual([256, 188]); // traced: (768, 572) world
+  });
+
+  it("The Field's house door stays shut while the round starts, then opens with no push (traced)", () => {
+    // The trace (`field-2p`, P1 put at (256, 200), Up held from the round's 26th tick): stopped at 183 after its 39th,
+    // and on again (181.5) after its 50th, pushing (from 20 ticks in) or not alike.
+    const { game, world } = match(0, [{ x: 256, y: 200 }, { x: 312, y: 280 }]);
+    const p = game.players[0]!, b = game.battle!;
+    walk(game, world, 0, () => b.phaseTick >= 26); // (facing up already: no turning tick)
+    walk(game, world, Button.Up, () => p.y <= 183 * SUBPX);
+    expect([b.phaseTick, p.y / SUBPX]).toEqual([39, 183]);
+    walk(game, world, Button.Up, () => p.y < 183 * SUBPX);
+    expect([b.phaseTick, p.y / SUBPX, b.cut.length]).toEqual([50, 181.5, 2]);
+  });
+
+  it("The Field's open house door: only its doorway is walked through (traced at x 242 and 249.5)", () => {
+    const { game, world } = match(0, [{ x: 256, y: 200 }, { x: 312, y: 280 }]);
+    const p = game.players[0]!, b = game.battle!;
+    walk(game, world, Button.Up, () => b.cut.length > 0);
+    walk(game, world, Button.Down, () => p.y >= 200 * SUBPX);
+    // At x 242 his side is on the open door's left post: he pushes it for good.
+    p.x = 242 * SUBPX;
+    for (let t = 0; t < 80; t++) stepGame(game, [Button.Up, 0], world);
+    expect([p.x / SUBPX, p.y / SUBPX, b.fighters[0]!.move]).toEqual([242, 183, "none"]);
   });
 
   describe("things thrown or shot into a door or a hole (traced: docs/measurements.md)", () => {

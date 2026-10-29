@@ -70,7 +70,7 @@ export function buildArenaWorld(stage: Stage, tileTypes: Uint16Array, room: numb
   }
   Object.assign(world, { plainPit, panels });
   // A door is open under its box (the Tower of Flames' doors and the side rooms' ways out are walked straight into),
-  // but The Field's house door: its tiles (0x19C/0x19D, type 1) stop a Link at y 183 until he has pushed them open
+  // but The Field's house door: its tiles (0x19C/0x19D, type 1) stop a Link at y 183 until he opens them
   // (traced: siderooms.ts openDoors).
   for (const w of stageWarps(stage, tileTypes, room)) {
     if (w.style === HOLE_STYLE) {
@@ -80,7 +80,7 @@ export function buildArenaWorld(stage: Stage, tileTypes: Uint16Array, room: numb
       continue;
     }
     if (!DOOR_STYLES.has(w.style)) continue;
-    // The Field's house door stays shut until a Link pushes it open (siderooms.ts openDoors: its tiles are cut then).
+    // The Field's house door stays shut until a Link opens it (siderooms.ts openDoors: its tiles are cut then).
     const tv = stage.layer(room, 1, 0);
     if (w.y < ROOM_H && tv && DOOR_TILES.has(tv[Math.floor(w.y / 16) * LAYER_TILES + Math.floor(w.x / 16)]! & 0x3ff)) continue;
     const x0 = Math.floor((w.x * SUBPX + w.left) / SUBPX / CELL), x1 = Math.floor((w.x * SUBPX + w.right) / SUBPX / CELL);
