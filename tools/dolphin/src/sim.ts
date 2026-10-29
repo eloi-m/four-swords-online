@@ -64,8 +64,12 @@ export function dolphinBodies(place: Place, actors: readonly LiveActor[], room?:
     });
 }
 
-/** Our adventure at a Dolphin place: its room entered at the leader's spot, then each Link put where Dolphin's stands. */
-export function adventureSim(stage: AdventureStage, place: Place): Sim & { adventure: AdventureGame; cell: { cx: number; cy: number } } {
+/**
+ * Our adventure at a Dolphin place: its room entered at the leader's spot, then each Link put where Dolphin's stands;
+ * given Dolphin's live actors, each shuttling hovering gem takes the state of Dolphin's from the same place (its spot,
+ * way, timer and velocities: how long ago Dolphin's room was entered, and the way it drew at random).
+ */
+export function adventureSim(stage: AdventureStage, place: Place, live: readonly LiveActor[] = []): Sim & { adventure: AdventureGame; cell: { cx: number; cy: number } } {
   if (place.area) throw new Error("our side starts in a room's TV part only (#room): a GBA area needs the route's state");
   const cell = stage.cellOf(place.room);
   if (!cell) throw new Error(`${place.stage} has no room ${place.room}`);
@@ -75,6 +79,19 @@ export function adventureSim(stage: AdventureStage, place: Place): Sim & { adven
     p.x = Math.round(local[i]!.x * SUBPX);
     p.y = Math.round(local[i]!.y * SUBPX);
   });
+  const placedHere = stage.area(g.adventure.room, g.adventure.area).actors;
+  const sub = (v: number) => Math.round(v * SUBPX);
+  for (const it of g.adventure.pickups) {
+    const home = placedHere.find((x) => x.index === it.actor);
+    const twin = it.shuttle && home && live.find((a) => {
+      const f = a.fields;
+      return a.screen === 0 && f?.homeX !== undefined && Math.hypot(f.homeX - cell.cx * CELL_W - home.x, f.homeY! - cell.cy * CELL_H - home.y) < 1;
+    });
+    if (!twin) continue;
+    const f = twin.fields!, at = localPx(twin, cell);
+    [it.x, it.y] = [sub(at.x), sub(at.y)];
+    Object.assign(it.shuttle!, { dir: f.dir, timer: f.timer, vx: sub(f.vx!), vy: sub(f.vy!), tvx: sub(f.tvx!), tvy: sub(f.tvy!) });
+  }
   const px = (v: number) => v / SUBPX;
   return {
     kind: "adventure",

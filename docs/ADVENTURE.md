@@ -579,7 +579,8 @@ and crashes), with its names poked over the Cave's (same lengths) and the CSV's 
    0x98 (up, left, right: assumed from the tile blocks; only 0x96 down and the slow ones were traced) and room 6's and
    room 9's whirls they make, room 7's bush hole (style 4), its side-view passage and fish, the goal (room 10). The
    100-gem pickup message ("You got 100 Force Gems!") holds the Links until A in Dolphin; the sim doesn't show it.
-2. Whether a winged gem (`HNRY`) moves: room 10's sits in a fast current, out of reach if it doesn't.
+2. **Answered:** a hovering gem (`HNRY`) moves by its kind (p >> 16) & 0xFF (pickups.ts `HOVER_SHUTTLE`); Tingle's
+   Tower's are all 0x1000, kind 0: they stay, room 10's in its fast current included.
 3. Lake Hylia has the current and drop tiles too (rooms 6, 7): `TRACED_WATER_STAGES` (stage.ts) keeps them (and the
    stones' strikes) to Tingle's Tower until they're traced there and its route re-planned.
 Savestates (`ref/adv/`, not committed, each with its `.json`): `w1-boss012-start`, `-room0` (room 0's entry, from the

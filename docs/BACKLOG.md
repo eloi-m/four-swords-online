@@ -414,8 +414,8 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   waterfalls, the C stick's formations, the Links apart (X, the D-pad, Y), pushed boulders and blocks, two-Link rocks,
   the boomerang and the Fire Rod, all traced in Dolphin; a scripted player (`drive.ts`) and Lake Hylia's route
   (`lakehylia.ts`).
-- **Lake Hylia is played to its goal** by the route, in node and in the browser (14 milestones, 23,575 ticks, 2,059
-  Force Gems, the stage cleared, its fights without a Link out of hearts; Tingle's scene under room 5's bridge read
+- **Lake Hylia is played to its goal** by the route, in node and in the browser (14 milestones, 24,039 ticks, 2,059
+  Force Gems, the route timed to catch room 7 area 5's and room 6 area 6's hovering gems as they swing by, the stage cleared, its fights without a Link out of hearts; Tingle's scene under room 5's bridge read
   through, `tingle.ts`, traced): rooms 50+ played as their alone variants
   (room 58 → room 8, traced), the Links apart holding switches, leaving an area alone and called back from it, `SWT4`'s latch, the raft, the side views' walk-offs and their followers (falls, cannon shots),
   keys lifted and carried (all traced), room 5's generator ambush fought (traced); what it skips or assumes is in
@@ -636,12 +636,23 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      room 6's top-left); ours stays top-left. Read: the several players' corners (0x8042165C: ten spots, a Link within
      ±94 × ±61.5 px of one keeps it free, 60 frames before a corner moves); the single player's rule isn't that one
      (never reached in a trace) and wasn't found, nor the mirrored layout's panes.
-  5. Winged Force Gems (`HNRY`) move by their params (room 7's, 0x71000: x 232.7 ↔ 389.4 at 0.8 px/frame, ~396 frames a
-     round trip; room 6 area 6's and room 7 area 5's too; rooms 2 and 3's stay), bobbing 16-19 px over a gem-shaped
-     shadow; ours are still, with no shadow.
-  6. Smaller: room 6 area 6's `OBLF` slabs drawn by ours, not seen in Dolphin; room 0's `YAJI` arrows pulse on an
-     80-frame cycle; the GBA window's "Z Close" label, and its empty space grey (41, 41, 41), not black; a clock icon
-     with a digit beside the Links in room 6 area 5's side-view water (what it counts not known).
+  5. **Done (2026-10-29):** hovering Force Gems (`HNRY`) shuttle by their kind (p >> 16) & 0xFF (1, 6 up and down, 2,
+     7 across at 0.8 px/frame, 6 and 7 ±80 px about their place, 1 and 2 160 px one way and back), on the room's clock
+     (all its areas' actors start as it comes in); 8 px up with params bit 12, else 24, on a side view that much higher
+     on the ground (sim pickups.ts `HOVER_SHUTTLE`, read in main.dol, Dolphin's room 7 matched within 0.1 px at 2 and 5
+     s by `compare.ts`, which now takes Dolphin's shuttle state at the place). Drawn bobbing 3 ± 2.6 px over their
+     height with a gem-shaped shadow and their glint (apps/game `enemies.ts`). Tingle's Tower's are all kind 0: still.
+     Left: kinds 3, 4 (circling), 5 (side-view water), 8 (flies off; the camera's), none in World 1; the bob's random
+     phase step; generators' `HNRY` stay still. Lake Hylia's route waits for room 7 area 5's to come back over the
+     cannon and takes the raft so it meets room 6 area 6's.
+  6. Smaller: **done** the GBA picture's backdrop (41, 41, 41) where an area draws nothing; `OBLF`'s shape read (init
+     0x8035151C: (p & 0xF) + ((p >> 16) & 0xF) × 16, frame both 20 + shape), so room 6's raft is shape 20 (both 40, a
+     dark ball on the TV palette) and isn't drawn any more (Dolphin's GBA window shows nothing there; its GBA-screen
+     draw 0x80307AC8 not read). Left: room 0's `YAJI` arrows pulse once lit (update 0x802AFCE8: alpha +0x254 from 20,
+     +4 a frame to 200, −4 to 40 and back, 80 frames a cycle, sound 0x30025 at each low; unlit kind 0 alpha 96): ours
+     are static meshes and the lit state lives in the camera's `FocusPoints`; "Z Close" is hidden on purpose (no way
+     back to the TV view in ours); the clock icon with a digit (9 at frame 90) over room 6 area 5's side-view water,
+     likely the Links' time under water, not found in main.dol.
   7. Measured, already known: room 6's ladder foot out of the water is a push of ~20 frames, then a 27-frame ledge jump
      (state 56); ours walks out 34 ticks sooner (`TRACED_WATER_STAGES`).
   Not compared (no savestate reaches them): areas 3/2, 3/3, 3/5, 5/2, 7/6 and room 58.

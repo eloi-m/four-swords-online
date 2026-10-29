@@ -661,7 +661,11 @@ export class AdventureView {
       const gx = Math.round(this.gbaView.x), gy = Math.round(this.gbaView.y);
       Object.assign(this.gbaCamera, { left: gx - GBA_W / 2, right: gx + GBA_W / 2, top: -gy + GBA_H / 2, bottom: -gy - GBA_H / 2, near: -10, far: 10 });
       this.gbaCamera.updateProjectionMatrix();
-      r.clearDepth();
+      // Where the area draws nothing (a pit, the filler around it) the GBA's backdrop shows: (41, 41, 41) in Dolphin's
+      // frames (room 6's area 6), not the frame's black screen.
+      r.setClearColor(GBA_BACKDROP);
+      r.clear(true, true, false);
+      r.setClearColor(0x000000);
       r.render(this.gba, this.gbaCamera);
     }
     r.setViewport(tv.x, ch - tv.y - tv.h, tv.w, tv.h);
@@ -782,6 +786,8 @@ export class AdventureView {
 }
 
 const FILLER_TILE = 0x00b;
+/** The GBA picture's backdrop (Dolphin's frames). */
+const GBA_BACKDROP = 0x292929;
 const DIR_INDEX = { right: 0, left: 1, down: 2, up: 3 } as const;
 /** A burning arrow's flame, ahead of it by facing (ARRW, table 0x804A0530). */
 const ARROW_FLAME_AHEAD: readonly (readonly [number, number])[] = [[12, 0], [-12, 0], [0.5, 12], [0.5, -12]];

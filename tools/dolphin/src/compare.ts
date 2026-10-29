@@ -65,7 +65,7 @@ if (place.arena) {
   record = { kind: "battle", room: place.room, players: b.start.spawns.length, rules: BATTLE_RULES, seed: Number(values.seed), cpus: [], start: b.start, inputs: [], checkpoints: [], tick: 0, hash: 0 };
 } else {
   const stage = loadAdventureStage(EXTRACTED, place.stage);
-  const a = adventureSim(stage, place);
+  const a = adventureSim(stage, place, startLive.actors);
   sim = a;
   roomCell = a.cell;
   const leader = a.game.players[0]!;
