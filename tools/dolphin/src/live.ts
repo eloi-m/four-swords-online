@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { decompressYaz0, loadActorTypes, parseRarc } from "@fso/formats";
 import { liveActors, MainDol } from "../../dol/src/analysis.ts";
-import { CAMERA_ZOOM, GAME_PTR, LINK, PLAYER_MANAGER_PTR, STAGE_PTR, STAGE_ROOM_CELL, STAGE_SWITCHES, VIEW_MATRIX } from "./fsa.ts";
+import { CAMERA_ZOOM, GAME_PTR, LINK, PLAYER_MANAGER_PTR, STAGE_ARCS, STAGE_PTR, STAGE_ROOM_CELL, STAGE_SWITCHES, VIEW_MATRIX, WORLD_STAGE } from "./fsa.ts";
 import { findMem1, MEM1_BASE, MEM1_SIZE, readSavestate } from "./savestate.ts";
 
 /** Link +0x3B4: the screen he is on (0 the TV, 7 + k a GBA area's sublayer k). */
@@ -22,6 +22,8 @@ export interface LiveLink {
   facing: number;
   life: number;
   item: number;
+  /** The water's current carrying him (px/frame), while he swims. */
+  drift: { x: number; y: number };
 }
 
 export interface LiveActor {
@@ -52,6 +54,8 @@ export interface LiveState {
   camera: { x: number; y: number; zoom: number } | null;
   /** The current room's switches (bit n: switch n), null when the stage data isn't there. */
   switches: number | null;
+  /** The stage playing ("boss012"), from the loader's arc name for its world and stage slot; null when not readable. */
+  stage: string | null;
 }
 
 /** Actors that draw nothing (or only on the GBA): left out unless asked for. */
@@ -98,6 +102,7 @@ export function readLive(mem1: Uint8Array, vtables: Map<number, string[]>, all =
     links.push({
       x: f32(a + LINK.x), y: f32(a + LINK.y), z: f32(a + LINK.z), state: u32(a + LINK.state), screen: u32(a + LINK_SCREEN),
       facing: u32(a + LINK.facing), life: u32(a + LINK.life), item: u32(a + LINK.item),
+      drift: { x: f32(a + LINK.drift), y: f32(a + LINK.drift + 4) },
     });
   }
   const actors = liveActors(mem1, vtables)
@@ -115,7 +120,9 @@ export function readLive(mem1: Uint8Array, vtables: Map<number, string[]>, all =
   let switches: number | null = null;
   const game = u32(GAME_PTR), info = inRam(game) ? u32(game + 4) : 0, data = inRam(info) ? u32(info + 0xc) : 0;
   if (inRam(data)) switches = u32(data + STAGE_SWITCHES + u32(data + STAGE_ROOM_CELL + 4) * 40 + u32(data + STAGE_ROOM_CELL) * 4);
-  return { links, actors, camera, switches };
+  const arc = u32(STAGE_ARCS + 4 * (u32(WORLD_STAGE) * 4 + u32(WORLD_STAGE + 4)));
+  const name = inRam(arc) ? /^(boss\d{3})\.arc\0/.exec(new TextDecoder("latin1").decode(mem1.subarray(arc - MEM1_BASE, arc - MEM1_BASE + 12))) : null;
+  return { links, actors, camera, switches, stage: name?.[1] ?? null };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -130,9 +137,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   else {
     const c = live.camera;
     console.log(c ? `camera (${c.x.toFixed(1)}, ${c.y.toFixed(1)}) zoom ${c.zoom.toFixed(4)}` : "camera -");
+    if (live.stage) console.log(`stage ${live.stage}`);
     if (live.switches !== null) console.log(`switches ${[...Array(32).keys()].filter((n) => (live.switches! >>> n) & 1).join(" ") || "-"}`);
     for (const [i, l] of live.links.entries())
-      console.log(`link${i} (${l.x.toFixed(1)}, ${l.y.toFixed(1)}) z ${l.z.toFixed(1)} state ${l.state} screen ${l.screen} facing ${l.facing} life ${l.life} item ${l.item}`);
+      console.log(`link${i} (${l.x.toFixed(1)}, ${l.y.toFixed(1)}) z ${l.z.toFixed(1)} state ${l.state} screen ${l.screen} facing ${l.facing} life ${l.life} item ${l.item}${l.drift.x || l.drift.y ? ` drift (${l.drift.x.toFixed(2)}, ${l.drift.y.toFixed(2)})` : ""}`);
     for (const a of live.actors) console.log(`${a.addr.toString(16)} ${a.id.padEnd(5)} s${a.screen} (${a.x.toFixed(1)}, ${a.y.toFixed(1)})`);
   }
 }

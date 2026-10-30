@@ -49,23 +49,27 @@ Index of the docs: [README.md](README.md).
   noted some pokes as free text or not at all, and say so). `place.ts` keeps named places in `ref/`:
   `node tools/dolphin/src/place.ts save ref/places/lake-room7.sav --from ref/adv/room5-river.sav --script "5 idle;
   40 right; 20 idle; 160 up; 40 idle; 40 up; 30 idle"` saves the state 10 frames after the script (`--at <frame>`),
-  with its `place`: the stage and room (from the leader's cell; on a GBA screen `--room`) or the arena, and the
-  Links. `place.ts check <state>` replays the recipe from its parent and compares the Links on its frame with the
+  with its `place`: the stage (the one the game loaded, read from RAM: `live.ts`'s `stage`, the loader's arc name for
+  its world and stage slot, so Tingle's Tower loaded through the Cave's slot is `boss012`) and room (from the leader's
+  cell; on a GBA screen `--room`, else the parent's) or the arena, and the Links. `place.ts check <state>` replays the recipe from its parent and compares the Links on its frame with the
   place (exit 1 when they differ: `ref/adv/room9.sav`'s chain, for one, no longer lands where it was saved);
   `build <state> [--parents]` makes it again (missing parents first); `show <state>` prints the recipe and the state
   read offline (`live.ts <state.sav|mem1>`: the Links, the live actors by vtable, the camera).
 - **Compare at a place:** `node tools/dolphin/src/compare.ts <state.sav> [--at 0,2,5]` leaves Dolphin and ours idle
   from the place and pairs the live actors at each moment (`diff.ts`: same within ±4 px, moved, missing from ours,
   extra in ours), with the frames side by side at 640 x 480 (`side-t<s>.png`, Dolphin left). Ours: an adventure room
-  entered at the leader's spot (`#room`; a GBA area is not supported, it needs the route's state), each Link put on
-  Dolphin's spot facing his way with his life, the leader holding his item (the Cave's lamp), the room's switches
+  entered at the leader's spot (`#room`; a place on a GBA screen starts in that area of the room, its px the
+  area's own: the record's `area`), each Link put on Dolphin's spot facing his way with his life, a Link swimming
+  (state 74) swimming on with the current's drift Dolphin's carries (Link +0x414, +0x418: f32 x, y px/frame; the
+  record's `links[i].swim`), the leader holding his item (the Cave's lamp), the room's switches
   set as Dolphin's (`live.ts`: stage data + 0x178, `docs/formats/battle-arenas.md` "Switches"), Shadow Link in
   his entrance's state and its ticks (all read from the state's own RAM), and a shuttling
   hovering gem (`HNRY`) given the way, timer and speeds of Dolphin's (`live.ts` reads them: `LIVE_FIELDS`; our
-  frames still start it from the room's entry). The frames replay that start (the adventure record's `carry`,
+  frames still start it from the room's entry). The frames replay that start (the adventure record's `carry`, `area`,
   `links`, `switches`, `shadow`, @fso/sim replay.ts), the room's lights settled (the lamp at its full 100 px). Not carried:
   what else the room's things did (a block pushed stands at its start, a chest opened is shut, an enemy at its
-  spawn) and the formation (each follower walks to the Link ahead of him); a battle round state's arena (the Dark World
+  spawn), the formation (each follower walks to the Link ahead of him), a swimmer's glide and dive, a side view's
+  swimming (state 75) at the start (ours takes to the water on its own), the Force Gems counted; a battle round state's arena (the Dark World
   ones too: `save-battle-dark-<arena>-<n>p` is boss500 room 5-9) with its props, the Links at Dolphin's starts and control on the same frame
   (the replay record's `start`, @fso/sim replay.ts). Our frames come from the app's dev server, which compare.ts
   starts on port 5560 (`--web-port`) replaying `out/dolphin-compare/captures`. Actors the sim keeps no object for are

@@ -732,12 +732,18 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      leader on a walk (room 11), 1.5 px once stopped.
   5. Unsure: in room 4 Dolphin draws dark gem-shaped shadows in the water where nothing is listed, ours nothing (the
      hidden Zoras?); its Zoras surface at other spots than ours (random in both?).
-  Not compared: the GBA-screen areas (room 0's and room 4's houses, room 3's passage and tree house with its chest,
-  room 7's shaft with its floor switches and fish: compare.ts and clip.ts start ours in a room's TV part only); the
-  stage has no Octoroks. The tool's limits there: a swimming Link starts walking in ours (one tick late) with no
-  current drift (Dolphin's carried at full: 0.5 px/tick at once, ours ramping over ~10 ticks), so clips in a current
-  drift apart from the first frames; places mid-river can't be rebuilt from their roots (`w1-boss012-room3`/`room4`/
+  Not compared yet: the GBA-screen areas (room 0's and room 4's houses, room 3's passage and tree house with its
+  chest, room 7's shaft with its floor switches and fish; compare.ts and clip.ts now start ours in an area, below);
+  the stage has no Octoroks. Places mid-river can't be rebuilt from their roots (`w1-boss012-room3`/`room4`/
   `passage`'s parents are gone).
+  6. Unsure: climbing area 5's east shaft from `tingle-room3-passage` along the swim our route takes (747 ticks to the
+     tree house in ours), Dolphin's leader stopped rising at (210.4, 57) (state 48, then up 0.5 px/tick for ~70 ticks,
+     state 49) and came out in room 3's whirlpool on the TV; ours reaches area 2 (a fish, or a time limit under
+     water, not modelled?).
+  The tools since: a swimming Link starts swimming with Dolphin's drift (`tingle-room1-swim` first diverges at frame
+  153, the stone's knock-back, 4 above; `tingle-room5-falls` at frame 213, 1.2 px, nearing the stone that strikes Dolphin's at 220; both from frame 3), and a place on a GBA
+  screen starts ours in that area (Lake Hylia room 2's area 5, `lake-room2-area5`: its actors the same, the leader's
+  walk up the slope and back within 0.3 px over 140 frames).
 
 ### B7. Code health
 - **Dependencies:** `playwright-core` is only in `tools/e2e`, for WebKit; its browser lives in `~/.cache/fso-webkit`

@@ -70,12 +70,18 @@ async function placeOf(state: string, hints: { stage?: string; room?: number; ar
   if (!leader) throw new Error(`${state}: no Links in RAM (a menu?)`);
   const battle = hints.arena ? { arena: hints.arena, players: hints.players ?? parent?.players ?? 2 } : parent?.arena ? { arena: parent.arena, players: parent.players } : null;
   if (battle) return { stage: "boss500", room: battleStateName(`save-battle-${battle.arena}-${battle.players}p.sav`)?.room ?? 0, area: 0, ...battle, links };
-  const stage = hints.stage ?? parent?.stage ?? "boss010";
+  // The stage the game loaded (live.ts: Tingle's Tower loads through the Cave's slot, so a slot number won't do).
+  const stage = hints.stage ?? live.stage ?? parent?.stage;
+  if (!stage) throw new Error(`${state}: the stage loaded isn't readable from RAM; say which with --stage`);
   const area = hints.area ?? (leader.screen >= 8 ? leader.screen - 7 : 0);
   let room = hints.room;
-  if (room === undefined && area === 0) room = await roomAtCell(stage, cellAt(leader.x, leader.y).cx, cellAt(leader.x, leader.y).cy);
+  const cell = cellAt(leader.x, leader.y);
+  if (room === undefined && area === 0) {
+    room = await roomAtCell(stage, cell.cx, cell.cy);
+    if (room === undefined) throw new Error(`${state}: ${stage} has no room at the leader's cell (${cell.cx}, ${cell.cy}); say which with --room (or --stage)`);
+  }
   room ??= parent?.room;
-  if (room === undefined) throw new Error(`${state}: on a GBA screen; say which room with --room`);
+  if (room === undefined) throw new Error(`${state}: on a GBA screen (area ${area}); say which room with --room`);
   return { stage, room, area, links };
 }
 
