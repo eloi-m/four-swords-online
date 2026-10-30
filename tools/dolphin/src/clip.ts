@@ -3,9 +3,10 @@
 // table every few frames. Ours is fed what Dolphin's game read each frame (the GBA keys in battle, the pad in the
 // adventure), as the sim's regression fixtures are (fixture.ts).
 //   node tools/dolphin/src/clip.ts <state.sav> --script "<script>" [--name <name>] [--tol 1] [--every 10]
-//        [--user <dolphin user dir>] [--port <gdb port> (2490)] [--lead <frames>] [--reuse]
+//        [--user <dolphin user dir>] [--port <gdb port> (2490)] [--lead <frames>] [--reuse] [--links <n>]
 // A battle round state's lead (sim.ts ROUND_STATE_LEAD) isn't the same in every state: when ours walks off a frame or
-// two after Dolphin's, pass the lead that lines the first step up.
+// two after Dolphin's, pass the lead that lines the first step up. `--links 1` compares the leader alone (the others
+// still shown).
 // Output: out/dolphin-compare/<name>/report.md and clip.json (per frame, per Link: Dolphin's and our x, y, state).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
@@ -63,6 +64,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       port: { type: "string", default: "2490" },
       lead: { type: "string" },
       reuse: { type: "boolean" },
+      links: { type: "string" },
     },
   });
   const state = positionals[0];
@@ -91,7 +93,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // Ours from where Dolphin's Links stand on the clip's first frame.
   const first = frames[0]!;
   const start = { ...place, links: first.links.map(withScreen) };
-  const sim: Sim = place.arena ? battleSim(EXTRACTED, start, { live: first.links, ...(values.lead ? { lead: Number(values.lead) } : {}) }) : adventureSim(loadAdventureStage(EXTRACTED, place.stage), start, [], readLive(readMem1(state, EXTRACTED), actorVtables(EXTRACTED)).links);
+  const sim: Sim = place.arena ? battleSim(EXTRACTED, start, { live: first.links, ...(values.lead ? { lead: Number(values.lead) } : {}) }) : adventureAt(start);
+  function adventureAt(start: typeof place): Sim {
+    const live = readLive(readMem1(state!, EXTRACTED), actorVtables(EXTRACTED));
+    return adventureSim(loadAdventureStage(EXTRACTED, place.stage), start, [], live.links, live.switches);
+  }
   const players = sim.game.players.length;
   // Battle: the players in the round are the first ones (absent Links trail).
   const dolphinLinks = (f: (typeof frames)[number]): ClipLink[] =>
@@ -104,7 +110,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     d.push(dolphinLinks(frames[k]!));
     o.push(sim.links());
   }
-  const { worst, first: diverged } = clipDiff(d, o, Number(values.tol));
+  const compared = Number(values.links ?? players);
+  const { worst, first: diverged } = clipDiff(d.map((f) => f.slice(0, compared)), o.map((f) => f.slice(0, compared)), Number(values.tol));
   const fmt = (l: ClipLink) => `(${l.x.toFixed(1)}, ${l.y.toFixed(1)}) ${l.state}`;
   const row = (k: number) => `| ${k} | ${frames[k]!.input} | ${d[k]!.map(fmt).join("<br>")} | ${o[k]!.map(fmt).join("<br>")} | ${worst[k]!.toFixed(2)} |`;
   const every = Number(values.every);

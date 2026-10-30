@@ -14,7 +14,7 @@ import type { ScreenAssets } from "@fso/render";
 import { ADVENTURE_BINDINGS, LocalInput } from "@fso/input";
 import { TouchControls } from "@fso/input/touch";
 import { hashState, InputLog, replayFrameSteps, RunCursor, SUBPX, type AdventureRecord } from "@fso/sim";
-import { actorStats, AdventureStage, carryOf, createAdventure, messageBook, FORMATION_BUTTONS, GATHER_BUTTON, CAVE_OF_NO_RETURN_MILESTONES, HYRULE_CASTLE_MILESTONES, LAKE_HYLIA_MILESTONES, PHANTOM_GANON_MILESTONES, TINGLE_TOWER_MILESTONES, playedAlone, quotaMet, RoutePlayer, SEPARATE_BUTTON, selectButtons, stepAdventure, type AdventureGame, type Goal } from "@fso/sim/adventure";
+import { actorStats, AdventureStage, carryOf, messageBook, FORMATION_BUTTONS, GATHER_BUTTON, CAVE_OF_NO_RETURN_MILESTONES, HYRULE_CASTLE_MILESTONES, LAKE_HYLIA_MILESTONES, PHANTOM_GANON_MILESTONES, TINGLE_TOWER_MILESTONES, playedAlone, quotaMet, RoutePlayer, SEPARATE_BUTTON, selectButtons, startAdventure, stepAdventure, type AdventureGame, type Goal } from "@fso/sim/adventure";
 import { openServerStore, type AssetStore } from "@fso/web";
 import { adventureStages, englishMessages, levelName, LEVELS, type StageInfo } from "./stages.ts";
 import { GbaWindow } from "./gbawindow.ts";
@@ -234,17 +234,22 @@ async function start(store: AssetStore, archive: (path: string) => Promise<RarcA
   const x = replay ? replay.x : num("x"), y = replay ? replay.y : num("y");
   // The four Links in formation (#players=1 for the leader alone).
   const players = replay?.players ?? Math.max(1, Math.min(4, Number(params.get("players") ?? 4)));
-  // A stage reached through the run starts with what the stage before it ended with (run.ts carryFor).
-  const carry = carryFor(session, info.id, chain && !replay);
-  const game: AdventureGame = createAdventure(adventure, { room, x, y, players, carry: carry ?? undefined });
+  // A stage reached through the run starts with what the stage before it ended with (run.ts carryFor); a replay, with
+  // its record's carry and each Link where its record put him.
+  const runCarry = carryFor(session, info.id, chain && !replay);
+  const carry = replay ? (replay.carry ?? null) : runCarry;
+  const start = { kind: "adventure" as const, stage: info.id, room, x, y, players, ...(carry ? { carry } : {}), ...(replay?.links ? { links: replay.links } : {}), ...(replay?.switches !== undefined ? { switches: replay.switches } : {}) };
+  const game: AdventureGame = startAdventure({ ...start, inputs: [], checkpoints: [], tick: 0, hash: 0 }, adventure);
   // Dev server: the stage's start and inputs (@fso/sim replay.ts) for F8's captures, and a capture's replay.
-  const record = import.meta.env.DEV ? { kind: "adventure" as const, stage: info.id, room, x, y, players } : null;
+  const record = import.meta.env.DEV ? start : null;
   const log = record && new InputLog();
   let replaying: { cursor: RunCursor; left: number; steps: number } | null = null;
   const tunic = Number(params.get("player") ?? 0) & 3;
   const view = new AdventureView($<HTMLCanvasElement>("screen"), data, stage, adventure, tileTypes, sheet, linkFrames, debug);
   view.tunic = tunic;
   if (params.has("nolight")) view.lighting.enabled = false; // the rooms without their darkness (light.ts)
+  // A replay that starts in the middle of a room (each Link put on his spot) starts with the room's lights settled.
+  if (replay?.links) view.light.settle(game, adventure);
   try {
     const main2D = await archive("main2D.arc"), game2D = await archive("game2D.arc");
     const window = archiveFile(main2D, "scrn/main_gba_window.blo");

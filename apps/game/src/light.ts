@@ -43,6 +43,8 @@ const GLOW_ALPHA = 200;
 const CANDLE_RADIUS = 70;
 /** A burning arrow's light (ARRW's draw 0x8016545C). */
 export const ARROW_LIGHT = { radius: 32, alpha: 128 } as const;
+/** Long enough for any fade or ease to end (the lamp's 100 px at 1 px a tick, a level's 255 at 4). */
+const SETTLE_TICKS = 128;
 
 interface Fade {
   tint: [number, number, number];
@@ -95,6 +97,12 @@ export class AdventureLight {
       const r = this.radius.get(t.index) ?? 0;
       this.radius.set(t.index, lit ? Math.min(want, r + RADIUS_STEP) : Math.max(0, r - RADIUS_STEP));
     }
+  }
+
+  /** The lights as a while in the room leaves them (a start in the middle of a room: a Dolphin place's replay): the
+   *  stage light faded to the room's, the lamps' and torches' radii eased to theirs. */
+  settle(game: AdventureGame, stage: AdventureStage): void {
+    for (let i = 0; i < SETTLE_TICKS; i++) this.step(game, stage);
   }
 
   /** The light circles of the current area (area px). */

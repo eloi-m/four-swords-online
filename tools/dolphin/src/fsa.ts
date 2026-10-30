@@ -17,6 +17,11 @@ export const VIEW_MATRIX = 0x80536c50;
 /** [[STAGE_PTR] + 0x24] = the camera the stage drawers read: f32 zoom (TV px per world px) at +0x858. */
 export const STAGE_PTR = 0x8053ab10;
 export const CAMERA_ZOOM = 0x858;
+/** [[[GAME_PTR] + 4] + 0xC] = the stage data: the current room's cell x, y (u32) at +0x14, +0x18, and each room's 32
+ *  switches, a u32 at +0x178 + cell y·40 + cell x·4 (docs/formats/battle-arenas.md "Switches"). */
+export const GAME_PTR = 0x8053aaf8;
+export const STAGE_ROOM_CELL = 0x14;
+export const STAGE_SWITCHES = 0x178;
 /** Shadow Battle: the keys each player's GBA reported, one 0xE0-byte record per player (bss). u16 at +0: bits 0–7 =
  *  A, B, Select, Start, Right, Left, Up, Down (pressed = 1), bit 8 (sometimes 9) set; u16 at +2: R 0x100, L 0x200, and
  *  a low byte that changes with the keys (a check byte?). Holds the movie input one frame late. */
