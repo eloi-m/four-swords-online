@@ -58,8 +58,9 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   - `ref/dolphin-user-battle` (`tools/dolphin/src/battle-user.ts`): 4 GBA ports, the BIOS, a savestate hotkey on a
     pipe device;
   - `tools/dolphin/src/battle-states.ts` rebuilds the states: menus in `ref/battle/`, round starts
-    `ref/save-battle-<field|flames|winds|castle|clouds>-<2|3|4>p.sav`, saved 10 frames before control, reloading
-    deterministically;
+    `ref/save-battle-<field|flames|winds|castle|clouds>-<2|3|4>p.sav` and their Dark World variants
+    `ref/save-battle-dark-<arena>-<2|3|4>p.sav` (the Quest Log's unlock bit poked in), saved 10 frames before control,
+    reloading deterministically;
   - `trace.ts` drives each GBA (`p1:right+B p2:A`), records the four Links (`--link <off>:<len>` adds chosen Link
     fields), each GBA's keys and the camera zoom, pokes RAM (`--write`: a Link's life at +0xBFC, his item at +0xC10,
     his position at actor + 8) and saves states at any frame (`--save`); `actor-trace.ts` records live actors by
