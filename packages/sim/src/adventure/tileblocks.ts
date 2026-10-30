@@ -125,7 +125,7 @@ export function stepPoints(game: AdventureGame, stage: AdventureStage, tiles: Re
 export const RING_HALF = 40;
 export const RING_HOLE = 24;
 const RING_UP = 8;
-const isRing = (a: AreaActor) => a.id === "FLME" && (a.params & 0xff) === 5;
+const isRing = (a: { id: string; params: number }) => a.id === "FLME" && (a.params & 0xff) === 5;
 
 /** The current area's rings of fire still burning (their switch off). */
 export function burningRings(game: AdventureGame, stage: AdventureStage): AreaActor[] {

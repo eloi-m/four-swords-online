@@ -58,8 +58,13 @@ Index of the docs: [README.md](README.md).
   from the place and pairs the live actors at each moment (`diff.ts`: same within ±4 px, moved, missing from ours,
   extra in ours), with the frames side by side at 640 x 480 (`side-t<s>.png`, Dolphin left). Ours: an adventure room
   entered at the leader's spot (`#room`; a GBA area is not supported, it needs the route's state), each Link put on
-  Dolphin's, and a shuttling hovering gem (`HNRY`) given the way, timer and speeds of Dolphin's (`live.ts` reads
-  them: `LIVE_FIELDS`; our frames still start it from the room's entry); a battle round state's arena (the Dark World
+  Dolphin's spot facing his way with his life, the leader holding his item (the Cave's lamp), the room's switches
+  set as Dolphin's (`live.ts`: stage data + 0x178, `docs/formats/battle-arenas.md` "Switches"), and a shuttling
+  hovering gem (`HNRY`) given the way, timer and speeds of Dolphin's (`live.ts` reads them: `LIVE_FIELDS`; our
+  frames still start it from the room's entry). The frames replay that start (the adventure record's `carry`,
+  `links`, `switches`, @fso/sim replay.ts), the room's lights settled (the lamp at its full 100 px). Not carried:
+  what else the room's things did (a block pushed stands at its start, a chest opened is shut, an enemy at its
+  spawn) and the formation (each follower walks to the Link ahead of him); a battle round state's arena (the Dark World
   ones too: `save-battle-dark-<arena>-<n>p` is boss500 room 5-9) with its props, the Links at Dolphin's starts and control on the same frame
   (the replay record's `start`, @fso/sim replay.ts). Our frames come from the app's dev server, which compare.ts
   starts on port 5560 (`--web-port`) replaying `out/dolphin-compare/captures`. Actors the sim keeps no object for are
@@ -70,7 +75,8 @@ Index of the docs: [README.md](README.md).
   formations) from the same place, and reports the first frame a Link is more than 1 px off (`--tol`), with a table
   every 10 frames (`--every`) and around it. A battle round state's control frame isn't the same in every state: when
   ours walks off a frame or two late, `--lead` lines it up (8 for Above the Clouds and the Tower of Flames, 9 for The
-  Field); `--reuse` keeps Dolphin's side of the last run of the same clip to try ours again.
+  Field); `--reuse` keeps Dolphin's side of the last run of the same clip to try ours again; `--links 1` compares the
+  leader alone (the others still in the table).
 - Output in `out/dolphin-compare/<name>/` (report.md, diff.json or clip.json, the frames); defaults GDB port 2490,
   user folders `ref/dolphin-user-compare` (GBA ports) and `ref/dolphin-user-compare-adventure` (`--user`, `--port`).
   Dolphin's camera is not ours (zoom in the report), and the live reader sees only actors spawned by ID.

@@ -5,10 +5,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { decompressYaz0, Dol, isYaz0, loadActorTypes, parseBmg, parseRarc, readTileTypes, Stage, type RarcArchive } from "@fso/formats";
 import {
-  applyRoundStart, arenaProps, buildArenaWorld, createBattle, SIDE_ROOM_STRIDE, stepGame, SUBPX, type BattleRules, type Facing, type GameState, type RoundStart,
+  applyRoundStart, arenaProps, buildArenaWorld, createBattle, SIDE_ROOM_STRIDE, stepGame, SUBPX, type AdventureRecord, type BattleRules, type Facing, type GameState, type RoundStart,
   type Spawn, type World,
 } from "@fso/sim";
-import { actorStats, ADVENTURE_HEARTS, ALONE_ROOMS, AdventureStage, createAdventure, GEAR_BY_NUMBER, messageBook, playedAlone, stepAdventure, type AdventureGame } from "@fso/sim/adventure";
+import { actorStats, ADVENTURE_HEARTS, ALONE_ROOMS, AdventureStage, GEAR_BY_NUMBER, messageBook, playedAlone, startAdventure, stepAdventure, type AdventureGame } from "@fso/sim/adventure";
 import type { Body, ClipLink } from "./diff.ts";
 import { UNDRAWN, type LiveActor, type LiveLink } from "./live.ts";
 import { CELL_H, CELL_W, localPx, type Place } from "./recipe.ts";
@@ -75,25 +75,31 @@ export function gridRoom(stage: Pick<AdventureStage, "index" | "cellOf">, room: 
  * Our adventure at a Dolphin place: its room entered at the leader's spot, then each Link put where Dolphin's stands;
  * given Dolphin's live actors, each shuttling hovering gem takes the state of Dolphin's from the same place (its spot,
  * way, timer and velocities: how long ago Dolphin's room was entered, and the way it drew at random). Given Dolphin's
- * Links (live.ts), each faces as his does, with his life, and the leader holds his item (the room's switches and
- * what the Links did before are not carried over).
+ * Links (live.ts), each faces as his does, with his life, and the leader holds his item; given the room's switches
+ * (live.ts), they are set (what the Links did before is not carried over: a block pushed stands at its start).
+ * `record` is that start, for apps/game to replay (compare.ts).
  */
 export function adventureSim(
-  stage: AdventureStage, place: Place, live: readonly LiveActor[] = [], links: readonly Pick<LiveLink, "facing" | "life" | "item">[] = [],
-): Sim & { adventure: AdventureGame; cell: { cx: number; cy: number } } {
+  stage: AdventureStage, place: Place, live: readonly LiveActor[] = [], links: readonly Pick<LiveLink, "facing" | "life" | "item">[] = [], switches: number | null = null,
+): Sim & { adventure: AdventureGame; cell: { cx: number; cy: number }; record: AdventureRecord } {
   if (place.area) throw new Error("our side starts in a room's TV part only (#room): a GBA area needs the route's state");
   const room = gridRoom(stage, place.room);
   const cell = stage.cellOf(room);
   if (!cell) throw new Error(`${place.stage} has no room ${place.room}`);
   const local = place.links.map((l) => localPx(l, cell));
   const carry = links[0] && { hearts: links.map((l) => l.life), maxHearts: ADVENTURE_HEARTS, gear: GEAR_BY_NUMBER[links[0].item] ?? "" };
-  const g = createAdventure(stage, { room, x: Math.round(local[0]!.x), y: Math.round(local[0]!.y), players: place.links.length, ...(carry ? { carry } : {}) });
-  g.players.forEach((p, i) => {
-    p.x = Math.round(local[i]!.x * SUBPX);
-    p.y = Math.round(local[i]!.y * SUBPX);
-    const facing = links[i] && FACINGS[links[i]!.facing];
-    if (facing) p.facing = facing;
-  });
+  // The start as a replay record (@fso/sim replay.ts), so that apps/game replaying it (compare.ts's frames) starts the same.
+  const record: AdventureRecord = {
+    kind: "adventure", stage: place.stage, room, x: Math.round(local[0]!.x), y: Math.round(local[0]!.y), players: place.links.length,
+    ...(carry ? { carry } : {}),
+    ...(switches !== null ? { switches } : {}),
+    links: local.map((l, i) => {
+      const facing = links[i] && FACINGS[links[i]!.facing];
+      return { x: l.x, y: l.y, ...(facing ? { facing } : {}) };
+    }),
+    inputs: [], checkpoints: [], tick: 0, hash: 0,
+  };
+  const g = startAdventure(record, stage);
   const placedHere = stage.area(g.adventure.room, g.adventure.area).actors;
   const sub = (v: number) => Math.round(v * SUBPX);
   for (const it of g.adventure.pickups) {
@@ -113,6 +119,7 @@ export function adventureSim(
     game: g,
     adventure: g,
     cell,
+    record,
     step: (buttons) => stepAdventure(g, [buttons[0] ?? 0], stage),
     links: () => g.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${g.adventure.links[i]?.mode ?? ""}${moveOf(g.battle.fighters[i])}` })),
     bodies: () => {
