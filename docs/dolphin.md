@@ -59,10 +59,11 @@ Index of the docs: [README.md](README.md).
   extra in ours), with the frames side by side at 640 x 480 (`side-t<s>.png`, Dolphin left). Ours: an adventure room
   entered at the leader's spot (`#room`; a GBA area is not supported, it needs the route's state), each Link put on
   Dolphin's spot facing his way with his life, the leader holding his item (the Cave's lamp), the room's switches
-  set as Dolphin's (`live.ts`: stage data + 0x178, `docs/formats/battle-arenas.md` "Switches"), and a shuttling
+  set as Dolphin's (`live.ts`: stage data + 0x178, `docs/formats/battle-arenas.md` "Switches"), Shadow Link in
+  his entrance's state and its ticks (all read from the state's own RAM), and a shuttling
   hovering gem (`HNRY`) given the way, timer and speeds of Dolphin's (`live.ts` reads them: `LIVE_FIELDS`; our
   frames still start it from the room's entry). The frames replay that start (the adventure record's `carry`,
-  `links`, `switches`, @fso/sim replay.ts), the room's lights settled (the lamp at its full 100 px). Not carried:
+  `links`, `switches`, `shadow`, @fso/sim replay.ts), the room's lights settled (the lamp at its full 100 px). Not carried:
   what else the room's things did (a block pushed stands at its start, a chest opened is shut, an enemy at its
   spawn) and the formation (each follower walks to the Link ahead of him); a battle round state's arena (the Dark World
   ones too: `save-battle-dark-<arena>-<n>p` is boss500 room 5-9) with its props, the Links at Dolphin's starts and control on the same frame
