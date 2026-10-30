@@ -15,10 +15,18 @@
 // room's (as it stands around the leader then) over 30 ticks, quadratically, starting 2 ticks after the sim switched
 // rooms (render's RoomPan, measured); then the box starts over around the leader. A warp or a stairway snaps.
 // The camera acts on the points of the tick before (the game's camera runs before its actors).
-// Not done: the camera's special focus (+0x7F4: a talking owl, a Shadow Link's entrance), its shake (+0x1DC), the
+// A boss (an actor that sets +0x178 with its point: Shadow Link from his state 14) puts it in entry 2: all four Links
+// on the TV count, its points aren't pulled, 64 px of margin, at least 260 px wide (2.338), back in at 1 px a tick
+// after a 60-tick hold, a tenth of the gap a tick; the margin and the least half width ease to a mode's own (+0x1D4,
+// +0x1D8: a tenth of the gap a tick, 3 px at most). The special focus (+0x7F4 with kind +0x7F8 = 4, set every tick by
+// an actor: Shadow Link's entrance, states 3-12) makes the box its one point, the Links left out and the holds cleared
+// (traced in the Cave of No Return's room 4: 3 px a tick toward him, then a fifth of the gap). The letterbox bars
+// (the stage's overlay [[0x8053AB10]+0x30], asked for every tick: +0x284, +0x28C 0.05) come in 0.05 a tick and go
+// 0.05 a tick once no one asks (`Letterbox`).
+// Not done: the special focus's other kinds (5: a box; the owl's), its 40-tick ease (+0x7F6), the shake (+0x1DC), the
 // other modes (several players: Shadow Battle's camera is apps/battle's camera.ts).
 import { SUBPX, switchOn } from "@fso/sim";
-import { pickupShown, type AdventureGame, type AdventureStage } from "@fso/sim/adventure";
+import { pickupShown, SHADOW_STATE, shadowFollowed, shadowOnStage, type AdventureGame, type AdventureStage } from "@fso/sim/adventure";
 
 /** The TV's aspect, height over width. */
 const ASPECT = 448 / 608;
@@ -41,12 +49,17 @@ interface CameraMode {
   hold: number;
   /** Of the gap per tick. */
   ease: number;
+  /** Its flag (+0x20): only the leader counts and points are pulled toward the box; without, every Link on the TV
+   *  counts and points are taken as they are. */
+  leaderOnly: boolean;
 }
 
 /** Entry 0: the adventure's camera with focus points this tick. */
-export const FOCUS_MODE: CameraMode = { margin: 104, minHalf: 142, focusMargin: 32, out: 3, in: 3, hold: 240, ease: 0.1 };
+export const FOCUS_MODE: CameraMode = { margin: 104, minHalf: 142, focusMargin: 32, out: 3, in: 3, hold: 240, ease: 0.1, leaderOnly: true };
 /** Entry 4: none. */
-export const PLAIN_MODE: CameraMode = { margin: 104, minHalf: 142, focusMargin: 112, out: 3, in: 1, hold: 0, ease: 0.2 };
+export const PLAIN_MODE: CameraMode = { margin: 104, minHalf: 142, focusMargin: 112, out: 3, in: 1, hold: 0, ease: 0.2, leaderOnly: true };
+/** Entry 2: a boss's point this tick (+0x178). */
+export const BOSS_MODE: CameraMode = { margin: 64, minHalf: 130, focusMargin: 32, out: 3, in: 1, hold: 60, ease: 0.1, leaderOnly: false };
 /** Ticks the box takes onto the whole room for a GBA-screen area (+0x838). */
 export const WHOLE_ROOM_TICKS = 70;
 /** A room change's pan: its ticks (+0x1EC) and the ticks before it starts. */
@@ -67,11 +80,18 @@ export interface Point {
   y: number;
 }
 
-/** What the camera follows on a tick (world px): the leader, the focus points, whether the Links are in a GBA area. */
+/**
+ * What the camera follows on a tick (world px): the leader, the focus points, whether the Links are in a GBA area;
+ * the other Links on the TV (for a mode without the leader-only flag), a boss's point among the focus points (+0x178),
+ * the special focus (+0x7F4).
+ */
 export interface CameraTargets {
   leader: Point;
   focus: readonly Point[];
   wholeRoom: boolean;
+  links?: readonly Point[];
+  boss?: boolean;
+  special?: Point | null;
 }
 
 const inside = (p: Point, r: Box) => p.x >= r.left && p.y >= r.top && p.x < r.right && p.y < r.bottom;
@@ -83,14 +103,25 @@ const mix = (a: Box, b: Box, k: number): Box => ({
   bottom: a.bottom + (b.bottom - a.bottom) * k,
 });
 
-/** The box that would hold the targets (0x8030CD18's first part): the leader, each focus point pulled toward it. */
-export function targetBox(t: CameraTargets, room: Box, mode: CameraMode): Box {
+/**
+ * The box that would hold the targets (0x8030CD18's first part): the special focus's point alone; else the leader
+ * (every Link on the TV in a mode without the leader-only flag), each focus point pulled toward it (the margin as it
+ * eases, `margin`, less the mode's focus margin) or, without the flag, taken as it is.
+ */
+export function targetBox(t: CameraTargets, room: Box, mode: CameraMode, margin = mode.margin): Box {
   if (t.wholeRoom) {
     const m = mode.margin;
     return { left: room.left + m, top: room.top + m, right: room.right - m, bottom: room.bottom - m };
   }
+  if (t.special) return { left: t.special.x, top: t.special.y, right: t.special.x, bottom: t.special.y };
   const b = { left: t.leader.x, top: t.leader.y, right: t.leader.x, bottom: t.leader.y };
-  const d = mode.margin - mode.focusMargin;
+  for (const p of mode.leaderOnly ? [] : (t.links ?? [])) {
+    b.left = Math.min(b.left, p.x);
+    b.right = Math.max(b.right, p.x);
+    b.top = Math.min(b.top, p.y);
+    b.bottom = Math.max(b.bottom, p.y);
+  }
+  const d = mode.leaderOnly ? margin - mode.focusMargin : 0;
   const pull = (v: number, lo: number, hi: number) => (v < lo ? (v < lo - d ? v + d : lo) : v > hi ? (v > hi + d ? v - d : hi) : v);
   for (const p of t.focus) {
     const x = pull(p.x, b.left, b.right), y = pull(p.y, b.top, b.bottom);
@@ -103,7 +134,7 @@ export function targetBox(t: CameraTargets, room: Box, mode: CameraMode): Box {
 }
 
 /** What a box shows of a room (0x8030CD18's end): its world px rectangle, 608:448. */
-export function boxView(box: Box, room: Box, mode: CameraMode): Box {
+export function boxView(box: Box, room: Box, mode: Pick<CameraMode, "margin" | "minHalf">): Box {
   const m = mode.margin;
   let l = Math.max(box.left - m, room.left), t = Math.max(box.top - m, room.top);
   let r = Math.min(box.right + m, room.right), b = Math.min(box.bottom + m, room.bottom);
@@ -151,6 +182,8 @@ export class AdventureCamera {
   private pan: { from: Box; to: Box; tick: number } | null = null;
   /** What it follows, a tick late. */
   private last: CameraTargets | null = null;
+  /** The margin and the least half width as they ease to the mode's (+0x1D4, +0x1D8; -1: not yet). */
+  private margins = { margin: -1, minHalf: -1 };
 
   /** A new room (world px): `pan` eases the view over from the last room's (an edge walk), else it snaps. */
   enter(room: Box, targets: CameraTargets, pan: boolean): void {
@@ -180,8 +213,14 @@ export class AdventureCamera {
       this.pan = null;
       this.box = null;
     }
-    const mode = t.focus.length ? FOCUS_MODE : PLAIN_MODE;
-    let to = fround(targetBox(t, this.room, mode));
+    // (A boss's mode before the points' one: 0x8030E154.)
+    const mode = t.boss ? BOSS_MODE : t.focus.length ? FOCUS_MODE : PLAIN_MODE;
+    const m = this.margins, f = Math.fround;
+    const toward = (at: number, to: number) => (at < 0 ? to : f(at + Math.max(-3, Math.min(3, f(0.1 * f(to - at))))));
+    [m.margin, m.minHalf] = [toward(m.margin, mode.margin), toward(m.minHalf, mode.minHalf)];
+    // The special focus clears the holds (before this tick's ease sets those of the edges going out).
+    if (t.special) this.holds = [0, 0, 0, 0];
+    let to = fround(targetBox(t, this.room, mode, m.margin));
     if (!this.box) {
       this.box = to;
       this.whole = null;
@@ -195,7 +234,7 @@ export class AdventureCamera {
       if (!t.wholeRoom) this.whole = null;
       this.box = this.ease(this.box, to, mode);
     }
-    this.view = boxView(this.box, this.room, mode);
+    this.view = boxView(this.box, this.room, m);
   }
 
   /** Each edge's step toward `to` (0x8030CD18's middle part). */
@@ -238,9 +277,10 @@ export class AdventureCamera {
  *   height (x, y − z).
  * - the soldiers' captain (SLR4, 0x80172DC4) always; a sword soldier (SLR1, 0x80151148) while it walks in (state 0);
  *   an Octorok (OKTA, 0x8013FD50) of params 2; a Zora (ZORA, 0x801BA854) out of the water (+0x248 ≠ 0); the minor
- *   Shadow Links (ZSLH, ZSLJ: their method 0x80221114, every tick on the TV).
+ *   Shadow Links (ZSLH, ZSLJ: their method 0x80221114, every tick on the TV); Shadow Link (SLK2, 0x801C283C) from his
+ *   state 14 on, as a boss (`boss`; even spinning once beaten).
  * Not done (seen in main.dol, none in Lake Hylia's path or not simulated): DOOR (one of its states), HNRY of kind
- * (p >> 16) & 0xFF = 8 (a gem that flies), GOL2's pads, KEPO, SWT4, FTGL, BBSL, SLK2, SLR3, TENN, FLYO, the bosses.
+ * (p >> 16) & 0xFF = 8 (a gem that flies), GOL2's pads, KEPO, SWT4, FTGL, BBSL, SLR3, TENN, FLYO, the bosses.
  */
 export class FocusPoints {
   /** FOCS by actor index: its state (0 going to it, 1 holding, 2 for good, 3 done) and ticks left. */
@@ -248,6 +288,8 @@ export class FocusPoints {
   /** The YAJIs a Link came near (their switch, which the sim leaves off, set as far as the camera goes). */
   private readonly lit = new Set<number>();
   private room = -1;
+  /** Whether a boss handed its point with the last `points` (the camera's +0x178). */
+  boss = false;
 
   /**
    * This tick's points. `seen` tells whether a world point is on the TV now (0x8030C2A8: inside the screen less 14 px),
@@ -285,7 +327,13 @@ export class FocusPoints {
       if (!pickupShown(game, it) || it.fetched) continue;
       if ((it.type === "gem" && it.from === "RUPY" && it.kind >= 3) || it.type === "key") out.push(at(it.x / SUBPX, (it.y - it.z) / SUBPX));
     }
+    this.boss = false;
     for (const e of a.enemies) {
+      if (shadowFollowed(e)) {
+        this.boss = true;
+        out.push(at(e.x / SUBPX, e.y / SUBPX));
+        continue;
+      }
       if (e.state === "die" || (e.gate && !switchOn(b, e.gate))) continue;
       const follow =
         e.type === "SLR4" ||
@@ -300,9 +348,34 @@ export class FocusPoints {
   }
 }
 
+/**
+ * The letterbox bars (the stage's overlay object [[0x8053AB10]+0x30]: its step 0x8016005C, its draw 0x8015F9C0): an
+ * actor asks for them every tick it wants them (+0x284, with the speed +0x28C: 0.05 for the ones read); the next step
+ * eases their amount (+0x288) 0.05 in, else 0.05 out. Drawn black over the TV's top and bottom, 48 px × a² tall at
+ * alpha a² (view.ts). Who asks: Shadow Link from the scene's take to his state 12 (0x801F68E0, 0x801C283C; traced:
+ * 0.05 the tick after the take, 1 twenty ticks on, 0 twenty ticks after 14's start).
+ */
+export class Letterbox {
+  /** Twentieths (0-20). */
+  private amount = 0;
+  private asked = false;
+
+  /** Their amount now (0-1). */
+  get shown(): number {
+    return this.amount / 20;
+  }
+
+  /** A tick (after the sim's): the step on the last tick's request, then this tick's request. */
+  step(game: AdventureGame): void {
+    this.amount = Math.max(0, Math.min(20, this.amount + (this.asked ? 1 : -1)));
+    this.asked = game.adventure.area === 0 && game.adventure.enemies.some((e) => shadowOnStage(e) || (e.type === "SLK2" && e.shot === SHADOW_STATE.taken));
+  }
+}
+
 /** The TV camera as the view drives it, once per simulation tick: the rooms on the stage's grid, its points. */
 export class TvCamera {
   readonly camera = new AdventureCamera();
+  readonly bars = new Letterbox();
   private readonly focus = new FocusPoints();
   private readonly stage: AdventureStage;
   private room = -1;
@@ -318,11 +391,19 @@ export class TvCamera {
   follow(game: AdventureGame): void {
     const a = game.adventure, p = game.players[0]!, cell = this.stage.cellOf(a.room);
     if (!cell) return;
+    this.bars.step(game);
     const o = { x: cell.cx * ROOM_W, y: cell.cy * ROOM_H };
+    const at = (x: number, y: number) => ({ x: o.x + x / SUBPX, y: o.y + y / SUBPX });
+    const focus = a.area === 0 ? this.focus.points(game, this.stage, o, (q) => this.onTv(q)) : [];
+    // The special focus: Shadow Link in his entrance's states 3-12 (not while the Links are in a GBA area: +0x7F5).
+    const star = a.area === 0 ? a.enemies.find(shadowOnStage) : undefined;
     const targets: CameraTargets = {
-      leader: { x: o.x + p.x / SUBPX, y: o.y + p.y / SUBPX },
-      focus: a.area === 0 ? this.focus.points(game, this.stage, o, (q) => this.onTv(q)) : [],
+      leader: at(p.x, p.y),
+      focus,
       wholeRoom: a.area !== 0,
+      links: a.away ? [] : game.players.slice(1).map((l) => at(l.x, l.y)),
+      boss: a.area === 0 && this.focus.boss,
+      special: star ? at(star.x, star.y) : null,
     };
     if (a.room !== this.room) {
       // A room change by an edge pans; a warp, a stairway or the first frame snaps.

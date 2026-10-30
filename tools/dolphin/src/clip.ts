@@ -96,7 +96,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const sim: Sim = place.arena ? battleSim(EXTRACTED, start, { live: first.links, ...(values.lead ? { lead: Number(values.lead) } : {}) }) : adventureAt(start);
   function adventureAt(start: typeof place): Sim {
     const live = readLive(readMem1(state!, EXTRACTED), actorVtables(EXTRACTED));
-    return adventureSim(loadAdventureStage(EXTRACTED, place.stage), start, [], live.links, live.switches);
+    return adventureSim(loadAdventureStage(EXTRACTED, place.stage), start, live.actors, live.links, live.switches);
   }
   const players = sim.game.players.length;
   // Battle: the players in the round are the first ones (absent Links trail).

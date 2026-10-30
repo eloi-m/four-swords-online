@@ -16,6 +16,14 @@
 //   ticks, then every 15 for 75, and it stays on the last (traced: green and purple after the red Link's hits);
 // - enemyparam.csv: contact 2 (atcp), drop class 5 (a 100 or a 150 Force Gem, always).
 // What he does (the states by their numbers; read, the values traced in Dolphin where marked):
+// - his entrance (kinds 1-3; read from main.dol and traced from room 11's door, measurements/adventure-world1.md
+//   "Shadow Link's entrance"): 0, unseen, until the Link in control comes within (p >> 20) & 0xFF × 16 px of him (80
+//   in room 4) with the four on his screen; 1, the scene takes the game (0x801F68E0) the next tick: the Links stand
+//   still where they are, not a step or a frame of theirs moves, until 14's start ends it (0x801F6884); 2 for a tick;
+//   3, the dark portal at his spot (JPA 1043-1045), 235 ticks; 4, he jumps out of it (up 4.5 px/tick, 0.2 down a
+//   tick, at most 4 down: 45 ticks); 5 for 15, then 9 for 60; 12, "Defeat Shadow Link!" (BMG 0x19C) on the message
+//   window, until it's gone (191 ticks); 14, the Links free again, standing as in 15 for 5 + rand(26) ticks. In
+//   states 3-12 the camera frames him alone (its special focus) under the letterbox bars (apps/game camera.ts);
 // - 15, standing: 15-30 ticks (+0x250), then a Link within 70-100 px (+0x5A4) sends him walking his rail (17), or
 //   after 300-600 ticks (+0x5A0, traced 312 and 579) he walks 1-12 of its points anyway (+0x55D);
 // - 17, his rail: at the next point (jittered ±16 px each way, the exact point where that's a wall: 0x801C8C84) at
@@ -171,8 +179,40 @@ export const SHADOW = {
   reach: 24,
 };
 
+/** His entrance (states 0-14), read from main.dol and traced in Dolphin. */
+export const SHADOW_INTRO = {
+  /** His params' (p >> 20) & 0xFF × this px is how near the Link in control wakes him (10 × 16 when 0). */
+  wakeUnit: 16,
+  wakeDefault: 10,
+  /** The dark portal (3): 235 ticks (160 when his group has a place to come out at: none in World 1). */
+  portal: 235,
+  /** His jump out of it (4), in 1/1280 px: up 4.5 px/tick, 0.2 px/tick less each tick, at most 4 down. */
+  riseUp: 5760,
+  riseFall: 256,
+  riseMost: 5120,
+  /** Landed (5), then posed (9). */
+  landed: 15,
+  pose: 60,
+  /** 12: "Defeat Shadow Link!" (BMG 0x19C) on the message window from its start; it's free again this many ticks on
+   *  (traced: 191, the window's slide in, stay and slide out). */
+  message: 0x19c,
+  window: 191,
+  /** 14: standing 5 + rand(26) ticks, then as in 15. */
+  ready: 5,
+  readyRand: 26,
+};
+
 /** His states (+0x248) the sim plays. */
 export const SHADOW_STATE = {
+  wait: 0,
+  wake: 1,
+  taken: 2,
+  portal: 3,
+  rise: 4,
+  landed: 5,
+  pose: 9,
+  challenge: 12,
+  ready: 14,
   stand: 15,
   rail: 17,
   jumpWait: 18,
@@ -212,6 +252,33 @@ export const shadowColor = (e: Enemy): number => (e.flags ? e.kind : (e.params >
 
 /** His state's number (+0x248: SHADOW_STATE). */
 export const shadowState = (e: Enemy): number => e.shot;
+
+/** Whether his entrance has him in states 0-13 (unseen, the scene, the challenge). */
+export const shadowEntering = (e: Enemy): boolean => e.type === "SLK2" && e.shot >= SHADOW_STATE.wait && e.shot < SHADOW_STATE.ready;
+
+/** Whether a Shadow Link's entrance holds the Links: from the scene's take (state 1's tick) to 14's start. */
+export const shadowHolds = (game: AdventureGame): boolean =>
+  game.adventure.enemies.some((e) => shadowEntering(e) && e.shot >= SHADOW_STATE.taken);
+
+/** Whether he's on the camera's special focus and asks for the letterbox bars (states 3-12: 0x801C283C). */
+export const shadowOnStage = (e: Enemy): boolean => shadowEntering(e) && e.shot >= SHADOW_STATE.portal && e.shot <= SHADOW_STATE.challenge;
+
+/** Whether he hands the camera his point (and its boss mode, +0x178): from state 14 on, but 23 (0x801C283C). */
+export const shadowFollowed = (e: Enemy): boolean => e.type === "SLK2" && e.shot >= SHADOW_STATE.ready && e.shot !== 23;
+
+/** The message window's "Defeat Shadow Link!" asked for: the tick of the step that asked (GameState.tick after it). */
+export function shadowChallenge(game: AdventureGame): { id: number; tick: number } | null {
+  const e = game.adventure.enemies.find((x) => x.type === "SLK2" && x.shot === SHADOW_STATE.challenge);
+  return e ? { id: SHADOW_INTRO.message, tick: game.tick - e.tick } : null;
+}
+
+/** Puts him at a state of his entrance and its ticks (a Dolphin place's: tools/dolphin sim.ts); false past it. */
+export function enterShadowAt(e: Enemy, state: number, tick: number): boolean {
+  if (state < SHADOW_STATE.wait || state >= SHADOW_STATE.ready) return false;
+  setState(e, state);
+  e.tick = tick;
+  return true;
+}
 
 /** In the change: the color its roulette shows now (-1 before it starts: dark). */
 export function shadowShownColor(e: Enemy): number {
@@ -266,6 +333,10 @@ export function initShadowLink(e: Enemy): void {
   e.group = 0;
   e.leader = 0;
   e.hitBy = -1;
+  // Kinds 1-3 make an entrance (the init's flags 0x4000, 0x2000 for 1 and 2: 0x801C5490); the others start standing
+  // after a swing (assumed: none in World 1).
+  const kind = (e.params >>> 5) & 7;
+  if (kind >= 1 && kind <= 3) return setState(e, SHADOW_STATE.wait);
   setState(e, SHADOW_STATE.pause);
   e.timer = SHADOW.pause;
 }
@@ -405,6 +476,13 @@ export const shadowAfterKnock = (e: Enemy): EnemyState => {
 /** The sim's state for each of his (enemies.ts's generic code reads it). */
 function simState(s: number): EnemyState {
   switch (s) {
+    case SHADOW_STATE.wait:
+    case SHADOW_STATE.wake:
+    case SHADOW_STATE.taken:
+    case SHADOW_STATE.portal:
+      return "hide";
+    case SHADOW_STATE.rise:
+      return "fly";
     case SHADOW_STATE.rail:
       return "patrol";
     case SHADOW_STATE.chase:
@@ -503,10 +581,11 @@ function startRail(game: AdventureGame, world: World, e: Enemy, rail: readonly R
   e.angle = headingTo(e.homeX - e.x, e.homeY - e.y);
 }
 
-function startStand(game: AdventureGame, e: Enemy): void {
-  setState(e, SHADOW_STATE.stand);
+/** Standing (15), or 14 after his entrance (only its time differs: 0x801C4020). */
+function startStand(game: AdventureGame, e: Enemy, state: number = SHADOW_STATE.stand): void {
+  setState(e, state);
   e.tvx = 0;
-  e.timer = SHADOW.stand + random(game, SHADOW.standRand);
+  e.timer = state === SHADOW_STATE.ready ? SHADOW_INTRO.ready + random(game, SHADOW_INTRO.readyRand) : SHADOW.stand + random(game, SHADOW.standRand);
   setRange(e, RANGE_WAKE, SHADOW.wake + random(game, SHADOW.wakeRand));
   e.frameTimer = SHADOW.idle + random(game, SHADOW.idleRand);
 }
@@ -557,6 +636,7 @@ export function stepShadowLink(game: AdventureGame, stage: AdventureStage, e: En
   const rail = shadowRail(game, stage, e);
   const t = leaderTarget(game, e);
   e.facing = facingOf(e.angle);
+  if (shadowEntering(e)) return stepEntrance(game, e, t);
   switch (e.shot) {
     case SHADOW_STATE.change:
       return stepChange(game, e);
@@ -568,6 +648,7 @@ export function stepShadowLink(game: AdventureGame, stage: AdventureStage, e: En
       e.life = SHADOW.downHits;
       startChase(e, game);
       return;
+    case SHADOW_STATE.ready:
     case SHADOW_STATE.stand:
       walk(e, world);
       if (e.tick >= e.timer && t && t.d <= range(e, RANGE_WAKE)) return startRail(game, world, e, rail);
@@ -622,6 +703,59 @@ export function stepShadowLink(game: AdventureGame, stage: AdventureStage, e: En
       // 39: standing after his swing.
       e.speed = 0;
       if (e.tick >= e.timer) afterSwing(game, e, t);
+  }
+}
+
+/**
+ * His entrance (0x801C30BC…, the group's coordinator 0x801C0DCC, which moves him on at the start of the next frame:
+ * the sim moves him on the tick before, or sets the tick as its update would have it). The scene's take happens at
+ * once (the Links on foot; a load carried isn't taken from them here, assumed).
+ */
+function stepEntrance(game: AdventureGame, e: Enemy, t: Target | null): void {
+  const I = SHADOW_INTRO, S = SHADOW_STATE;
+  switch (e.shot) {
+    case S.wait: {
+      // Kind 3 comes in with the others' scene (the coordinator's 0x801C27A8, assumed alone); 1 and 2 wake by the Link
+      // in control within reach, the four on his screen (0x801CD228: none left in another area).
+      if (((e.params >>> 5) & 7) === 3) {
+        if (shadowHolds(game)) setState(e, S.taken);
+        return;
+      }
+      const reach = (((e.params >>> 20) & 0xff) || I.wakeDefault) * I.wakeUnit * SUBPX;
+      const p = game.players[0];
+      if (t && p && !game.adventure.away && (p.x - e.x) ** 2 + (p.y - e.y) ** 2 < reach ** 2) setState(e, S.wake);
+      return;
+    }
+    case S.wake:
+      // The scene takes the game (the Links moved this tick already; from the next they stand).
+      return setState(e, S.taken);
+    case S.taken:
+      return setState(e, S.portal);
+    case S.portal:
+      if (e.tick >= I.portal) setState(e, S.rise);
+      return;
+    case S.rise: {
+      // Its height a tick on: the sum of the speeds so far (4.5 px/tick less 0.2 each tick, at most 4 down).
+      const k = e.tick, unclamped = Math.min(k, Math.floor((I.riseUp + I.riseMost) / I.riseFall));
+      const z5 = I.riseUp * unclamped - (I.riseFall * unclamped * (unclamped + 1)) / 2 - I.riseMost * (k - unclamped);
+      e.z = Math.max(0, Math.trunc(z5 / 5));
+      if (k > 1 && z5 <= 0) setState(e, S.landed);
+      return;
+    }
+    case S.landed:
+      // Ready at its end (+0x230 0x8000); the coordinator poses him on the next frame.
+      if (e.tick <= I.landed) return;
+      setState(e, S.pose);
+      e.tick = 1;
+      return;
+    case S.pose:
+      if (e.tick >= I.pose) setState(e, S.challenge);
+      return;
+    default:
+      // 12: until the message window is free again; then 14 (the coordinator's, on the next frame: its tick 1).
+      if (e.tick <= I.window) return;
+      startStand(game, e, S.ready);
+      e.tick = 1;
   }
 }
 

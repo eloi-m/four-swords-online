@@ -42,6 +42,8 @@ export const LIVE_FIELDS: Readonly<Record<string, Readonly<Record<string, readon
     dir: [0x98, "i32"], timer: [0x250, "i32"], vx: [0x3c, "f32"], vy: [0x40, "f32"], tvx: [0x28c, "f32"], tvy: [0x290, "f32"],
     homeX: [0x298, "f32"], homeY: [0x29c, "f32"],
   },
+  // Shadow Link's state and its ticks (sim shadowlink.ts: his entrance's states 0-14).
+  SLK2: { state: [0x248, "i32"], tick: [0x24c, "i32"] },
 };
 
 export interface LiveState {

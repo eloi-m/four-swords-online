@@ -141,7 +141,50 @@ in a row at y 224 east of the island's pit), `w1-011-room8-island` (the red Link
 - **Room 4's Shadow Link** (`SLK2` at 0x812E7100 in these states; `actor-trace --ids SLK2 --fields SLK2=80-5b4`; his
   life at +0x108, his state at +0x248, his speed at +0x254, his heading at +0x234/+0x238):
   - The way in: walking up from the door, the Links stop at y 265 and the camera pans to the room's middle, where he
-    comes out of a dark portal (jumping out ~230 ticks in); control comes back ~550 ticks after the door.
+    comes out of a dark portal (jumping out ~230 ticks in); control comes back ~550 ticks after the door. **Shadow
+    Link's entrance** (2026-10-30; read in main.dol: the state ticks 0x801C30BC…, their starts 0x801C3BC0…, the group
+    0x804C7E70 (0x801C0D70) and its coordinator 0x801C0DCC, his camera method 0x801C283C; traced with `actor-trace.ts`
+    from `ref/adv/w1-011-room11-north` with its recipe's script and switch-20 poke then 800 frames of Up, `--fields
+    SLK2=230,248,24c,250,c:f,10:f,14:f,3c:f,40:f,44:f,33c:h,340,11d:b,98` and the raw bars (overlay 0x81128470 +0x284),
+    the scene's mask (0x811738CC +0x3041), the camera's special focus (0x80F8BC30 +0x7F0), view and box; GDB port 2520):
+    - **Who:** his init (0x801C544C) by kind (p >> 5) & 7: 1 and 2 get the flags 0x6000 (in the entrance, the one
+      that leads it), 3 only 0x4000 (taken along), the others none; the group's place (+0x54) is his spot, its +0x50
+      (a place to come out at) −1 in room 4. His reach for the wake: (p >> 20) & 0xFF × 16 px, 10 × 16 when 0 (room 4's
+      0x544120: 80 px).
+    - **0** (unseen): the Link in control within that reach (squared distance; the leader at (231, 266.5) woke him,
+      268 didn't) and all four on his screen (0x801CD228) → **1**: the scene takes the game (0x801F68E0: a Link
+      carrying something has it dropped first, 0x80230C6C, and it tries again the next tick; then each Link held,
+      +0x3041 = 15, the HUD hidden by 0x8037AE00) and asks for the bars; the group's flag 8 makes the coordinator (each
+      frame, before the actors) put every 0x4000 member in **2** (1 tick); the Links' last step is the take's tick,
+      then not a step or a frame of theirs moves (the leader stays in state 2 on his walking frame 63, the others 3).
+    - **3**, the dark portal: JPA 1043, 1044, 1045 at his spot (0x80214740, param 0; 1048-1050 with 1: his state 13,
+      back into it), 235 ticks (160 when the group's +0x50 ≥ 0). **4**, out of it: +0x11D = 1 (drawn from here),
+      animation 4, sound 0x40035, up 4.5 px/tick less 0.2 a tick, at most 4 down: 4.3, 8.4 … 48.4 at the top (22
+      ticks) … 0.4, then on the ground on the 45th tick. **5**: 15 ticks (60 when 0x801C11F0 or the group's flag 1),
+      then +0x230 0x8000 and the group's flag 0x10; once every member is (+2: their count) the coordinator poses them
+      (0x801C272C: 6 when 0x801C11F0, 7 with flag 1, else **9**). **9**: 60 ticks, then 10 (115) and 11 (60) for a
+      skill with flag 2, else **12**: the message window's "Defeat Shadow Link!" (0x8043D67C with 411: BMG 0x19C) and the
+      stage call 0x802D6BC8(1); when the window is free again (+0x10A, 191 ticks on) the group's flag 0x20 puts him in
+      **14** on the next frame: the scene's end (0x801F6884, the HUD back) and standing as in 15 for 5 + rand(26) ticks.
+    - **Timeline from the wake (tick T):** T+1 the take, T+2 state 3, T+237 state 4, T+282 5, T+297 ready, T+298 9,
+      T+357 12, T+548 the window free, T+549 14, T+550 the leader's first step (traced, all of it).
+    - **The camera** (0x801C283C every tick): in states 3-12, the one that leads asks for the bars (overlay +0x284 = 1,
+      +0x28C = 0.05) and, unless the Links are in a GBA area, sets the special focus (+0x7F4 = 1, kind +0x7F8 = 4, his
+      x, y, +0x7F6 = 0); from 14 on (but 23) he hands his point (0x8030C210) and sets +0x178 (a boss: mode 2). With the
+      special focus of kind 4 the box (0x8030CD18) is his point alone, no Link counted, the edges' holds cleared: it
+      went 3 px a tick toward him (0.95 across, 3 up), then a fifth of the gap (mode 4: no point handed), on him
+      (2304, 576) by ~40 ticks, the view 284 px wide (2.1408). Mode 2 (64, 130, 32, 3, 1, slack 32, hold 60, 0.1, flag
+      0): without the flag every Link on the TV counts and points aren't pulled; the margin (+0x1D4) and the least half
+      width (+0x1D8) ease to the mode's by a tenth of the gap, 3 px at most: the zoom 2.141 → 2.338. apps/game's camera
+      fed this trace's Links and his states gives Dolphin's box and view to 0.000 px over 800 frames.
+    - **The bars** (the overlay [[0x8053AB10]+0x30], step 0x8016005C, draw 0x8015F9C0): asked for during a tick, their
+      amount +0x288 goes up by +0x28C on the next step (0.05: 1.0 twenty ticks after the take), else down by it (0 twenty
+      ticks after 14's start); drawn black over the whole width, 48 × a² TV px tall at the top and at the bottom, alpha
+      255 × a². Frame dumps (`compare.ts`, cave-room4): the HUD gone from the take, the portal a black disc with purple
+      sparks, "Defeat Shadow Link!" at the top (the Links low on the screen).
+    - From `ref/places/cave-room4` (21 ticks into state 3; its `.sav` holds +0x24C = 20, a trace's first frame 21) with
+      Up held (`clip.ts`, `cave-room4-entrance`): his states at the same frames as ours through 14 (3, 4 on 214, 5 on 259,
+      9 on 275, 12 on 334, 14 on 526), the leader's first step on 527 in both.
   - **Walk and target:** he walks at 1 px/tick, reached by +0.1 px/tick each tick from rest (the heading a unit
     vector). Left alone he goes about the room's `RAIL` points ((96, 80), (96, 192), (416, 192), (416, 64), (112, 80):
     +0x358's low byte the point he heads for), stands at each (state 15, ~90-580 ticks) and once jumped from (120, 80)

@@ -292,7 +292,7 @@ export function stepSwordSoldier(game: AdventureGame, e: Enemy, world: World): v
         e.flags &= ~SOLDIER_AT_ONCE;
         e.speed = Math.round(SOLDIER.baseSpeed * SUBPX);
         startChase(game, e, SOLDIER.walkInChaseMin + random(game, SOLDIER.walkInChaseSpread));
-      } else if (notices(clearLine(world, e.x / SUBPX, e.y / SUBPX, p!.x / SUBPX, p!.y / SUBPX))) {
+      } else if (p && notices(clearLine(world, e.x / SUBPX, e.y / SUBPX, p.x / SUBPX, p.y / SUBPX))) {
         e.speed = Math.round(SOLDIER.baseSpeed * SUBPX);
         setState(e, "notice");
       }

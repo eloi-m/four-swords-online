@@ -417,7 +417,14 @@ only the leader there (a follower walks its trail without collision): all four n
   on to the switch whatever the pad, then let go as it goes back up; Down let go while held, it goes back up dragging
   them and the leader lets go on its 3rd tick. All in `lever.ts` (tests in `lever.realdisc.test.ts`).
 - **Room 4** (`shadowlink.ts`): Shadow Link (`SLK2`, ~60 methods: a Link's state machine, its tick table 0x804A448C
-  and its starts 0x804A45B4 by his state +0x248). **His moves, read from main.dol and traced in Dolphin**
+  and its starts 0x804A45B4 by his state +0x248). **His entrance** (2026-10-30, read and traced from room 11's door:
+  measurements/adventure-world1.md "Shadow Link's entrance"): unseen until the leader comes within 80 px, then the
+  scene holds the Links where they stand (not a step or a frame) for 548 ticks while he comes out of his dark portal
+  (JPA 1043-1045, 235 ticks), jumps out (45), poses and "Defeat Shadow Link!" shows (191), under the letterbox bars
+  with the HUD hidden and the camera on him alone (its special focus); then the camera's boss mode (every Link
+  counted, 2.338). The sim's states and the Links' release match Dolphin's frame for frame (`clip.ts` from
+  `ref/places/cave-room4`); apps/game draws the bars, the portal, the message window (messagewindow.ts, apps/battle's
+  timing) and the camera (its box and view to 0.000 px against the trace). **His moves, read from main.dol and traced in Dolphin**
   (2026-10-11, measurements/adventure-world1.md "Room 4's Shadow Link", `w1-011-room4-shadow`/`-green`): his skill
   level (params & 31, room 4's 0: flags 0x48, 0x802157B8) gives him the plain swing only (no spin attacks, no jumps
   of his own, no swing at once from up close). **Standing** (15): 15-30 ticks, then a Link within 70-100 px sends
@@ -465,7 +472,8 @@ only the leader there (a follower walks its trail without collision): all four n
 - Also: an arrow that sticks in a crystal's own tile lights it (`bow.ts`: room 3's from below depended on the pixel it
   was shot from, room 9's across the chasm never lit).
 - **Still open:** Shadow Link's lunge (state 36), how he joins his rail (0x801C844C), his looking about while he
-  stands, the items on him (state 16); room 3's arrow lighting in Dolphin; the blue bracelet (chest content 0x15
+  stands, the items on him (state 16); his entrance's sounds (0x40035, 0x400D6), the poses' animations (+0x340) and the HUD's
+  fade; room 3's arrow lighting in Dolphin; the blue bracelet (chest content 0x15
   gives nothing); Shadow Link's own animation (his frames are a Link's, assumed, below).
 - **The stage's items: the lamp, the bow, the blue bracelet** (the wiki). Pedestals (tile 0x017, a `TRCH` kind 1 glow
   beside each) stand in rooms 6 (two), 13 (48, 112) and 0 (432, 336: the pocket by the east door, beside the candles the

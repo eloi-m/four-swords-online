@@ -37,6 +37,7 @@ import { gateWorld, startStairs, stepGates, stepStairs, type StairsTrip } from "
 import { blockWorld, ringWorld, stepBlocks, stepPoints, type MovedBlock } from "./tileblocks.ts";
 import { colorBlockWorld, stepColorBlocks } from "./colorblocks.ts";
 import { spawnGanon, stepGanon, type Ganon } from "./phantomganon.ts";
+import { shadowHolds } from "./shadowlink.ts";
 import { stepTingle, tingleHolds, type Tingle } from "./tingle.ts";
 import { carryingKey, doorWorld, keyThrowHolds, knockKeyOut, liftKey, shutDoors, stepDoors, stepKeyLift, stepKeyThrow, throwKey, type CarriedKey, type KeyThrow } from "./doors.ts";
 import { rewriteWorld, rewrittenTiles, savedSwitches, saveSwitches, stepFourSwitch, stepLogic } from "./logic.ts";
@@ -452,7 +453,9 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
   // Cleared: the Links stand where they are; so while a boss holds them (Phantom Ganon's demo lock).
   // Tingle's scene (tingle.ts) holds them too, but for the button that reads his messages.
   stepTingle(game, stage);
-  if (a.cleared || a.ganon?.lock || (tingleHolds(game) && !a.talk)) inputs = inputs.map(() => 0);
+  // A Shadow Link's entrance holds them as they stand: not a step or a frame of theirs moves (shadowlink.ts, traced).
+  const scene = shadowHolds(game);
+  if (a.cleared || a.ganon?.lock || scene || (tingleHolds(game) && !a.talk)) inputs = inputs.map(() => 0);
   // The owl talks by itself when the Links come up to it (dialogue.ts).
   startOwlTalk(game, stage);
   // A message on show: the leader stands while it types and turns its pages; an item got: the pose first (dialogue.ts).
@@ -475,16 +478,18 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
     const leader = game.players[0]!, m = a.links[0]!;
     const pressedNow = (inputs[0] ?? 0) & ~leader.held;
     // (A two-Link rock lifted keeps its Links' places: no formation, apart or switch of Link until it's thrown.)
-    if (!heavyLifted(game)) {
+    if (!heavyLifted(game) && !scene) {
       pickFormation(game, inputs[0] ?? 0, leader.held);
       pickApart(game, inputs[0] ?? 0, leader.held);
     }
     // The other Links follow first (the second one sees where the leader stood: measured), in order; knocked back or
     // falling they play that out instead. In a C-stick formation they move with him, after him (traced: in step).
     const rigid = a.formation !== "trail";
-    if (!rigid && !a.away && !snapped) for (let i = 1; i < game.players.length; i++) stepOther(game, i, view, area.sideView);
+    if (!rigid && !a.away && !snapped && !scene) for (let i = 1; i < game.players.length; i++) stepOther(game, i, view, area.sideView);
     if (m.mode === "ashore") m.mode = "walk";
-    if (stepFallsDrop(game) || fallsWaiting(game, inputs[0] ?? 0)) {
+    if (scene) {
+      // (Held by the scene.)
+    } else if (stepFallsDrop(game) || fallsWaiting(game, inputs[0] ?? 0)) {
       // Over a waterfall: dropping into the pool, or waiting at the falls' foot for Down (falls.ts).
       for (const f of b.fighters) tickFighter(f);
     } else if (m.mode === "fall") {
@@ -557,7 +562,7 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
     }
     // (The cross formation's spin let go: the whirl, the followers' first tick of it next.)
     startCrossSpin(game);
-    if (rigid && !a.away && !snapped) for (let i = 1; i < game.players.length; i++) stepOther(game, i, view, area.sideView);
+    if (rigid && !a.away && !snapped && !scene) for (let i = 1; i < game.players.length; i++) stepOther(game, i, view, area.sideView);
     flyLinks(game, view, area.sideView);
     gatherDone(game);
     if (a.area === 0) {

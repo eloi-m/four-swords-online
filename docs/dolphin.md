@@ -72,7 +72,9 @@ Index of the docs: [README.md](README.md).
   Field, Lake Hylia room 7): a difference of where the position is taken, so far.
 - **Clip diff:** `node tools/dolphin/src/clip.ts <state.sav> --script "<script>"` plays the script in Dolphin, feeds
   ours what Dolphin's game read each frame (the GBA keys, or the pad: B sword, A item, R action, the C stick's
-  formations) from the same place, and reports the first frame a Link is more than 1 px off (`--tol`), with a table
+  formations) from the same place (ours given what `compare.ts` carries: a hovering gem's shuttle, Shadow Link's
+  entrance state a tick on, since a trace's first frame is the game's frame after the state's RAM; a leader walking
+  in Dolphin, state 2, walks on in ours), and reports the first frame a Link is more than 1 px off (`--tol`), with a table
   every 10 frames (`--every`) and around it. A battle round state's control frame isn't the same in every state: when
   ours walks off a frame or two late, `--lead` lines it up (8 for Above the Clouds and the Tower of Flames, 9 for The
   Field); `--reuse` keeps Dolphin's side of the last run of the same clip to try ours again; `--links 1` compares the

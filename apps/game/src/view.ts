@@ -21,6 +21,7 @@ import {
   RiverBed,
   riverBedPalettes,
   roomQuad,
+  screenCamera,
   SpriteAtlas,
   SpriteMesh,
   stageParticles,
@@ -32,7 +33,7 @@ import {
   opaqueFrame,
 } from "@fso/render";
 import { fighterFrame, fighterHeight, fighterVisible, HURTBOX, linkDisplayFrame, SUBPX, switchOn, type PixelBox } from "@fso/sim";
-import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
+import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, shadowHolds, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { CloudShadow, cloudShadowLevel } from "../../battle/src/cloudshadow.ts";
 import { EntityView } from "../../battle/src/entities.ts";
@@ -43,6 +44,7 @@ import { GanonView } from "./ganon.ts";
 import type { AdventureHud } from "./hud.ts";
 import type { DialogueBox } from "./dialogue.ts";
 import type { GbaWindow } from "./gbawindow.ts";
+import type { MessageWindow } from "./messagewindow.ts";
 import { TvCamera } from "./camera.ts";
 import { AdventureLight } from "./light.ts";
 
@@ -54,6 +56,10 @@ const ROOM_W = 512, ROOM_H = 384;
 const DEPTH_PER_PIXEL = 1 / 1024;
 /** Ticks a blade trap's sparks stay listed (one-shot: they play out meanwhile). */
 const SPARKS_LISTED = 60;
+/** Shadow Link's portal (sim shadowlink.ts: his entrance's state 3). */
+const SHADOW_PORTAL = [1043, 1044, 1045] as const;
+/** The letterbox bars' full height (TV px: the overlay's draw 0x8015F9C0, 48 × the amount²). */
+const BARS_H = 48;
 /** Actor types the view doesn't draw as static sprites: the player starts, and what the sim animates (the escort Zoras
  *  only show where the sim has them: EnemyView). */
 const NOT_STATIC = new Set(["PLAS", "HBMB", "BLZ2", "BEEE", "FAZR", "FZRA", ...ENEMY_TYPES, ...PICKUP_TYPES]);
@@ -100,6 +106,8 @@ export class AdventureView {
   hud: AdventureHud | null = null;
   /** The signs' and people's message boxes (main2D's hukidashi screens), when they and the messages were found. */
   dialogue: DialogueBox | null = null;
+  /** The TV's message window (messagewindow.ts: "Defeat Shadow Link!"). */
+  messageWindow: MessageWindow | null = null;
   private windowRect = { ...WINDOW_FALLBACK };
   /** The Links and the arena's entities, in the current area's coordinates (moved to its room's origin on the TV). */
   private readonly local = new THREE.Group();
@@ -137,6 +145,10 @@ export class AdventureView {
   readonly actorSources: ActorSpriteSources;
   readonly entities: EntityView;
   readonly enemies: EnemyView;
+  /** The letterbox bars over the TV (camera.ts Letterbox), in its 608×448 px. */
+  private readonly bars = { scene: new THREE.Scene(), camera: screenCamera(TV_W, TV_H), top: blackBar(), bottom: blackBar() };
+  /** The bars' amount drawn in the last frame (0-1; for tests). */
+  drawnBars = 0;
   /** Phantom Ganon (ganon.ts). */
   readonly ganon: GanonView;
   private links: SpriteMesh[] = [];
@@ -408,7 +420,27 @@ export class AdventureView {
     }
     const specs = this.near.filter((e) => (e.actor !== "TRCH" || this.torchFlame(game, e)) && (e.actor !== "FLME" || this.ringBurning(game, e))).map((e) => e.spec);
     this.drawnWhirlpools = this.near.filter((e) => e.room === room && e.actor === "WARP" && e.spec.placement.id === 1363).length;
-    this.particles.sync(game.tick, [...specs, ...this.burningArrows(game), ...this.barriers(game), ...this.minorShadows(game), ...this.traps(game)]);
+    this.particles.sync(game.tick, [...specs, ...this.burningArrows(game), ...this.barriers(game), ...this.minorShadows(game), ...this.traps(game), ...this.shadowPortal(game)]);
+  }
+
+  /**
+   * Shadow Link's dark portal (his entrance's state 3: 0x80214740 makes JPA 1043, 1044 and 1045 at his spot), from its
+   * start while he's in it and jumps out (states 3 and 4; when the game ends it isn't read: assumed, the frame dumps
+   * show no portal once he's landed).
+   */
+  private shadowPortal(game: AdventureGame): JpaEffectSpec[] {
+    const out: JpaEffectSpec[] = [];
+    const room = this.rooms.get(game.adventure.room);
+    if (!room || game.adventure.area !== 0) return out;
+    for (const e of game.adventure.enemies) {
+      if (e.type !== "SLK2" || (e.shot !== SHADOW_STATE.portal && e.shot !== SHADOW_STATE.rise)) continue;
+      const start = game.tick - e.tick - (e.shot === SHADOW_STATE.rise ? SHADOW_INTRO.portal : 0);
+      for (const id of SHADOW_PORTAL) {
+        const placement = fsaParticlePlacement(id, room.origin.x + e.x / SUBPX, room.origin.y + e.y / SUBPX, 0, { layer: 0, sublayer: 0 });
+        if (placement) out.push({ key: `slk2:${e.id}:${id}:${start}`, start, placement });
+      }
+    }
+    return out;
   }
 
   /**
@@ -613,10 +645,22 @@ export class AdventureView {
     if (this.particles) this.distortion.draw(r, [{ jpa: this.particles.renderer, camera: this.tvCamera }], tv.x * dpr, (ch - tv.y - tv.h) * dpr, tv.w * dpr, tv.h * dpr);
     this.renderLight(game, tv, dpr);
     this.renderWindow(game, tv, ch);
-    if (this.hud) {
+    this.renderBars();
+    // A scene (Shadow Link's entrance) hides the HUD from its take to its end (0x8037AE00, 0x8037AE30; at once:
+    // assumed).
+    if (this.hud && !shadowHolds(game)) {
       this.hud.update(game);
       r.clearDepth();
       r.render(this.hud.scene, this.hud.camera);
+    }
+    if (this.messageWindow) {
+      // The Links on the TV, their feet on its 608×448 px, for the side the window comes in from.
+      const view = this.camera.view, k = TV_W / (view.right - view.left), o = this.rooms.get(game.adventure.room)?.origin ?? { x: 0, y: 0 };
+      const feet = game.adventure.area === 0 ? game.players.map((p) => ({ x: (o.x + p.x / SUBPX - view.left) * k, y: (o.y + p.y / SUBPX - view.top) * k })) : [];
+      if (this.messageWindow.update(game, feet, 16 * k)) {
+        r.clearDepth();
+        r.render(this.messageWindow.scene, this.messageWindow.camera);
+      }
     }
     const box = this.dialogue?.update(game, this.adventure);
     if (box) {
@@ -625,6 +669,21 @@ export class AdventureView {
     }
     r.setScissorTest(false);
     opaqueFrame(r); // WebKit composites the canvas by its alpha (@fso/render opaque.ts)
+  }
+
+  // The letterbox bars: black, 48 × a² TV px tall at the top and the bottom, at alpha a² (the overlay's draw).
+  private renderBars(): void {
+    const a = this.camera.bars.shown, k = a * a, b = this.bars;
+    this.drawnBars = a;
+    if (k <= 0) return;
+    if (!b.top.parent) b.scene.add(b.top, b.bottom);
+    for (const [bar, y] of [[b.top, k * BARS_H * 0.5], [b.bottom, TV_H - k * BARS_H * 0.5]] as const) {
+      bar.scale.set(TV_W, k * BARS_H, 1);
+      bar.position.set(TV_W / 2, -y, 0);
+      bar.material.opacity = k;
+    }
+    this.renderer.clearDepth();
+    this.renderer.render(b.scene, b.camera);
   }
 
   // The room's darkness (light.ts): the frame tinted and darkened away from the lights and the Links.
@@ -812,6 +871,13 @@ const ARROW_FLAME_AHEAD: readonly (readonly [number, number])[] = [[12, 0], [-12
  * so the room's origin comes off, leaving 2 + (y in the room) / 1024 like the Links' (not over every Link below them).
  */
 export const staticsZ = (origin: { y: number }): number => 2 - origin.y * DEPTH_PER_PIXEL;
+/** A unit black quad for a letterbox bar (scaled and placed by renderBars). */
+function blackBar(): THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> {
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthTest: false, depthWrite: false }));
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
 const clamp = (v: number, lo: number, hi: number) => (lo > hi ? (lo + hi) / 2 : Math.min(Math.max(v, lo), hi));
 
 /** Shows `tiles` (tile index → tile) in a layer, and gets its own tiles back where they no longer show. */
