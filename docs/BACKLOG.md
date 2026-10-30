@@ -243,6 +243,22 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
      Field's frame-155 case (blocked pushing up, then left+B: stays 2 frames and swings in place), not reproduced; the
      side room's hen (NIWA) wanders (x 120 → 92 → 153 over 5 s); the castle's CKSW at (32, 0) and Clouds' at (64, 0)
      are gone after frame 0.
+- **The Dark World arenas against Dolphin (2026-10-30,** `compare.ts` idle from `ref/save-battle-dark-<arena>-2p.sav`,
+  t = 5 s, frames side by side; the light Field and Above the Clouds run again as controls). Matching: every Link and
+  prop the sim keeps, the Dark Tower of Flames' own set (36 BLZ2, 2 socket bombs, its switches), the Dark Tower of
+  Winds' 4 SWTH, the Dark Clouds' 4 fire-bar arms; the darkness itself (the circles around the Links, the flames and
+  the fire bars, the tints; the unlit ground within a level or two of Dolphin's), the BLDF covers, the SVGT glow.
+  Nothing new to the Dark World: the rest of the raw diff is the light arenas' too (the light Field and Above the
+  Clouds list the same):
+  - not ours to list: `BFIN` (the round's end: battle.ts and timeline.ts, no prop), The Field's 11 `TOMI` (kept as
+    wall tiles, arena.ts `WALL_ACTORS`), its 2 `ZNSW` (kind 5 in the side rooms: no effect), the Tower of Flames' 2
+    `BLDF` and the Tower of Winds' 4 `SVGT` (drawn by apps/battle, no sim object); the `SWTH` 8 px up-left
+    (docs/dolphin.md).
+  - known (above, 9): the side room's hen (x 153 in both worlds, y 28 px lower this time) and the extra `CKSW` in Hyrule
+    Castle and Above the Clouds. The castle soldiers and every pedestal's item go their own ways (the sim's seeded
+    generator against the game's LCG: by 5 s the soldiers had hit both Links on both sides, at other places).
+  - left, both worlds: the fire bars' fireballs are smaller and see-through in ours where Dolphin's are solid, a size
+    bigger (Above the Clouds, light and dark; their JPA, B3 "JPA particles").
 
 ### B3. Visual and audio fidelity
 - **Visuals:**
