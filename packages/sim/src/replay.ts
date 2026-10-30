@@ -9,6 +9,8 @@ import { stepGame, type GameState } from "./game.ts";
 import { hashState } from "./hash.ts";
 import { arenaProps } from "./props.ts";
 import type { World } from "./world.ts";
+import type { Facing } from "./player.ts";
+import type { AdventureCarry } from "./adventure/adventure.ts";
 import type { Stage } from "@fso/formats";
 
 /** Runs of identical inputs: [buttons per player, ticks]. */
@@ -87,6 +89,13 @@ export interface AdventureRecord {
   x?: number;
   y?: number;
   players: number;
+  /** What the stage began with (the run's stage before it, or a Dolphin place): the Links' hearts, the leader's item. */
+  carry?: AdventureCarry;
+  /** Each Link put at this room px, facing this way, once the room is entered (a Dolphin place, tools/dolphin
+   *  compare.ts); absent = all stacked on the leader at x, y. */
+  links?: { x: number; y: number; facing?: Facing }[];
+  /** The room's switches once it is entered (bit n: switch n; a Dolphin place's); absent = the room's own. */
+  switches?: number;
   inputs: InputRuns;
   checkpoints: [tick: number, hash: number][];
   tick: number;

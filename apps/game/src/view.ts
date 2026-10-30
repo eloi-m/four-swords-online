@@ -33,7 +33,7 @@ import {
   opaqueFrame,
 } from "@fso/render";
 import { fighterFrame, fighterHeight, fighterVisible, HURTBOX, linkDisplayFrame, SUBPX, switchOn, type PixelBox } from "@fso/sim";
-import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, shadowHolds, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
+import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, shadowHolds, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { CloudShadow, cloudShadowLevel } from "../../battle/src/cloudshadow.ts";
 import { EntityView } from "../../battle/src/entities.ts";
@@ -418,7 +418,7 @@ export class AdventureView {
       const rooms = neighbours(this.stage, room);
       this.near = this.stageEffects.filter((e) => rooms.has(e.room));
     }
-    const specs = this.near.filter((e) => e.actor !== "TRCH" || this.torchFlame(game, e)).map((e) => e.spec);
+    const specs = this.near.filter((e) => (e.actor !== "TRCH" || this.torchFlame(game, e)) && (e.actor !== "FLME" || this.ringBurning(game, e))).map((e) => e.spec);
     this.drawnWhirlpools = this.near.filter((e) => e.room === room && e.actor === "WARP" && e.spec.placement.id === 1363).length;
     this.particles.sync(game.tick, [...specs, ...this.burningArrows(game), ...this.barriers(game), ...this.minorShadows(game), ...this.traps(game), ...this.shadowPortal(game)]);
   }
@@ -538,15 +538,31 @@ export class AdventureView {
    * it's lit (without a switch, or while it's on: TRCH's update 0x802B0F9C).
    */
   private torchFlame(game: AdventureGame, e: ReturnType<typeof stageParticles>[number]): boolean {
-    const [, , k, n] = e.spec.key.split(":").map(Number);
-    let actors = this.roomActors.get(e.room);
-    if (!actors) this.roomActors.set(e.room, (actors = this.stage.actors(e.room)));
-    const actor = actors[k!];
+    const [, , , n] = e.spec.key.split(":").map(Number);
+    const actor = this.effectActor(e);
     if (!actor) return true;
     const kind = actor.params & 0x7f, own = actor.params >>> 27;
     if (!(n === 0 ? [0, 2, 4] : [0, 2]).includes(kind)) return false;
-    if (!own) return true;
-    return e.room === game.adventure.room ? switchOn(game.battle, own) : ((savedSwitches(game, e.room) >>> own) & 1) === 1;
+    return !own || this.switchSet(game, e.room, own);
+  }
+
+  /** Whether a ring of fire's flames show (sim tileblocks.ts): until its switch is on. */
+  private ringBurning(game: AdventureGame, e: ReturnType<typeof stageParticles>[number]): boolean {
+    const actor = this.effectActor(e), own = actor ? actor.params >>> 27 : 0;
+    return !actor || !isFireRing(actor) || !own || !this.switchSet(game, e.room, own);
+  }
+
+  /** The actor a stage effect is kept up by. */
+  private effectActor(e: ReturnType<typeof stageParticles>[number]) {
+    const k = Number(e.spec.key.split(":")[2]);
+    let actors = this.roomActors.get(e.room);
+    if (!actors) this.roomActors.set(e.room, (actors = this.stage.actors(e.room)));
+    return actors[k];
+  }
+
+  /** A room's switch: the current room's live, another's as the Links left it. */
+  private switchSet(game: AdventureGame, room: number, n: number): boolean {
+    return room === game.adventure.room ? switchOn(game.battle, n) : ((savedSwitches(game, room) >>> n) & 1) === 1;
   }
 
   /**

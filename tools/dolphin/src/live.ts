@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { decompressYaz0, loadActorTypes, parseRarc } from "@fso/formats";
 import { liveActors, MainDol } from "../../dol/src/analysis.ts";
-import { CAMERA_ZOOM, LINK, PLAYER_MANAGER_PTR, STAGE_PTR, VIEW_MATRIX } from "./fsa.ts";
+import { CAMERA_ZOOM, GAME_PTR, LINK, PLAYER_MANAGER_PTR, STAGE_PTR, STAGE_ROOM_CELL, STAGE_SWITCHES, VIEW_MATRIX } from "./fsa.ts";
 import { findMem1, MEM1_BASE, MEM1_SIZE, readSavestate } from "./savestate.ts";
 
 /** Link +0x3B4: the screen he is on (0 the TV, 7 + k a GBA area's sublayer k). */
@@ -50,6 +50,8 @@ export interface LiveState {
   links: LiveLink[];
   actors: LiveActor[];
   camera: { x: number; y: number; zoom: number } | null;
+  /** The current room's switches (bit n: switch n), null when the stage data isn't there. */
+  switches: number | null;
 }
 
 /** Actors that draw nothing (or only on the GBA): left out unless asked for. */
@@ -110,7 +112,10 @@ export function readLive(mem1: Uint8Array, vtables: Map<number, string[]>, all =
   if (inRam(stage) && inRam(u32(stage + 0x24))) {
     camera = { x: -f32(VIEW_MATRIX + 0xc), y: -f32(VIEW_MATRIX + 0x1c), zoom: f32(u32(stage + 0x24) + CAMERA_ZOOM) };
   }
-  return { links, actors, camera };
+  let switches: number | null = null;
+  const game = u32(GAME_PTR), info = inRam(game) ? u32(game + 4) : 0, data = inRam(info) ? u32(info + 0xc) : 0;
+  if (inRam(data)) switches = u32(data + STAGE_SWITCHES + u32(data + STAGE_ROOM_CELL + 4) * 40 + u32(data + STAGE_ROOM_CELL) * 4);
+  return { links, actors, camera, switches };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -125,6 +130,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   else {
     const c = live.camera;
     console.log(c ? `camera (${c.x.toFixed(1)}, ${c.y.toFixed(1)}) zoom ${c.zoom.toFixed(4)}` : "camera -");
+    if (live.switches !== null) console.log(`switches ${[...Array(32).keys()].filter((n) => (live.switches! >>> n) & 1).join(" ") || "-"}`);
     for (const [i, l] of live.links.entries())
       console.log(`link${i} (${l.x.toFixed(1)}, ${l.y.toFixed(1)}) z ${l.z.toFixed(1)} state ${l.state} screen ${l.screen} facing ${l.facing} life ${l.life} item ${l.item}`);
     for (const a of live.actors) console.log(`${a.addr.toString(16)} ${a.id.padEnd(5)} s${a.screen} (${a.x.toFixed(1)}, ${a.y.toFixed(1)})`);
