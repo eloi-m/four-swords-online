@@ -338,7 +338,7 @@ async function adventureChecks(page: Page): Promise<void> {
   // Room 5's ambush from its generator: on the bridge's floor switch the way west shuts and sword soldiers walk in from
   // the west, one every 10 ticks (sixteen); one is stabbed: a kill for the room's count.
   await open(page, "room=5&x=264&y=304&players=1");
-  tick = await capture(page); // (20 ticks: soldiers made on ticks 1 and 11 so far)
+  tick = await capture(page); // (about 20 ticks, more on a busy machine: a soldier made on ticks 1, 11, 21, ...)
   await tick(2);
   const shut = await page.evaluate(() => {
     const g = (window as unknown as { fso: Fso }).fso.game;
@@ -366,7 +366,7 @@ async function adventureChecks(page: Page): Promise<void> {
   }
   await page.screenshot({ path: join(out, "adventure-generator-kill.png") });
   console.log(`generator: tick ${shut.tick}: switch 4 ${shut.switch4}, ${shut.soldiers} soldiers; tick ${walked.tick}: ${walked.soldiers} (${walked.drawn} drawn, ${walked.walking} walking in); kills ${kills}`);
-  if (shut.switch4 !== 1 || shut.soldiers !== 3 || walked.soldiers !== 16 || !(walked.drawn >= 10) || kills < 1) problems.push(`generator: ${JSON.stringify({ shut, walked, kills })}`);
+  if (shut.switch4 !== 1 || shut.soldiers !== Math.min(16, Math.floor((shut.tick - 1) / 10) + 1) || walked.soldiers !== 16 || !(walked.drawn >= 10) || kills < 1) problems.push(`generator: ${JSON.stringify({ shut, walked, kills })}`);
 
   // New enemies: The Mountain Path's Tektites (stage 3-2, room 5) jump about, one is stabbed and leaves a heart; the
   // Death Mountain Foothills' Buzz Blobs (3-1, room 5) shock the Link who strikes one.

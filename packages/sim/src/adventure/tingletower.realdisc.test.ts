@@ -66,5 +66,5 @@ describe.skipIf(!existsSync(root))("Tingle's Tower by its route", () => {
     for (let n = 3; n < TINGLE_TOWER_MILESTONES.length; n++) run(again, n);
     expect(again.tick).toBe(game.tick);
     expect(hashGame(again)).toBe(hashGame(game));
-  });
+  }, 90_000); // ~17 s alone; past 30 s when the whole suite runs in parallel
 });
