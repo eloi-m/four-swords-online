@@ -65,11 +65,11 @@ if (place.arena) {
   record = { kind: "battle", room: place.room, players: b.start.spawns.length, rules: BATTLE_RULES, seed: Number(values.seed), cpus: [], start: b.start, inputs: [], checkpoints: [], tick: 0, hash: 0 };
 } else {
   const stage = loadAdventureStage(EXTRACTED, place.stage);
-  const a = adventureSim(stage, place, startLive.actors);
+  const a = adventureSim(stage, place, startLive.actors, startLive.links);
   sim = a;
   roomCell = a.cell;
   const leader = a.game.players[0]!;
-  record = { kind: "adventure", stage: place.stage, room: place.room, x: Math.round(leader.x / 256), y: Math.round(leader.y / 256), players: place.links.length, inputs: [], checkpoints: [], tick: 0, hash: 0 };
+  record = { kind: "adventure", stage: place.stage, room: a.adventure.room, x: Math.round(leader.x / 256), y: Math.round(leader.y / 256), players: place.links.length, inputs: [], checkpoints: [], tick: 0, hash: 0 };
 }
 const idle = sim.game.players.map(() => 0);
 const moments: { s: number; tick: number; rows: ActorRow[]; zoom: number | null; dolphinFrame: string | null }[] = [];

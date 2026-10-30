@@ -11,19 +11,25 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
 import { Button } from "@fso/sim";
-import { FORMATION_BUTTONS } from "@fso/sim/adventure";
+import { FORMATION_BUTTONS, GATHER_BUTTON, SEPARATE_BUTTON, selectButtons } from "@fso/sim/adventure";
 import { clipDiff, CLIP_TOLERANCE, type ClipLink } from "./diff.ts";
 import { gbaButtons } from "./fixture.ts";
 import type { FrameSnapshot } from "./fsa.ts";
+import { actorVtables, readLive, readMem1 } from "./live.ts";
 import { describePlace, EXTRACTED, knownPlace, readRecipe, RUNS, runTrace, userDirFor, withScreen } from "./place.ts";
 import { battleStateName } from "./recipe.ts";
 import { adventureSim, battleSim, loadAdventureStage, placePx, type Sim } from "./sim.ts";
 
 /** PADStatus bits and the stick threshold (fixture.ts: the game walks from a tilt of about 36). */
-const PAD = { A: 0x100, B: 0x200, R: 0x20 } as const;
+const PAD = { A: 0x100, B: 0x200, R: 0x20, X: 0x400, Y: 0x800, LEFT: 0x1, RIGHT: 0x2, DOWN: 0x4, UP: 0x8 } as const;
+/** The D-pad's directions as the Link they hand the controls to (formation.ts: right red, left blue, down purple, up green). */
+const DPAD_COLORS: readonly (readonly [number, number])[] = [[PAD.RIGHT, 1], [PAD.LEFT, 2], [PAD.DOWN, 3], [PAD.UP, 0]];
 const STICK = 36;
 
-/** A GameCube pad as the adventure's buttons: B the sword, A the item, R the action, the C stick the formations. */
+/**
+ * A GameCube pad as the adventure's buttons: B the sword, A the item, R the action, the C stick the formations, X the
+ * Links apart, Y together, the D-pad another Link in control.
+ */
 export function adventureButtons(pad: FrameSnapshot["pad"]): number {
   let b = 0;
   if (pad.x >= STICK) b |= Button.Right;
@@ -33,6 +39,10 @@ export function adventureButtons(pad: FrameSnapshot["pad"]): number {
   if (pad.buttons & PAD.B) b |= Button.Sword;
   if (pad.buttons & PAD.A) b |= Button.Item;
   if (pad.buttons & PAD.R) b |= Button.Action;
+  if (pad.buttons & PAD.X) b |= SEPARATE_BUTTON;
+  if (pad.buttons & PAD.Y) b |= GATHER_BUTTON;
+  const pick = DPAD_COLORS.find(([bit]) => pad.buttons & bit);
+  if (pick) b |= selectButtons(pick[1]);
   const cx = pad.cx ?? 0, cy = pad.cy ?? 0;
   if (cy >= STICK) b |= FORMATION_BUTTONS.box;
   else if (cy <= -STICK) b |= FORMATION_BUTTONS.long;
@@ -81,7 +91,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // Ours from where Dolphin's Links stand on the clip's first frame.
   const first = frames[0]!;
   const start = { ...place, links: first.links.map(withScreen) };
-  const sim: Sim = place.arena ? battleSim(EXTRACTED, start, { live: first.links, ...(values.lead ? { lead: Number(values.lead) } : {}) }) : adventureSim(loadAdventureStage(EXTRACTED, place.stage), start);
+  const sim: Sim = place.arena ? battleSim(EXTRACTED, start, { live: first.links, ...(values.lead ? { lead: Number(values.lead) } : {}) }) : adventureSim(loadAdventureStage(EXTRACTED, place.stage), start, [], readLive(readMem1(state, EXTRACTED), actorVtables(EXTRACTED)).links);
   const players = sim.game.players.length;
   // Battle: the players in the round are the first ones (absent Links trail).
   const dolphinLinks = (f: (typeof frames)[number]): ClipLink[] =>

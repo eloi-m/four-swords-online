@@ -8,9 +8,9 @@ import {
   applyRoundStart, arenaProps, buildArenaWorld, createBattle, SIDE_ROOM_STRIDE, stepGame, SUBPX, type BattleRules, type Facing, type GameState, type RoundStart,
   type Spawn, type World,
 } from "@fso/sim";
-import { actorStats, AdventureStage, createAdventure, messageBook, playedAlone, stepAdventure, type AdventureGame } from "@fso/sim/adventure";
+import { actorStats, ADVENTURE_HEARTS, ALONE_ROOMS, AdventureStage, createAdventure, GEAR_BY_NUMBER, messageBook, playedAlone, stepAdventure, type AdventureGame } from "@fso/sim/adventure";
 import type { Body, ClipLink } from "./diff.ts";
-import { UNDRAWN, type LiveActor } from "./live.ts";
+import { UNDRAWN, type LiveActor, type LiveLink } from "./live.ts";
 import { CELL_H, CELL_W, localPx, type Place } from "./recipe.ts";
 
 export const FACINGS: readonly Facing[] = ["right", "left", "down", "up"];
@@ -64,20 +64,35 @@ export function dolphinBodies(place: Place, actors: readonly LiveActor[], room?:
     });
 }
 
+/** The grid room a place's room is played at: an off-grid room played alone at another's cell (room 8 at the Cave's room 9). */
+export function gridRoom(stage: Pick<AdventureStage, "index" | "cellOf">, room: number): number {
+  if (stage.cellOf(room)) return room;
+  const at = Object.entries(ALONE_ROOMS[stage.index] ?? {}).find(([, alone]) => alone === room)?.[0];
+  return at === undefined ? room : Number(at);
+}
+
 /**
  * Our adventure at a Dolphin place: its room entered at the leader's spot, then each Link put where Dolphin's stands;
  * given Dolphin's live actors, each shuttling hovering gem takes the state of Dolphin's from the same place (its spot,
- * way, timer and velocities: how long ago Dolphin's room was entered, and the way it drew at random).
+ * way, timer and velocities: how long ago Dolphin's room was entered, and the way it drew at random). Given Dolphin's
+ * Links (live.ts), each faces as his does, with his life, and the leader holds his item (the room's switches and
+ * what the Links did before are not carried over).
  */
-export function adventureSim(stage: AdventureStage, place: Place, live: readonly LiveActor[] = []): Sim & { adventure: AdventureGame; cell: { cx: number; cy: number } } {
+export function adventureSim(
+  stage: AdventureStage, place: Place, live: readonly LiveActor[] = [], links: readonly Pick<LiveLink, "facing" | "life" | "item">[] = [],
+): Sim & { adventure: AdventureGame; cell: { cx: number; cy: number } } {
   if (place.area) throw new Error("our side starts in a room's TV part only (#room): a GBA area needs the route's state");
-  const cell = stage.cellOf(place.room);
+  const room = gridRoom(stage, place.room);
+  const cell = stage.cellOf(room);
   if (!cell) throw new Error(`${place.stage} has no room ${place.room}`);
   const local = place.links.map((l) => localPx(l, cell));
-  const g = createAdventure(stage, { room: place.room, x: Math.round(local[0]!.x), y: Math.round(local[0]!.y), players: place.links.length });
+  const carry = links[0] && { hearts: links.map((l) => l.life), maxHearts: ADVENTURE_HEARTS, gear: GEAR_BY_NUMBER[links[0].item] ?? "" };
+  const g = createAdventure(stage, { room, x: Math.round(local[0]!.x), y: Math.round(local[0]!.y), players: place.links.length, ...(carry ? { carry } : {}) });
   g.players.forEach((p, i) => {
     p.x = Math.round(local[i]!.x * SUBPX);
     p.y = Math.round(local[i]!.y * SUBPX);
+    const facing = links[i] && FACINGS[links[i]!.facing];
+    if (facing) p.facing = facing;
   });
   const placedHere = stage.area(g.adventure.room, g.adventure.area).actors;
   const sub = (v: number) => Math.round(v * SUBPX);
@@ -99,7 +114,7 @@ export function adventureSim(stage: AdventureStage, place: Place, live: readonly
     adventure: g,
     cell,
     step: (buttons) => stepAdventure(g, [buttons[0] ?? 0], stage),
-    links: () => g.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${g.adventure.links[i]?.mode ?? ""}` })),
+    links: () => g.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${g.adventure.links[i]?.mode ?? ""}${moveOf(g.battle.fighters[i])}` })),
     bodies: () => {
       const a = g.adventure;
       const placed = stage.area(a.room, a.area).actors;
@@ -119,6 +134,9 @@ export function adventureSim(stage: AdventureStage, place: Place, live: readonly
     },
   };
 }
+
+/** A Link's move (lifting, carrying, throwing, rolling…: carry.ts, roll.ts) after his state, when he has one. */
+const moveOf = (f: { move: string } | undefined) => (f && f.move !== "none" ? `/${f.move}` : "");
 
 /** Our entities' kinds as the game's actor types, where one matches. */
 const ENTITY_TYPES: Readonly<Record<string, string>> = {
@@ -146,7 +164,7 @@ export function battleSim(extracted: string, place: Place, opts: { seed?: number
     world,
     start,
     step: (buttons) => stepGame(game, [...buttons], world),
-    links: () => game.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${game.battle!.fighters[i]!.mode}` })),
+    links: () => game.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${game.battle!.fighters[i]!.mode}${moveOf(game.battle!.fighters[i])}` })),
     bodies: () => {
       const b = game.battle!;
       // A prop's own entity (its switch, its bees, its flame, its soldier…) stands for it; what a prop makes (an orb,
