@@ -4,7 +4,7 @@
 import { BIG_HANDLE_TEXTURES, bigHandleClass, decodeBti, ESCORT_ZORA_FRAME, ESCORT_ZORA_WALK, ESCORT_ZORA_WALK_TICKS, PULL_HANDLE_FRAME, pullHandleClass, type ActorSob, type RarcArchive, type SpriteFrame } from "@fso/formats";
 import { SpriteAtlas, SpriteMesh, type ActorSpriteSources } from "@fso/render";
 import { PLAYER_ANIMATIONS, SUBPX, SWING, switchOn, WALK_FRAME_TICKS, type Facing } from "@fso/sim";
-import { armosStatue, ARROW_KIND, BLADE_TRAP, bladeFrame, FIRE_TRAP_KIND, BALL_FRAME, BALL_SCALE, BALL_SOLDIER, BALL_SOLDIER_FRAME, BALL_TURN, BONE_KIND, CHAIN_FRAME, CHAIN_SCALE, ironBallHand, ironBallOf, BOWMAN_LOOK, BOWMAN_SHOOT, BOWMAN_WALK, CAPTAIN_LUNGE, CAPTAIN_MARCH, BUZZ_SHOCK_STEPS, BUZZ_STEPS, enemyShown, MOZO_FRAMES, GEM_FRAMES, GEAR_BY_NUMBER, getFrame, keyHeight, MINOR_SHADOW_AFTERIMAGE, minorShadowFrame, FIREBALL_KIND, hinoxFrame, isCaster, PAME, pameBig, pickupShown, POE_FRAMES, soldierPose, STALFOS_JUMP, STALFOS_WALK, WIZZROBE_BOLTS, ZOL_PALETTES, ZORA_SHOT, actorKey, currentArea, pullOut, shadowShownColor, type AdventureGame, type AdventureStage, type Enemy, type Lever, type Pickup } from "@fso/sim/adventure";
+import { armosStatue, ARROW_KIND, BLADE_TRAP, bladeFrame, FIRE_TRAP_KIND, BALL_FRAME, BALL_SCALE, BALL_SOLDIER, BALL_SOLDIER_FRAME, BALL_TURN, BONE_KIND, CHAIN_FRAME, CHAIN_SCALE, ironBallHand, ironBallOf, BOWMAN_LOOK, BOWMAN_SHOOT, BOWMAN_WALK, CAPTAIN_LUNGE, CAPTAIN_MARCH, BUZZ_SHOCK_STEPS, BUZZ_STEPS, enemyShown, MOZO_FRAMES, GEM_FRAMES, GEAR_BY_NUMBER, getFrame, keyHeight, MINOR_SHADOW_AFTERIMAGE, minorShadowFrame, FIREBALL_KIND, hinoxFrame, isCaster, PAME, pameBig, pickupShown, POE_FRAMES, soldierPose, STALFOS_JUMP, STALFOS_WALK, WIZZROBE_BOLTS, ZOL_PALETTES, ZORA_SHOT, actorKey, currentArea, pullOut, SHADOW_STATE, shadowShownColor, type AdventureGame, type AdventureStage, type Enemy, type Lever, type Pickup } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { actorShadowOpacity, heightScale, LINK_SHADOW, linkShadow, ShadowSprite } from "../../battle/src/shadows.ts";
 
@@ -165,8 +165,11 @@ function lookOf(e: Enemy, tick: number): Look | null {
  * Shadow Link (SLK2's draws 0x801D3CBC, 0x801D3DAC): player_sob.bin's frame his own animation has (+0x348; 60 + his
  * facing in states 24-26), not drawn in states 0-3 and 13; in a Link's colors palette 7 drawn as 12 + his color
  * (+0x560 + 12), dark (his color 4) palette 7 as it is; while he changes, the color his roulette shows (+0x549 copied
- * to +0x560 every tick of state 44). His animation isn't decoded: the sim's states are shown with a Link's frames
- * (assumed): walking his rail or at a Link, the sword swing over SWING's ticks (twice: his swing's sword is out
+ * to +0x560 every tick of state 44). His animation (+0x340: set by 0x800FEB78, stepped by 0x800FE8C0) is a Link's
+ * player_sob.bin frames by his facing (right, left, down, up), from main.dol's table 0x80463AA0: 0 standing (60 +
+ * facing), 1 walking (8 × facing + 0-7, 3 ticks each), 4 the tumble (241 + 8 × facing + 0-7: SHADOW_TUMBLE_TICKS).
+ * His entrance: 4 the tumble out of the portal, 5, 9, 12 and 14 standing (0x801C3B7C's starts). Elsewhere the sim's
+ * states are shown with a Link's frames (assumed): walking his rail or at a Link, the sword swing over SWING's ticks (twice: his swing's sword is out
  * twice, 2-7 and 10-15), standing after it, while he springs back (the knockback's first frame), lands, crouches and
  * changes, jumping (raised by his height: the walk's stride), knocked back, down (the death's last frame, face
  * down), spinning once beaten (the spin's turn, 2 ticks a step). Not drawn: his shield apart from the Link's own,
@@ -183,7 +186,17 @@ const SPIN_TURN = [143, 144, 145, 146, 147, 148, 149, 150];
 const DOWN_FRAME = 196;
 const SWING_LENGTH = SWING.ticks.reduce((a, b) => a + b, 0);
 
+/** His animation 4, the tumble (0x80463AFC): each step's ticks (offsets 0-7 from its facing's first frame), the last
+ *  held. */
+const SHADOW_TUMBLE_TICKS = [3, 6, 6, 3, 3, 3, 6, 80];
+const SHADOW_TUMBLE = { right: 241, left: 249, down: 257, up: 265 } as const;
+
 function shadowFrame(e: Enemy, tick: number): number {
+  if (e.shot === SHADOW_STATE.rise) {
+    let t = e.tick, k = 0;
+    while (k < SHADOW_TUMBLE_TICKS.length - 1 && t >= SHADOW_TUMBLE_TICKS[k]!) t -= SHADOW_TUMBLE_TICKS[k++]!;
+    return SHADOW_TUMBLE[e.facing] + k;
+  }
   switch (e.state) {
     case "chase":
     case "patrol":
@@ -211,6 +224,7 @@ function shadowFrame(e: Enemy, tick: number): number {
 /** A Shadow Link look of every frame shadowFrame gives, dark and in each color (EnemyView's atlas). */
 function shadowLooks(): Look[] {
   const frames = new Set<number>([...SPIN_TURN, DOWN_FRAME]);
+  for (const first of Object.values(SHADOW_TUMBLE)) for (let k = 0; k < SHADOW_TUMBLE_TICKS.length; k++) frames.add(first + k);
   for (const facing of ["right", "left", "down", "up"] as const) for (const table of [WALK, STAND, KNOCK, SWING.frames]) for (const f of table[facing]) frames.add(f);
   const out: Look[] = [];
   for (const frame of frames) for (const color of [-1, 0, 1, 2, 3]) out.push({ sob: "player", frame, ...(color >= 0 ? { palettes: { 7: 12 + color } } : {}) });

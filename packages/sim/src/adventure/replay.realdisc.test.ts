@@ -1,7 +1,7 @@
 // An adventure record's start (replay.ts startAdventure): a record without a carry, spots or switches starts as
 // createAdventure does; one with them (a Dolphin place, tools/dolphin compare.ts) starts with the leader's item, each
-// Link on his spot facing his way, the room's switches, and the followers holding their spots (skips without
-// extracted/).
+// Link on his spot facing his way, the room's switches, its Shadow Link in his entrance's state, and the followers
+// holding their spots (skips without extracted/).
 import { existsSync, readFileSync } from "node:fs";
 import { decompressYaz0, Dol, loadActorTypes, parseRarc, readTileTypes, Stage } from "@fso/formats";
 import { describe, expect, it } from "vitest";
@@ -9,7 +9,8 @@ import { hashState } from "../hash.ts";
 import { SUBPX } from "../player.ts";
 import type { AdventureRecord } from "../replay.ts";
 import { createAdventure, stepAdventure } from "./adventure.ts";
-import { startAdventure } from "./replay.ts";
+import { replayAdventure, startAdventure } from "./replay.ts";
+import { SHADOW_STATE, shadowState } from "./shadowlink.ts";
 import { actorStats, AdventureStage, playedAlone } from "./stage.ts";
 
 const root = new URL("../../../../extracted/", import.meta.url);
@@ -36,5 +37,18 @@ describe.skipIf(!existsSync(root))("an adventure record's start", () => {
     for (let t = 0; t < 60; t++) stepAdventure(game, [0], stage);
     // Left idle, the followers keep their spots (their trails begin at the Link ahead, not on the leader's spot).
     expect(game.players.map((p) => [p.x, p.y])).toEqual(links.map((l) => [Math.round(l.x * SUBPX), Math.round(l.y * SUBPX)]));
+  });
+
+  it("puts room 4's Shadow Link in the record's state of his entrance, and replays it the same", () => {
+    const room4: AdventureRecord = { ...record, room: 4, x: 231, y: 265, switches: 1 << 20, shadow: { state: SHADOW_STATE.portal, tick: 21 }, inputs: [[[0], 300]] };
+    const game = startAdventure(room4, stage);
+    const shadow = game.adventure.enemies.find((e) => e.type === "SLK2")!;
+    expect([shadowState(shadow), shadow.tick]).toEqual([SHADOW_STATE.portal, 21]);
+    // Out of the portal 235 ticks into it (214 steps on), as Dolphin's place (measurements/adventure-world1.md).
+    const at = (ticks: number) => shadowState(replayAdventure(room4, stage, ticks).state.adventure.enemies.find((e) => e.type === "SLK2")!);
+    expect([at(213), at(214)]).toEqual([SHADOW_STATE.portal, SHADOW_STATE.rise]);
+    // Without it, he waits unseen as the room starts him; the record's hash is its own.
+    expect(shadowState(startAdventure({ ...room4, shadow: undefined }, stage).adventure.enemies.find((e) => e.type === "SLK2")!)).toBe(SHADOW_STATE.wait);
+    expect(hashState(replayAdventure(room4, stage).state)).not.toBe(hashState(replayAdventure({ ...room4, shadow: undefined }, stage).state));
   });
 });

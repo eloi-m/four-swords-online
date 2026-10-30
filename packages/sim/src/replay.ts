@@ -96,6 +96,9 @@ export interface AdventureRecord {
   links?: { x: number; y: number; facing?: Facing }[];
   /** The room's switches once it is entered (bit n: switch n; a Dolphin place's); absent = the room's own. */
   switches?: number;
+  /** The room's Shadow Link put at a state of his entrance (0-13) and its ticks once the room is entered (a Dolphin
+   *  place's: sim shadowlink.ts enterShadowAt); absent = his own start. */
+  shadow?: { state: number; tick: number };
   inputs: InputRuns;
   checkpoints: [tick: number, hash: number][];
   tick: number;

@@ -57,7 +57,8 @@ const trace = runTrace(["--savestate", state, "--ports", ports.join(","), "--scr
 // Ours, idle as long.
 let sim: Sim, record: AdventureRecord | BattleRecord;
 const vtables = actorVtables(EXTRACTED);
-const startLive = readLive(readMem1(`${tracePath}.f${ticks[0]}.80000000.bin`, EXTRACTED), vtables);
+// Our start: the state's own RAM, as clip.ts reads it (not the first moment's: Shadow Link's entrance ticks run on).
+const startLive = readLive(readMem1(state, EXTRACTED), vtables);
 let roomCell: { cx: number; cy: number } | undefined;
 if (place.arena) {
   const b = battleSim(EXTRACTED, place, { seed: Number(values.seed), live: startLive.links });

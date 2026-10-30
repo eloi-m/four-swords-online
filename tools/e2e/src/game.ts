@@ -680,7 +680,7 @@ function routeAudio(stage: string): { bgm: readonly string[]; cues: readonly str
       bgm: ["JA_BGM_WATER_FIELD", "JA_BGM_FANFARE"],
       cues: ["JA_SE_LK_SWORD_WIELD", "JA_SE_CHR_SOLDIER_DOWN", "JA_SE_LK_COIN", "JA_SE_LK_BIG_COIN", "JA_SE_OBJ_TBOX_OPEN", "JA_SE_OBJ_DOOR_OPEN", "JA_SE_OBJ_SWITCH", "JA_SE_OBJ_CUT_GRASS", "JA_SE_OBJ_LIFT", "JA_SE_LK_THROW", "JA_SE_LK_PLUNGE", "JA_SE_LK_SWIM"],
     },
-    boss011: { bgm: ["JA_BGM_DANGEON", "JA_BGM_FANFARE"], cues: ["JA_SE_OBJ_TBOX_OPEN", "JA_SE_LK_UNLOCK", "JA_SE_MSG_OPEN"] },
+    boss011: { bgm: ["JA_BGM_DANGEON", "JA_BGM_SHADOW_LINK", "JA_BGM_FANFARE"], cues: ["JA_SE_OBJ_TBOX_OPEN", "JA_SE_LK_UNLOCK", "JA_SE_MSG_OPEN", "JA_SE_CHR_SLINK_APP_EFFECT", "JA_SE_CHR_SLINK_APPEAR"] },
     // (Its route's Force Gems are all 100s, winged and red ones: the big gem's cue.)
     boss012: { bgm: ["JA_BGM_WATER_FIELD", "JA_BGM_FANFARE"], cues: ["JA_SE_LK_BIG_COIN", "JA_SE_LK_SWIM"] },
   }[stage];

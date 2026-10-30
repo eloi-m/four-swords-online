@@ -12,7 +12,7 @@
 import { readStageBgmTable } from "@fso/audio";
 import type { Dol } from "@fso/formats";
 import { Button, CHARGE, DEBRIS, ownSwitch, THROW_RELEASE_TICK } from "@fso/sim";
-import { BLADE_STATE, FIRE_TRAP_KIND, GEM_VALUES, pageTyped, shutDoors, talkTyped, type AdventureGame, type AdventureStage } from "@fso/sim/adventure";
+import { BLADE_STATE, FIRE_TRAP_KIND, GEM_VALUES, pageTyped, SHADOW_STATE, shutDoors, talkTyped, type AdventureGame, type AdventureStage } from "@fso/sim/adventure";
 import { SynthAudio, type SynthData } from "@fso/web/audio";
 
 const VOLUME_KEY = "fso.adventure.volume";
@@ -41,6 +41,10 @@ export const ADVENTURE_SE = {
   fireTrap: ["JA_SE_OBJ_ZORA_TAMA"],
   trapMove: ["JA_SE_OBJ_TRAP_MOVE"],
   trapBound: ["JA_SE_OBJ_TRAP_BOUND"],
+  // Shadow Link's entrance (game: his states' starts, 0x801C3B7C): the dark portal (3: 0x40048 by 0x80214740 with
+  // no place to come out at, 0x400D6 APP_EFF_G only with one: none in World 1) and his jump out of it (4: 0x40035).
+  shadowPortal: ["JA_SE_CHR_SLINK_APP_EFFECT"],
+  shadowAppear: ["JA_SE_CHR_SLINK_APPEAR"],
   ganonHit: ["JA_SE_CHR_PGANON_DAMAGE"],
   ganonDown: ["JA_SE_CHR_PGANON_DIE", "JA_SE_CHR_BOSS_DOWN"],
   // Pickups (assumed): a Force Gem by its size (worth under 50: the small ones; 50 and more: the big ones), a heart,
@@ -85,6 +89,9 @@ export type AdventureCue = keyof typeof ADVENTURE_SE;
 export const ITEM_BGM = "JA_BGM_ITEM";
 export const CLEAR_BGM = "JA_BGM_FANFARE";
 export const BOSS_BGM = "JA_BGM_BOSS";
+/** Shadow Link's fight (game: his state 12's start asks for BGM 0x0D, 0x80458FF0; back to the stage's once he's gone:
+ *  assumed). */
+export const SHADOW_BGM = "JA_BGM_SHADOW_LINK";
 /** The message box's blip every this many characters typed (one a tick). */
 const TYPE_BLIP = 3;
 /** The worth from which a Force Gem is a big one (its pickup sound). */
@@ -111,7 +118,7 @@ export class AdventureAudio extends SynthAudio {
 
   /** Names the cues use that the disc lacks (should be empty). */
   missing(): string[] {
-    return this.lacking(Object.values(ADVENTURE_SE).flat(), [ITEM_BGM, CLEAR_BGM, BOSS_BGM]);
+    return this.lacking(Object.values(ADVENTURE_SE).flat(), [ITEM_BGM, CLEAR_BGM, BOSS_BGM, SHADOW_BGM]);
   }
 }
 
@@ -239,6 +246,11 @@ export class AdventureCues {
           if (e.type === "OKTM") now(e.kind === FIRE_TRAP_KIND ? "fireTrap" : "octorokSpit");
           continue;
         }
+        // Shadow Link's entrance: the portal, his jump out of it.
+        if (e.type === "SLK2" && e.shot !== was.shot) {
+          if (e.shot === SHADOW_STATE.portal) now("shadowPortal");
+          else if (e.shot === SHADOW_STATE.rise) now("shadowAppear");
+        }
         // A blade trap off (its slide), and stopped dead (its sparks).
         if (e.type === "TRAP") {
           if (e.shot === BLADE_STATE.slide && was.shot !== BLADE_STATE.slide) now("trapMove");
@@ -275,11 +287,13 @@ export class AdventureCues {
     if (a.opening) cue(`unlock:${tick - a.opening.tick}`, tick - a.opening.tick, "unlock");
     this.seen = seen;
 
-    // Music: the stage's BGM; Phantom Ganon's fight; a jingle while an item got is held up; the fanfare once cleared.
-    const music = a.cleared ? "clear" : a.get ? `item:${tick - a.get.tick}` : a.ganon && !a.ganon.gone ? "boss" : "stage";
+    // Music: the stage's BGM; Phantom Ganon's fight, Shadow Link's (from his challenge on); a jingle while an item got
+    // is held up; the fanfare once cleared.
+    const shadow = a.enemies.some((e) => e.type === "SLK2" && e.shot >= SHADOW_STATE.challenge);
+    const music = a.cleared ? "clear" : a.get ? `item:${tick - a.get.tick}` : a.ganon && !a.ganon.gone ? "boss" : shadow ? "shadow" : "stage";
     if (music !== this.music) {
       this.music = music;
-      const name = music === "clear" ? CLEAR_BGM : music.startsWith("item") ? ITEM_BGM : music === "boss" ? BOSS_BGM : this.bgm;
+      const name = music === "clear" ? CLEAR_BGM : music.startsWith("item") ? ITEM_BGM : music === "boss" ? BOSS_BGM : music === "shadow" ? SHADOW_BGM : this.bgm;
       this.audio.playBgm(name, tick);
     }
     for (const [key, start] of this.played) if (start < tick - 600 || start > tick + 600) this.played.delete(key);

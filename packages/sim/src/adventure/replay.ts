@@ -3,13 +3,17 @@ import { replaySteps, type AdventureRecord, type ReplayResult } from "../replay.
 import { SUBPX } from "../player.ts";
 import { createAdventure, stepAdventure, type AdventureGame } from "./adventure.ts";
 import { resetTrails } from "./formation.ts";
+import { enterShadowAt } from "./shadowlink.ts";
 import type { AdventureStage } from "./stage.ts";
 
 /** The record's game before its first step, as apps/game starts it: the room entered with the carry, its switches
- *  set as the record's, then each Link put on his spot, each follower's trail begun at the Link ahead of him. */
+ *  set as the record's, its Shadow Link put in the record's state of his entrance, then each Link put on his spot,
+ *  each follower's trail begun at the Link ahead of him. */
 export function startAdventure(record: AdventureRecord, stage: AdventureStage): AdventureGame {
   const game = createAdventure(stage, { room: record.room, x: record.x, y: record.y, players: record.players, ...(record.carry ? { carry: record.carry } : {}) });
   if (record.switches !== undefined) game.battle.switches = record.switches >>> 0;
+  const shadow = record.shadow && game.adventure.enemies.find((e) => e.type === "SLK2");
+  if (shadow) enterShadowAt(shadow, record.shadow!.state, record.shadow!.tick);
   if (!record.links) return game;
   record.links.forEach((l, i) => {
     const p = game.players[i];
