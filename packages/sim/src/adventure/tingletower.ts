@@ -118,7 +118,20 @@ export const TINGLE_TOWER_MILESTONES: readonly { name: string; goals: readonly G
   {
     name: "room 2: its three winged Force Gems, down the river into room 3",
     goals: [
-      collect("room 2's gems in the middle and up the west side", (it) => it.type === "gem" && it.x < 360 * SUBPX, 3600, true),
+      collect("room 2's gem in the middle", (it) => it.type === "gem" && it.x > 200 * SUBPX && it.x < 360 * SUBPX, 3600, true),
+      // Out of the stones' ring by its open bottom and up the clear channel at x 208-239 to the open water at y 145-159,
+      // not past the stones at x 176-191 (a strike there spills Force Gems into the river: pickups.ts spillGems).
+      travelTo(288, 236, { swim: true }),
+      travelTo(224, 236, { swim: true }),
+      travelTo(224, 152, { swim: true }),
+      // Up the west pool between its stones (x 96-111 at y 160, x 48-63 at y 128, x 80-95 at y 80; a swimmer's
+      // sensors reach 8 px).
+      travelTo(140, 152, { swim: true }),
+      travelTo(88, 148, { swim: true }),
+      travelTo(88, 104, { swim: true }),
+      travelTo(71, 104, { swim: true, tol: 0.5 }),
+      travelTo(71, 56, { swim: true, tol: 0.5 }),
+      collect("room 2's gem up the west side", (it) => it.type === "gem" && it.x < 200 * SUBPX, 3600, true),
       // Down the west side, out of the blade traps' lanes (traps.ts: the one at (104, 232) slides right from there, the
       // one at (184, 296) left to the pillar at x 80-95: whoever is in a lane sets it off), then along the bottom, below
       // them, to the east gem and back.
