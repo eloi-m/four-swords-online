@@ -22,6 +22,11 @@ export const CAMERA_ZOOM = 0x858;
 export const GAME_PTR = 0x8053aaf8;
 export const STAGE_ROOM_CELL = 0x14;
 export const STAGE_SWITCHES = 0x178;
+/** The world and stage playing (u32 each; Tingle's Tower loads through world 0's stage 1, the Cave's, docs/measurements
+ *  /adventure-world1.md "Loading boss012"), and the loader's arc names by world · 4 + stage (pointers to "boss010.arc"…;
+ *  the slot poked to load another stage names it). */
+export const WORLD_STAGE = 0x80529f04;
+export const STAGE_ARCS = 0x8049ed88;
 /** Shadow Battle: the keys each player's GBA reported, one 0xE0-byte record per player (bss). u16 at +0: bits 0–7 =
  *  A, B, Select, Start, Right, Left, Up, Down (pressed = 1), bit 8 (sometimes 9) set; u16 at +2: R 0x100, L 0x200, and
  *  a low byte that changes with the keys (a check byte?). Holds the movie input one frame late. */
@@ -49,6 +54,7 @@ export const LINK = {
   life: 0xbfc, // u32 (-2 per Octorok hit)
   item: 0xc10, // u32 item: 0 none, 1 lamp?, 2 Roc's Feather, 3 boomerang, 4 bow, 5 hammer, 6 Fire Rod, 7 boots?, 8 bombs, 9 shovel, 10 slingshot
   itemLevel: 0xc14, // u32
+  drift: 0x414, // f32 x, y: the water's current carrying him while he swims (px/frame; swim.ts stepCurrent)
   carried: 0xd64, // u8 1 while lifting/carrying, +0xd68 the carried actor's handle, +0xd6c its type ID ("GRAS"; "NULL" when empty)
 } as const;
 

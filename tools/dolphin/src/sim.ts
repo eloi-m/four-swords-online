@@ -16,6 +16,8 @@ import { CELL_H, CELL_W, localPx, type Place } from "./recipe.ts";
 export const FACINGS: readonly Facing[] = ["right", "left", "down", "up"];
 /** A round state loads this many frames before the players get control (docs/measurements/battle-arenas.md). */
 export const ROUND_STATE_LEAD = 10;
+/** Link state 74: swimming, seen from above (docs/measurements/adventure-lake-hylia.md "Swimming"). */
+const STATE_SWIM = 74;
 /** Link state 1: a Link not in the round (2-3 player games). */
 const STATE_ABSENT = 1;
 /** The round states' rules (the game's defaults; no time limit, as the states were made). */
@@ -76,17 +78,22 @@ export function gridRoom(stage: Pick<AdventureStage, "index" | "cellOf">, room: 
  * given Dolphin's live actors, each shuttling hovering gem takes the state of Dolphin's from the same place (its spot,
  * way, timer and velocities: how long ago Dolphin's room was entered, and the way it drew at random). Given Dolphin's
  * Links (live.ts), each faces as his does, with his life, and the leader holds his item; given the room's switches
- * (live.ts), they are set (what the Links did before is not carried over: a block pushed stands at its start).
+ * (live.ts), they are set (what the Links did before is not carried over: a block pushed stands at its start); a Link
+ * swimming (state 74) swims on, carried by the current as much as Dolphin's is (live.ts drift). A place on a GBA screen
+ * starts in that area of the room (#room's TV part otherwise), its px the area's own.
  * `record` is that start, for apps/game to replay (compare.ts).
  */
 export function adventureSim(
-  stage: AdventureStage, place: Place, live: readonly LiveActor[] = [], links: readonly (Pick<LiveLink, "facing" | "life" | "item"> & { state?: number })[] = [], switches: number | null = null,
+  stage: AdventureStage, place: Place, live: readonly LiveActor[] = [], links: readonly (Pick<LiveLink, "facing" | "life" | "item"> & { state?: number; drift?: LiveLink["drift"] })[] = [],
+  switches: number | null = null,
 ): Sim & { adventure: AdventureGame; cell: { cx: number; cy: number }; record: AdventureRecord } {
-  if (place.area) throw new Error("our side starts in a room's TV part only (#room): a GBA area needs the route's state");
   const room = gridRoom(stage, place.room);
   const cell = stage.cellOf(room);
   if (!cell) throw new Error(`${place.stage} has no room ${place.room}`);
-  const local = place.links.map((l) => localPx(l, cell));
+  if (place.area && !stage.hasArea(room, place.area)) throw new Error(`${place.stage} room ${place.room} has no area ${place.area}`);
+  // Positions on the place's screen in the sim's px: the room's (its cell off) on the TV, the area's own on a GBA screen.
+  const origin = place.area ? { cx: 0, cy: 0 } : cell, screen = place.area ? 7 + place.area : 0;
+  const local = place.links.map((l) => localPx({ ...l, screen: place.area ? screen : l.screen }, origin));
   const carry = links[0] && { hearts: links.map((l) => l.life), maxHearts: ADVENTURE_HEARTS, gear: GEAR_BY_NUMBER[links[0].item] ?? "" };
   // The start as a replay record (@fso/sim replay.ts), so that apps/game replaying it (compare.ts's frames) starts the same.
   // Shadow Link in his entrance: Dolphin's state and its ticks (the scene holding the Links with it), a tick on: a
@@ -94,13 +101,14 @@ export function adventureSim(
   const shadowTwin = live.find((a) => a.screen === 0 && a.fields?.state !== undefined && a.id.split("/").includes("SLK2"));
   const shadow = shadowTwin && shadowTwin.fields!.state! < SHADOW_STATE.ready ? { state: shadowTwin.fields!.state!, tick: shadowTwin.fields!.tick! + 1 } : null;
   const record: AdventureRecord = {
-    kind: "adventure", stage: place.stage, room, x: Math.round(local[0]!.x), y: Math.round(local[0]!.y), players: place.links.length,
+    kind: "adventure", stage: place.stage, room, ...(place.area ? { area: place.area } : {}), x: Math.round(local[0]!.x), y: Math.round(local[0]!.y), players: place.links.length,
     ...(carry ? { carry } : {}),
     ...(switches !== null ? { switches } : {}),
     ...(shadow ? { shadow } : {}),
     links: local.map((l, i) => {
       const facing = links[i] && FACINGS[links[i]!.facing];
-      return { x: l.x, y: l.y, ...(facing ? { facing } : {}) };
+      const swim = links[i]?.state === STATE_SWIM && { x: links[i]!.drift?.x ?? 0, y: links[i]!.drift?.y ?? 0 };
+      return { x: l.x, y: l.y, ...(facing ? { facing } : {}), ...(swim ? { swim } : {}) };
     }),
     inputs: [], checkpoints: [], tick: 0, hash: 0,
   };
@@ -113,10 +121,10 @@ export function adventureSim(
     const home = placedHere.find((x) => x.index === it.actor);
     const twin = it.shuttle && home && live.find((a) => {
       const f = a.fields;
-      return a.screen === 0 && f?.homeX !== undefined && Math.hypot(f.homeX - cell.cx * CELL_W - home.x, f.homeY! - cell.cy * CELL_H - home.y) < 1;
+      return a.screen === screen && f?.homeX !== undefined && Math.hypot(f.homeX - origin.cx * CELL_W - home.x, f.homeY! - origin.cy * CELL_H - home.y) < 1;
     });
     if (!twin) continue;
-    const f = twin.fields!, at = localPx(twin, cell);
+    const f = twin.fields!, at = localPx(twin, origin);
     [it.x, it.y] = [sub(at.x), sub(at.y)];
     Object.assign(it.shuttle!, { dir: f.dir, timer: f.timer, vx: sub(f.vx!), vy: sub(f.vy!), tvx: sub(f.tvx!), tvy: sub(f.tvy!) });
   }

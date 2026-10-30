@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { decompressYaz0, Dol, loadActorTypes, parseRarc, readTileTypes, Stage } from "@fso/formats";
 import { describe, expect, it } from "vitest";
 import { hashState } from "../hash.ts";
-import { SUBPX } from "../player.ts";
+import { Button, SUBPX } from "../player.ts";
 import type { AdventureRecord } from "../replay.ts";
 import { createAdventure, stepAdventure } from "./adventure.ts";
 import { replayAdventure, startAdventure } from "./replay.ts";
@@ -50,5 +50,32 @@ describe.skipIf(!existsSync(root))("an adventure record's start", () => {
     // Without it, he waits unseen as the room starts him; the record's hash is its own.
     expect(shadowState(startAdventure({ ...room4, shadow: undefined }, stage).adventure.enemies.find((e) => e.type === "SLK2")!)).toBe(SHADOW_STATE.wait);
     expect(hashState(replayAdventure(room4, stage).state)).not.toBe(hashState(replayAdventure({ ...room4, shadow: undefined }, stage).state));
+  });
+
+  const stageOf = (name: string) => new AdventureStage(playedAlone(new Stage(load(`Boss/${name}.arc`))), tileTypes, actorStats(loadActorTypes(load("data.arc"))!));
+
+  it("starts a Link swimming, carried by the current at once (Tingle's Tower room 5, as Dolphin's place)", () => {
+    const tower = stageOf("boss012");
+    const room5: AdventureRecord = { kind: "adventure", stage: "boss012", room: 5, x: 422, y: 143, players: 1, links: [{ x: 421.625, y: 142.924, facing: "down", swim: { x: 0, y: 0.5 } }], inputs: [[[0], 1]], checkpoints: [], tick: 0, hash: 0 };
+    const game = startAdventure(room5, tower);
+    expect(game.adventure.links[0]!.mode).toBe("swim");
+    stepAdventure(game, [0], tower);
+    // The current's full 0.5 px/tick from the first tick (Dolphin: 142.92 -> 143.42), where a walk start wades.
+    expect((game.players[0]!.y - Math.round(142.924 * SUBPX)) / SUBPX).toBe(0.5);
+    const walking = startAdventure({ ...room5, links: [{ x: 421.625, y: 142.924, facing: "down" }] }, tower);
+    stepAdventure(walking, [0], tower);
+    expect([walking.adventure.links[0]!.mode, walking.players[0]!.y]).toEqual(["wade", Math.round(142.924 * SUBPX)]);
+    expect(hashState(replayAdventure(room5, tower).state)).not.toBe(hashState(replayAdventure({ ...room5, links: [{ x: 421.625, y: 142.924, facing: "down" }] }, tower).state));
+  });
+
+  it("starts in a room's GBA-screen area (Lake Hylia room 2's cave, area 5), in its own px", () => {
+    const lake = stageOf("boss010");
+    const cave: AdventureRecord = { kind: "adventure", stage: "boss010", room: 2, area: 5, x: 128, y: 333, players: 2, links: [{ x: 128, y: 332.5, facing: "up" }, { x: 128, y: 340 }], inputs: [], checkpoints: [], tick: 0, hash: 0 };
+    const game = startAdventure(cave, lake);
+    expect([game.adventure.room, game.adventure.area]).toEqual([2, 5]);
+    expect(game.players.map((p) => [p.x / SUBPX, p.y / SUBPX])).toEqual([[128, 332.5], [128, 340]]);
+    // Walking up its slope as Dolphin's leader does (clip lake-room2-area5-walk: (128, 332.5) -> (128, 319) in 10 ticks).
+    for (let t = 0; t < 10; t++) stepAdventure(game, [Button.Up], lake);
+    expect([game.adventure.area, game.players[0]!.x / SUBPX, game.players[0]!.y / SUBPX]).toEqual([5, 128, 319]);
   });
 });

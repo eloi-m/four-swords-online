@@ -91,9 +91,13 @@ export interface AdventureRecord {
   players: number;
   /** What the stage began with (the run's stage before it, or a Dolphin place): the Links' hearts, the leader's item. */
   carry?: AdventureCarry;
+  /** The room's GBA-screen area the Links start in (1-7: a house, a cave; adventure.ts enterArea), x, y and the
+   *  links' spots in its own px; absent = the TV part (0). */
+  area?: number;
   /** Each Link put at this room px, facing this way, once the room is entered (a Dolphin place, tools/dolphin
-   *  compare.ts); absent = all stacked on the leader at x, y. */
-  links?: { x: number; y: number; facing?: Facing }[];
+   *  compare.ts); absent = all stacked on the leader at x, y. `swim`: he is swimming, the water's current carrying him
+   *  by this much (px/tick; swim.ts stepCurrent). */
+  links?: { x: number; y: number; facing?: Facing; swim?: { x: number; y: number } }[];
   /** The room's switches once it is entered (bit n: switch n; a Dolphin place's); absent = the room's own. */
   switches?: number;
   /** The room's Shadow Link put at a state of his entrance (0-13) and its ticks once the room is entered (a Dolphin

@@ -3,8 +3,9 @@
 // moved, missing from ours, extra in ours; ±4 px), and the two frames side by side at the same size.
 //   node tools/dolphin/src/compare.ts <state.sav> [--name <name>] [--at 0,2,5 (s)] [--no-frames] [--seed n]
 //        [--user <dolphin user dir>] [--port <gdb port> (2490)] [--web-port <dev server port> (5560)]
-// Ours: an adventure room entered at the leader's spot (#room), each Link put where Dolphin's stands; a battle round
-// on the state's arena with the Links at Dolphin's starts, control coming on the same frame. Our frames come from the
+// Ours: an adventure room (or its GBA-screen area) entered at the leader's spot (#room), each Link put where Dolphin's
+// stands; a battle round on the state's arena with the Links at Dolphin's starts, control coming on the same frame.
+// Our frames come from the
 // app's dev server, which compare.ts starts (replaying out/dolphin-compare/captures). Output in
 // out/dolphin-compare/<name>/: report.md, diff.json, dolphin-t<s>.png, ours-t<s>.png, side-t<s>.png.
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";

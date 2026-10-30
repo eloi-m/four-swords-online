@@ -239,7 +239,7 @@ async function start(store: AssetStore, archive: (path: string) => Promise<RarcA
   // its record's carry and each Link where its record put him.
   const runCarry = carryFor(session, info.id, chain && !replay);
   const carry = replay ? (replay.carry ?? null) : runCarry;
-  const start = { kind: "adventure" as const, stage: info.id, room, x, y, players, ...(carry ? { carry } : {}), ...(replay?.links ? { links: replay.links } : {}), ...(replay?.switches !== undefined ? { switches: replay.switches } : {}), ...(replay?.shadow ? { shadow: replay.shadow } : {}) };
+  const start = { kind: "adventure" as const, stage: info.id, room, ...(replay?.area ? { area: replay.area } : {}), x, y, players, ...(carry ? { carry } : {}), ...(replay?.links ? { links: replay.links } : {}), ...(replay?.switches !== undefined ? { switches: replay.switches } : {}), ...(replay?.shadow ? { shadow: replay.shadow } : {}) };
   const game: AdventureGame = startAdventure({ ...start, inputs: [], checkpoints: [], tick: 0, hash: 0 }, adventure);
   // Dev server: the stage's start and inputs (@fso/sim replay.ts) for F8's captures, and a capture's replay.
   const record = import.meta.env.DEV ? start : null;
