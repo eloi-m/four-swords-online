@@ -736,14 +736,17 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   chest, room 7's shaft with its floor switches and fish; compare.ts and clip.ts now start ours in an area, below);
   the stage has no Octoroks. Places mid-river can't be rebuilt from their roots (`w1-boss012-room3`/`room4`/
   `passage`'s parents are gone).
-  6. Unsure: climbing area 5's east shaft from `tingle-room3-passage` along the swim our route takes (747 ticks to the
-     tree house in ours), Dolphin's leader stopped rising at (210.4, 57) (state 48, then up 0.5 px/tick for ~70 ticks,
-     state 49) and came out in room 3's whirlpool on the TV; ours reaches area 2 (a fish, or a time limit under
-     water, not modelled?).
+  6. Room 3's underwater passage (area 5) has a time limit in Dolphin: a clock icon by the area's top with the seconds
+     left (8 two seconds after `tingle-room3-passage`, `tingle-room3-passage/side-t2`; Lake Hylia room 6's area 5
+     shows one too). Climbing its east shaft along the swim our route takes (747 ticks to the tree house in ours),
+     Dolphin's leader stopped rising at (210.4, 57) ~560 ticks after the place (state 48, then up 0.5 px/tick for ~70
+     ticks, state 49) and came out in room 3's whirlpool on the TV; ours has no clock and reaches area 2. Also there:
+     Dolphin's air bubbles (`PEFF`) over the swimmers, none in ours.
   The tools since: a swimming Link starts swimming with Dolphin's drift (`tingle-room1-swim` first diverges at frame
   153, the stone's knock-back, 4 above; `tingle-room5-falls` at frame 213, 1.2 px, nearing the stone that strikes Dolphin's at 220; both from frame 3), and a place on a GBA
   screen starts ours in that area (Lake Hylia room 2's area 5, `lake-room2-area5`: its actors the same, the leader's
-  walk up the slope and back within 0.3 px over 140 frames).
+  walk up the slope and back within 0.3 px over 140 frames; room 3's passage, `tingle-room3-passage`: its gem the
+  same). The tree house (area 2) still has no place: the passage's clock runs out on the way.
 
 ### B7. Code health
 - **Dependencies:** `playwright-core` is only in `tools/e2e`, for WebKit; its browser lives in `~/.cache/fso-webkit`
