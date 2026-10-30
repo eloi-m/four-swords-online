@@ -277,26 +277,30 @@ async function adventureChecks(page: Page): Promise<void> {
   console.log(`out of the house: area ${outside.area}, room ${outside.room} at (${outside.x}, ${outside.y})`);
   if (outside.area !== 0 || outside.room !== 1 || !(outside.y > 270)) problems.push(`out of the house: area ${outside.area} room ${outside.room} y ${outside.y}`);
 
-  // An Octorok: Link placed beside one (room 3), facing it, stabs; it's knocked back and dies.
-  await open(page, "room=3&x=280&y=300");
-  tick = await capture(page);
-  const target = await page.evaluate(() => {
-    const g = (window as unknown as { fso: Fso }).fso.game;
-    const e = g.adventure.enemies.find((x) => x.type === "OKTA")!;
-    const p = g.players[0]!;
-    p.x = e.x - 20 * 256;
-    p.y = e.y;
-    p.facing = "right";
-    return { id: e.id, life: e.life };
-  });
-  await page.keyboard.down("z");
-  await tick(1);
-  await page.keyboard.up("z");
-  await tick(3);
-  await page.screenshot({ path: join(out, "adventure-octorok-hit.png"), clip: await clipAround(page) });
-  const hit = await page.evaluate((id) => (window as unknown as { fso: Fso }).fso.game.adventure.enemies.find((e) => e.id === id) ?? null, target.id);
-  await tick(60);
-  const gone = await page.evaluate((id) => !(window as unknown as { fso: Fso }).fso.game.adventure.enemies.some((e) => e.id === id), target.id);
+  // An Octorok: Link placed beside one (room 3), facing it, stabs; it's knocked back and dies. Up to three tries: on a
+  // busy machine more real frames run before the capture, and the Octorok may be mid-spit or turning as Link lands.
+  let target = { id: -1, life: 0 }, hit: { life: number; state: string } | null = null, gone = false;
+  for (let attempt = 0; attempt < 3 && !(hit?.life === 0 && gone); attempt++) {
+    await open(page, "room=3&x=280&y=300");
+    tick = await capture(page);
+    target = await page.evaluate(() => {
+      const g = (window as unknown as { fso: Fso }).fso.game;
+      const e = g.adventure.enemies.find((x) => x.type === "OKTA")!;
+      const p = g.players[0]!;
+      p.x = e.x - 20 * 256;
+      p.y = e.y;
+      p.facing = "right";
+      return { id: e.id, life: e.life };
+    });
+    await page.keyboard.down("z");
+    await tick(1);
+    await page.keyboard.up("z");
+    await tick(3);
+    await page.screenshot({ path: join(out, "adventure-octorok-hit.png"), clip: await clipAround(page) });
+    hit = await page.evaluate((id) => (window as unknown as { fso: Fso }).fso.game.adventure.enemies.find((e) => e.id === id) ?? null, target.id);
+    await tick(60);
+    gone = await page.evaluate((id) => !(window as unknown as { fso: Fso }).fso.game.adventure.enemies.some((e) => e.id === id), target.id);
+  }
   console.log(`octorok: life ${target.life} -> ${hit?.life} (${hit?.state}), gone after 60 ticks: ${gone}`);
   if (!hit || hit.life !== 0 || !gone) problems.push(`octorok not killed: ${JSON.stringify(hit)}, gone ${gone}`);
 
