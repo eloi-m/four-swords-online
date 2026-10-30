@@ -33,8 +33,9 @@ mid-stream. Each state gets a `<path>.json` (port layout, frame, VI count, scrip
 reads back for `--ports`. A trace from such a state starts on the frame after the save. Reloads are deterministic: a
 160-frame scripted fight and the `battle-hit` trace below, each run twice from a round state, gave identical records.
 
-**From power-on to a round** (`node tools/dolphin/src/battle-states.ts [--port 55031] [--players 2,3,4] [--only …]`
-chains these; all input from P1's GBA; a step reruns when named or missing, and the later ones with it):
+**From power-on to a round** (`node tools/dolphin/src/battle-states.ts [--port 55031] [--user ref/dolphin-user-battle]
+[--players 2,3,4] [--arenas field,…,dark-clouds] [--only …]` chains these; all input from P1's GBA; a step reruns when
+named or missing, and the ones made from it with it):
 
 | State | From | Script (frames) | Screen |
 |---|---|---|---|
@@ -43,11 +44,25 @@ chains these; all input from P1's GBA; a step reruns when named or missing, and 
 | `shadow` | modes | down at 20, A at 56; 272 | Shadow Battle (attract demo, START! / Back) |
 | `count` | shadow | A (START!) → "create a file on the Memory Card?" A (No) → "no saved data" A → "could not be loaded. Start game?" left, A (Yes) → Quest Log 1 (New) A → START! A; 1240 | Two / Three / Four-Player Game (cursor on Four) |
 | `area-2p` / `-3p` / `-4p` | count | up ×2 / ×1 / none, A; 330 / 305 / 280 | Select Area (cursor on The Field) |
+| `area-dark-2p` / `-3p` / `-4p` | count | the same, with `--write 0:8050eca8:a4` (below) | Select Area, the Dark World row open |
 | `ref/save-battle-<arena>-<n>p.sav` | area-*n*p | right × arena index, A, idle; saved 10 frames before control | the round, "Be the last one standing!" |
+| `ref/save-battle-dark-<arena>-<n>p.sav` | area-dark-*n*p | down, right × arena index, A, idle; the same | the Dark World round |
 
 No memory card file is ever created (the game runs unsaved); a new Quest Log has The Field, Tower of Flames, Tower of
 Winds, Hyrule Castle and Above the Clouds, the Dark World arenas locked. Rules left at their defaults (Vaati: No,
 Powerful Items: Keep, Status Display: Yes), no handicap.
+
+**The Dark World arenas** (**confirmed**, main.dol and Dolphin). The area menu (`bat_stage_select.blo`, built by
+0x8041787C, the object at r13 − 0x6DC0) is a grid: the five arenas, the Dark World five below them (index = row · 5 +
+column = boss500 room), and a third row (index ≥ 10, its own branch, not followed). Its constructor builds the open arenas' mask once (+0x106,
+bit per index): The Field and the Tower of Flames always, then index 2 + i when 0x803B9120(i) says so: i < 3 (Winds,
+Castle, Clouds) always, i ≥ 3 (rooms 5-9) when bit 31 of the current Quest Log's word +0x28 is set (the Quest Logs at
+0x8050EC80, 200 bytes each, the current one's number at 0x8050EC90; a new file holds 0x24444444 there, file 0). A
+closed arena's A goes to 0x8042EDAC (a refusal, by its look; not watched); an open one stores index / 4 and index % 4 at 0x80529F14 / 0x80529F18
+and, for index ≥ 5, sets the Quest Log's byte +0x81 (1 in the Dark World rounds). So `area-dark-*n*p` pokes
+0x8050ECA8 = 0xA4 on the frame `count` loads, before the area menu exists. The rounds are dark: the stage light's
+level is 10 (255 in The Field, 200 in the Tower of Flames), tint 96 C8 FF (FF C8 A0 in the Tower of Flames, D2 C8 AA
+above the clouds).
 
 The round states (15, about 20 MB each; every one checked by a trace and a frame dump). Each loads 10 frames before
 the players get control: a trace from it has P1 turning on frame 9 or 10 for input from frame 8. Starts are room
@@ -73,6 +88,33 @@ state had P1 on slot 1 and P2 on slot 3; this one has slots 2 and 3), so a new s
 | `winds-4p` | (152, 280) (360, 184) (360, 280) (152, 184) | 1.6000 |
 | `castle-4p` | (312, 280) (200, 280) (312, 184) (200, 184) | 1.6716 |
 | `clouds-4p` | (104, 72) (104, 312) (392, 312) (392, 72) | 1.1875 |
+
+The Dark World round states (15 more, 2026-10-30), made the same way from `area-dark-*n*p`, the arena placed at the
+same cell; each recipe (`<state>.sav.json`) holds its place, and `place.ts check` replays every one onto it. The
+same `PLAS` slots as the light arenas, dealt in another order. Control 10 frames after the save, as above.
+
+| `ref/save-battle-…` | Starts (room px) | Camera zoom on frame 0 |
+|---|---|---|
+| `dark-field-2p` | (312, 280) (312, 184) [(200, 280) (200, 184)] | 1.6716 |
+| `dark-flames-2p` | (136, 152) (376, 232) [(376, 152) (136, 232)] | 1.4757 |
+| `dark-winds-2p` | (360, 184) (152, 184) [(152, 280) (360, 280)] | 1.6000 |
+| `dark-castle-2p` | (312, 280) (312, 184) [(200, 280) (200, 184)] | 1.6716 |
+| `dark-clouds-2p` | (392, 312) (392, 72) [(104, 72) (104, 312)] | 1.1875 |
+| `dark-field-3p` | (200, 280) (200, 184) (312, 184) [(312, 280)] | 1.6716 |
+| `dark-flames-3p` | (376, 232) (136, 232) (376, 152) [(136, 152)] | 1.4757 |
+| `dark-winds-3p` | (360, 280) (360, 184) (152, 184) [(152, 280)] | 1.6000 |
+| `dark-castle-3p` | (200, 280) (312, 280) (200, 184) [(312, 184)] | 1.6716 |
+| `dark-clouds-3p` | (104, 72) (392, 312) (104, 312) [(392, 72)] | 1.1875 |
+| `dark-field-4p` | (200, 280) (312, 280) (200, 184) (312, 184) | 1.6716 |
+| `dark-flames-4p` | (136, 232) (376, 152) (376, 232) (136, 152) | 1.4757 |
+| `dark-winds-4p` | (360, 280) (152, 280) (152, 184) (360, 184) | 1.6000 |
+| `dark-castle-4p` | (200, 280) (312, 184) (312, 280) (200, 184) | 1.6716 |
+| `dark-clouds-4p` | (392, 312) (104, 72) (104, 312) (392, 72) | 1.1875 |
+
+`compare.ts --no-frames` on the 2p ones (idle, t = 0 / 2 / 5 s; at 5 s): all the Links and most props paired; in
+every arena `BFIN` missing from ours; the Dark Field also 11 `TOMI` and 2 `ZNSW` missing, its `NIWA` 33 px off; the
+Dark Tower of Flames 2 `BLDF` missing; the Dark Tower of Winds 4 `SVGT` missing; the Dark Hyrule Castle's five `SLR1`
+off (they wander) and one `CKSW` extra in ours, as above the clouds; the `SWTH` switches 8 px up-left as in The Field.
 
 **Tracing a round:** `node tools/dolphin/src/trace.ts --savestate ref/save-battle-field-2p.sav --port 55031
 --script "10 idle; 60 p1:right; 10 idle; 4 p1:B; 100 idle" --out out/traces/battle-hit.json` (≈ 5 s; the ports come

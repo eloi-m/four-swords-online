@@ -52,6 +52,7 @@ describe("recipes", () => {
   it("knows the battle round states and the rooms' px", () => {
     expect(battleStateName("ref/save-battle-field-2p.sav")).toEqual({ arena: "field", room: 0, players: 2 });
     expect(battleStateName("ref/save-battle-clouds-4p.sav")?.room).toBe(4);
+    expect(battleStateName("ref/save-battle-dark-winds-3p.sav")).toEqual({ arena: "dark-winds", room: 7, players: 3 });
     expect(battleStateName("ref/places/lake-room7.sav")).toBeNull();
     expect(localPx({ x: 1584.3, y: 728.3, screen: 0 }, { cx: 3, cy: 1 })).toEqual({ x: 1584.3 - 1536, y: 728.3 - 384 });
     expect(localPx({ x: 40, y: 50, screen: 12 }, { cx: 3, cy: 1 })).toEqual({ x: 40, y: 50 });

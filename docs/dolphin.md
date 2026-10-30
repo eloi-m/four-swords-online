@@ -33,7 +33,8 @@ Index of the docs: [README.md](README.md).
   `ram.ts`, or `trace.ts --dump <frame>:80000000:1800000` mid-run).
 - Shadow Battle in Dolphin (integrated GBAs, `disc/gba_bios.bin`): `node tools/dolphin/src/battle-user.ts` writes
   `ref/dolphin-user-battle`, `battle-states.ts` rebuilds the round-start savestates `ref/save-battle-<arena>-<n>p.sav`
-  from power-on; scripts name players (`20 p1:right+B p2:A`), `--save <frame>:<path>` saves a state. Details in
+  from power-on, the Dark World ones (`dark-field` … `dark-clouds`, boss500 rooms 5-9) with the Quest Log's unlock
+  bit poked in, each with its recipe and place (`place.ts check` replays them); scripts name players (`20 p1:right+B p2:A`), `--save <frame>:<path>` saves a state. Details in
   `docs/measurements/battle-arenas.md` "Battle mode in Dolphin"; the static readings to confirm in "Battle constants from main.dol".
 - How it works: `-C Dolphin.General.GDBPort=<port>` makes Dolphin wait for a GDB client at boot (`gdb.ts`, a minimal
   RSP client: memory read/write, registers, breakpoints, watchpoints); `Dolphin.Interface.DebugModeEnabled=True` makes
@@ -58,7 +59,8 @@ Index of the docs: [README.md](README.md).
   extra in ours), with the frames side by side at 640 x 480 (`side-t<s>.png`, Dolphin left). Ours: an adventure room
   entered at the leader's spot (`#room`; a GBA area is not supported, it needs the route's state), each Link put on
   Dolphin's, and a shuttling hovering gem (`HNRY`) given the way, timer and speeds of Dolphin's (`live.ts` reads
-  them: `LIVE_FIELDS`; our frames still start it from the room's entry); a battle round state's arena with its props, the Links at Dolphin's starts and control on the same frame
+  them: `LIVE_FIELDS`; our frames still start it from the room's entry); a battle round state's arena (the Dark World
+  ones too: `save-battle-dark-<arena>-<n>p` is boss500 room 5-9) with its props, the Links at Dolphin's starts and control on the same frame
   (the replay record's `start`, @fso/sim replay.ts). Our frames come from the app's dev server, which compare.ts
   starts on port 5560 (`--web-port`) replaying `out/dolphin-compare/captures`. Actors the sim keeps no object for are
   shown at their placed px (`placed`). SWTH floor switches come out 8 px up-left of Dolphin's on both sides (The

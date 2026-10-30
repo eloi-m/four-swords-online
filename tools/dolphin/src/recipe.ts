@@ -12,7 +12,7 @@ export interface Place {
   stage: string;
   room: number;
   area: number;
-  /** Battle: the arena's name in the round-start states (field, flames, winds, castle, clouds) and the players. */
+  /** Battle: the arena's name in the round-start states (field … clouds, dark-field … dark-clouds) and the players. */
   arena?: string;
   players?: number;
   /** The Links in port order, world px (as RAM holds them; an area's own px on a GBA screen), with their screen. */
@@ -132,9 +132,11 @@ export function localPx(link: { x: number; y: number; screen: number }, cell: { 
   return link.screen === 0 ? { x: link.x - cell.cx * CELL_W, y: link.y - cell.cy * CELL_H } : { x: link.x, y: link.y };
 }
 
+/** The arenas by boss500 room, in the area menu's order: the five, then their Dark World variants (rooms 5-9). */
+export const ARENA_SLUGS = ["field", "flames", "winds", "castle", "clouds", "dark-field", "dark-flames", "dark-winds", "dark-castle", "dark-clouds"] as const;
 /** The battle round states' names: ref/save-battle-<arena>-<n>p.sav. */
-export const ARENA_ROOMS: Readonly<Record<string, number>> = { field: 0, flames: 1, winds: 2, castle: 3, clouds: 4 };
+export const ARENA_ROOMS: Readonly<Record<string, number>> = Object.fromEntries(ARENA_SLUGS.map((slug, room) => [slug, room]));
 export function battleStateName(path: string): { arena: string; room: number; players: number } | null {
-  const m = /save-battle-([a-z]+)-(\d)p\.sav$/.exec(path);
+  const m = /save-battle-([a-z-]+)-(\d)p\.sav$/.exec(path);
   return m && m[1]! in ARENA_ROOMS ? { arena: m[1]!, room: ARENA_ROOMS[m[1]!]!, players: Number(m[2]) } : null;
 }
