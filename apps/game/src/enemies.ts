@@ -133,7 +133,8 @@ function lookOf(e: Enemy, tick: number): Look | null {
       // params bit 4 (0x80140E84).
       return armosStatue(e) ? { sob: "gc", frame: 1092 + (e.frame & 1) } : { sob: "both2", frame: 338 + (e.frame & 1), ...(e.turn === 1 ? { size: 2 } : {}) };
     case "SLK2":
-      return shadowLook(e, tick);
+      // (Unseen in his entrance's states 0-3: +0x11D, set as he jumps out of the portal.)
+      return e.state === "hide" ? null : shadowLook(e, tick);
     case "ZSLH":
     case "ZSLJ": {
       // The minor Shadow Links, with a hammer and who jumps (their draw 0x80220F54): player_sob.bin's frame at +0x280

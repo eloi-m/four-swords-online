@@ -91,7 +91,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // Ours from where Dolphin's Links stand on the clip's first frame.
   const first = frames[0]!;
   const start = { ...place, links: first.links.map(withScreen) };
-  const sim: Sim = place.arena ? battleSim(EXTRACTED, start, { live: first.links, ...(values.lead ? { lead: Number(values.lead) } : {}) }) : adventureSim(loadAdventureStage(EXTRACTED, place.stage), start, [], readLive(readMem1(state, EXTRACTED), actorVtables(EXTRACTED)).links);
+  const live = place.arena ? null : readLive(readMem1(state, EXTRACTED), actorVtables(EXTRACTED));
+  const sim: Sim = place.arena || !live ? battleSim(EXTRACTED, start, { live: first.links, ...(values.lead ? { lead: Number(values.lead) } : {}) }) : adventureSim(loadAdventureStage(EXTRACTED, place.stage), start, live.actors, live.links);
   const players = sim.game.players.length;
   // Battle: the players in the round are the first ones (absent Links trail).
   const dolphinLinks = (f: (typeof frames)[number]): ClipLink[] =>

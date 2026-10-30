@@ -484,7 +484,7 @@ replayed through it give Dolphin's box to 0.00 px and its zoom to 0.00 % over 12
   `ZSLJ`, its big gem (`RUPY` of type 3 and up) and its key (`KEY0` lying). Others read: `OKTA` of params 2, `ZORA` out
   of the water, `SLR1` walking in, `FOCS` with a hold (until it's on the TV, then p & 0xFFF ticks), `HNRY` of kind
   (p >> 16) & 0xFF = 8 (none in Lake Hylia), `DOOR` in one state, `GOL2`'s pads, `KEPO`, `SWT4`, `FTGL`, `BBSL`,
-  `SLK2`, `SLR3`, `TENN`, `FLYO`, the bosses (not done). The points a frame stands for are used on the next frame's step.
+  `SLR3`, `TENN`, `FLYO`, the bosses (not done; `SLK2` done: adventure-world1.md "Shadow Link's entrance"). The points a frame stands for are used on the next frame's step.
 - **Places** (Dolphin's zoom; ours the same deep link): room 0 1.75 with the signs lit (the view 0-347.4 × 64-320);
   room 3 1.514 (centre 296, 236, the leader at 280, 341); room 9 1.890 → 1.198 (the captain at 618, 1110: the box
   690-954.5 × 842-1038) and back in from frame ~570 once the holds ran out with him walking up; room 7 → 1.1875.

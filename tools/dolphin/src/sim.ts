@@ -8,7 +8,7 @@ import {
   applyRoundStart, arenaProps, buildArenaWorld, createBattle, SIDE_ROOM_STRIDE, stepGame, SUBPX, type BattleRules, type Facing, type GameState, type RoundStart,
   type Spawn, type World,
 } from "@fso/sim";
-import { actorStats, ADVENTURE_HEARTS, ALONE_ROOMS, AdventureStage, createAdventure, GEAR_BY_NUMBER, messageBook, playedAlone, stepAdventure, type AdventureGame } from "@fso/sim/adventure";
+import { actorStats, ADVENTURE_HEARTS, ALONE_ROOMS, AdventureStage, createAdventure, enterShadowAt, GEAR_BY_NUMBER, messageBook, playedAlone, stepAdventure, type AdventureGame } from "@fso/sim/adventure";
 import type { Body, ClipLink } from "./diff.ts";
 import { UNDRAWN, type LiveActor, type LiveLink } from "./live.ts";
 import { CELL_H, CELL_W, localPx, type Place } from "./recipe.ts";
@@ -79,7 +79,7 @@ export function gridRoom(stage: Pick<AdventureStage, "index" | "cellOf">, room: 
  * what the Links did before are not carried over).
  */
 export function adventureSim(
-  stage: AdventureStage, place: Place, live: readonly LiveActor[] = [], links: readonly Pick<LiveLink, "facing" | "life" | "item">[] = [],
+  stage: AdventureStage, place: Place, live: readonly LiveActor[] = [], links: readonly (Pick<LiveLink, "facing" | "life" | "item"> & { state?: number })[] = [],
 ): Sim & { adventure: AdventureGame; cell: { cx: number; cy: number } } {
   if (place.area) throw new Error("our side starts in a room's TV part only (#room): a GBA area needs the route's state");
   const room = gridRoom(stage, place.room);
@@ -93,6 +93,8 @@ export function adventureSim(
     p.y = Math.round(local[i]!.y * SUBPX);
     const facing = links[i] && FACINGS[links[i]!.facing];
     if (facing) p.facing = facing;
+    // A leader walking (state 2) walks on, without the standing start's turning tick (player.ts stepPlayer).
+    if (i === 0 && links[0]?.state === 2) p.moving = true;
   });
   const placedHere = stage.area(g.adventure.room, g.adventure.area).actors;
   const sub = (v: number) => Math.round(v * SUBPX);
@@ -106,6 +108,12 @@ export function adventureSim(
     const f = twin.fields!, at = localPx(twin, cell);
     [it.x, it.y] = [sub(at.x), sub(at.y)];
     Object.assign(it.shuttle!, { dir: f.dir, timer: f.timer, vx: sub(f.vx!), vy: sub(f.vy!), tvx: sub(f.tvx!), tvy: sub(f.tvy!) });
+  }
+  // Shadow Link in his entrance: Dolphin's state and its ticks (the scene holding the Links with it), a tick on: a
+  // trace's first frame is the game's frame after the state's RAM (traced: his +0x24C 20 in cave-room4.sav, 21 there).
+  for (const e of g.adventure.enemies) {
+    const twin = e.type === "SLK2" && live.find((a) => a.screen === 0 && a.fields?.state !== undefined && a.id.split("/").includes("SLK2"));
+    if (twin) enterShadowAt(e, twin.fields!.state!, twin.fields!.tick! + 1);
   }
   const px = (v: number) => v / SUBPX;
   return {

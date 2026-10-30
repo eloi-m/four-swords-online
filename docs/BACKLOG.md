@@ -659,7 +659,7 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   3. **Done (2026-10-28):** the camera's zoom (room 0 1.75, room 3 1.51, room 7 → 1.19, room 9 1.89 → 1.20, GBA areas
      1.1875): apps/game `camera.ts`, main.dol's rule replayed against Dolphin's traces to the pixel. Left: the points
      of the types not simulated or not read (`DOOR`, `GOL2`'s pads, `HNRY` kind 8, `KEPO`, `SWT4`, `FTGL`, the bosses), the
-     camera's special focus (+0x7F4: the owl, a Shadow Link's entrance) and its shake; the sim's `FOCS` still waits 30
+     camera's special focus for the owl (+0x7F4; Shadow Link's entrance done, 2026-10-30) and its shake; the sim's `FOCS` still waits 30
      ticks, not for the camera (docs/measurements/adventure-lake-hylia.md "the TV camera").
   4. The HUD changes corner (room 0 bottom-right mirrored, room 1 bottom-left; it left the top-left as the Links reached
      room 6's top-left); ours stays top-left. Read: the several players' corners (0x8042165C: ten spots, a Link within
@@ -689,9 +689,12 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   `compare.ts` and clipped with `clip.ts` (reports in `out/dolphin-compare/cave-*`). Matching within 1 px: the lamp's
   take and the candles, the sword's swing and stab tick for tick, a pot's lift, carry and throw, room 8's throw onto
   the island and the D-pad handover, room 0's door change on the same tick. Different:
-  1. Room 4: Shadow Link's entrance isn't played. Dolphin holds the Links 527 ticks (letterbox bars, the camera on
-     him) while `SLK2` (state +0x248) goes 3 → 4 (tick 214) → 5 (259) → 9 (275) → 12 (334) → 14 (526); ours gives
-     control at once (`shadowlink.ts` has no states 3-12).
+  1. **Done (2026-10-30):** room 4's Shadow Link entrance (states 0-14, read in main.dol and traced from room 11's
+     door: measurements/adventure-world1.md "Shadow Link's entrance"): the scene holds the Links 548 ticks from his
+     wake, the letterbox bars, the HUD hidden, the camera's special focus on him and then its boss mode (apps/game
+     camera.ts, Dolphin's box to 0.000 px), his portal; from `ref/places/cave-room4` with Up held his states and the
+     leader's release land on Dolphin's frames (527); "Defeat Shadow Link!" on the message window (apps/game
+     messagewindow.ts). Left: the entrance's sounds, the HUD's fade (hidden at once in ours).
   2. Room 12 (the stage's first screen): beside the cave door, outside the torches at (216, 88) and (296, 88), Dolphin
      draws two stone gargoyles on a mossy base (2 × 2 tiles each); ours plain grey blocks. No live actor there: a stage
      model or a tile drawn differently.

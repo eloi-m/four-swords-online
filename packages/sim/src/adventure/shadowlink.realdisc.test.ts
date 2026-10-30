@@ -8,7 +8,7 @@ import { switchOn } from "../switches.ts";
 import { createAdventure, stepAdventure, type AdventureGame } from "./adventure.ts";
 import type { Enemy } from "./enemies.ts";
 import { gatherOnLeader, SEPARATE_BUTTON, selectButtons } from "./formation.ts";
-import { SHADOW, SHADOW_STATE, shadowColor, shadowForm, shadowRail, shadowShownColor, shadowState } from "./shadowlink.ts";
+import { SHADOW, SHADOW_STATE, shadowColor, shadowForm, shadowHolds, shadowRail, shadowShownColor, shadowState } from "./shadowlink.ts";
 import { actorStats, AdventureStage } from "./stage.ts";
 
 const root = new URL("../../../../extracted/", import.meta.url);
@@ -37,6 +37,43 @@ describe.skipIf(!existsSync(root))("the Cave of No Return's Shadow Link", () => 
   const standStill = (e: Enemy, facing: Facing, x = e.x / SUBPX, y = e.y / SUBPX) => {
     Object.assign(e, { x: x * SUBPX, y: y * SUBPX, z: 0, vx: 0, vy: 0, vz: 0, speed: 0, tvx: 0, angle: HEADING[facing], facing, shot: SHADOW_STATE.pause, state: "stop", tick: 0, timer: 100000 });
   };
+
+  it("his entrance: woken by the leader within 80 px, the Links held 548 ticks while he comes out of his portal, as traced", () => {
+    const game = createAdventure(stage, { room: 4, x: 231, y: 300, facing: "up", players: 4 });
+    gatherOnLeader(game);
+    const e = shadow(game)!;
+    expect([shadowState(e), e.state]).toEqual([SHADOW_STATE.wait, "hide"]);
+    // Up from the door: he wakes on the tick the leader comes within (p >> 20) & 0xFF = 5 × 16 px (traced at y 266.5).
+    let woke = -1;
+    for (let t = 0; t < 60 && woke < 0; t++) {
+      step(game, 1, Button.Up);
+      if (shadowState(e) === SHADOW_STATE.wake) woke = game.tick;
+    }
+    const leader = game.players[0]!;
+    expect(woke).toBeGreaterThan(0);
+    expect(Math.hypot(leader.x / SUBPX - 256, leader.y / SUBPX - 192)).toBeLessThan(80);
+    // The states at their ticks from the wake (Dolphin, the door trace: 3 on +2, 4 on +237, 5 on +282, 9 on +298, 12
+    // on +357, 14 on +549), the Links not moving a pixel in between, free again on +550; him unseen until his jump.
+    const at: Record<number, number> = {};
+    const links = () => game.players.map((p) => [p.x, p.y]);
+    step(game, 1, Button.Up);
+    expect(shadowHolds(game)).toBe(true);
+    const held = links();
+    let peak = 0;
+    while (shadowState(e) !== SHADOW_STATE.ready) {
+      step(game, 1, Button.Up);
+      at[shadowState(e)] ??= game.tick - woke;
+      peak = Math.max(peak, e.z);
+      if (shadowState(e) < SHADOW_STATE.rise) expect(e.state).toBe("hide");
+      expect(links()).toEqual(held);
+    }
+    expect(at).toEqual({ [SHADOW_STATE.portal]: 2, [SHADOW_STATE.rise]: 237, [SHADOW_STATE.landed]: 282, [SHADOW_STATE.pose]: 298, [SHADOW_STATE.challenge]: 357, [SHADOW_STATE.ready]: 549 });
+    // His jump out of the portal: 48.4 px up at the top (traced).
+    expect(peak / SUBPX).toBeCloseTo(48.4, 1);
+    expect(shadowHolds(game)).toBe(false);
+    step(game, 1, Button.Up);
+    expect(leader.y).toBeLessThan(held[0]![1]!);
+  });
 
   it("his rail: room 4's five RAIL points in their order, looping", () => {
     const game = start();

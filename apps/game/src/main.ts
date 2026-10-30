@@ -19,6 +19,7 @@ import { openServerStore, type AssetStore } from "@fso/web";
 import { adventureStages, englishMessages, levelName, LEVELS, type StageInfo } from "./stages.ts";
 import { GbaWindow } from "./gbawindow.ts";
 import { AdventureHud } from "./hud.ts";
+import { MessageWindow } from "./messagewindow.ts";
 import { BOX_SCREENS, DialogueBox } from "./dialogue.ts";
 import { AdventureView } from "./view.ts";
 import { CLEAR_SHOW_TICKS, carryFor, hashFor, loadRun, nextStage, saveCarry, saveRun, summary, WORLD_1 } from "./run.ts";
@@ -259,6 +260,8 @@ async function start(store: AssetStore, archive: (path: string) => Promise<RarcA
         return file ? [[style, parseBlo(file)]] : [];
       }));
       view.dialogue = new DialogueBox(screens, { ...screenAssets([main2D]), font: () => ({ font, sheets }) }, messages);
+      const box = archiveFile(main2D, "scrn/main_message_window.blo");
+      if (box) view.messageWindow = new MessageWindow(parseBlo(box), { ...screenAssets([main2D]), font: () => ({ font, sheets }) }, messages);
     }
   } catch (error) {
     console.warn("no HUD or GBA window:", error);

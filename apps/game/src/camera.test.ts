@@ -1,6 +1,7 @@
 // The adventure's TV camera (camera.ts) against Dolphin traces of Lake Hylia (the camera object's box, holds and zoom).
 import { describe, expect, it } from "vitest";
-import { AdventureCamera, boxView, FOCUS_MODE, PLAIN_MODE, targetBox, WHOLE_ROOM_TICKS, zoomOf, type Box, type CameraTargets, type Point } from "./camera.ts";
+import { SHADOW_STATE, type AdventureGame } from "@fso/sim/adventure";
+import { AdventureCamera, BOSS_MODE, boxView, FOCUS_MODE, Letterbox, PLAIN_MODE, targetBox, WHOLE_ROOM_TICKS, zoomOf, type Box, type CameraTargets, type Point } from "./camera.ts";
 
 const room = (left: number, top: number): Box => ({ left, top, right: left + 512, bottom: top + 384 });
 const targets = (leader: Point, focus: Point[] = [], wholeRoom = false): CameraTargets => ({ leader, focus, wholeRoom });
@@ -113,5 +114,59 @@ describe("the adventure camera", () => {
     expect(cam.view.left).toBe(2560);
     expect(cam.box).toEqual({ left: 2600, top: 1820, right: 2600, bottom: 1820 });
     expect(PLAIN_MODE.minHalf * 2).toBe(284);
+  });
+
+  // The Cave of No Return's room 4, Shadow Link's entrance from room 11's door (Dolphin, the camera object's box a frame):
+  // the leader at (2279, 649), him at (2304, 576).
+  const slk = { x: 2304, y: 576 }, leader = { x: 2279, y: 649.02 };
+  const followers = [{ x: 2279, y: 668.52 }, { x: 2279, y: 686.52 }, { x: 2279, y: 704.52 }];
+
+  it("the special focus frames Shadow Link alone: 3 px a tick toward him, then a fifth of the gap (traced to the box)", () => {
+    const cam = new AdventureCamera();
+    cam.enter(room(2048, 384), targets(leader), false);
+    run(cam, targets(leader), 2);
+    const special: CameraTargets = { ...targets(leader), special: slk };
+    run(cam, special, 1);
+    cam.box = { left: 2279, top: 655.015, right: 2279, bottom: 655.015 };
+    run(cam, special, 1);
+    // Traced: (2279.950, 652.015) the first tick, then 3 px a tick up and 0.95 across.
+    expect(cam.box!.left).toBeCloseTo(2279.95, 2);
+    expect(cam.box!.top).toBeCloseTo(652.015, 2);
+    run(cam, special, 22);
+    expect(cam.box!.left).toBeCloseTo(2300.706, 2);
+    expect(cam.box!.top).toBeCloseTo(586.412, 2);
+    run(cam, special, 60);
+    expect(cam.view.left).toBeCloseTo(2162, 1);
+    expect(zoomOf(cam.view)).toBeCloseTo(2.1408, 4);
+  });
+
+  it("a boss (Shadow Link from his state 14): every Link counts, his point as it is, zooming in to 2.338 (traced)", () => {
+    const cam = new AdventureCamera();
+    cam.enter(room(2048, 384), targets(leader), false);
+    run(cam, { ...targets(leader), special: slk }, 120);
+    const boss: CameraTargets = { ...targets(leader, [slk]), links: followers, boss: true };
+    run(cam, boss, 2);
+    // Traced: 0.584 px a tick left (25 of the 128.5 px the bottom goes), the top and right held at his point.
+    expect(cam.box!.left).toBeCloseTo(2303.416, 2);
+    expect(cam.box!.bottom).toBeCloseTo(579, 2);
+    expect([cam.box!.top, cam.box!.right]).toEqual([576, 2304]);
+    expect(BOSS_MODE.minHalf * 2).toBe(260);
+    const close: CameraTargets = { ...targets({ x: 2279, y: 551 }, [{ x: 2303, y: 576 }]), links: [{ x: 2279, y: 569.5 }, { x: 2279, y: 587.5 }, { x: 2279, y: 605.5 }], boss: true };
+    run(cam, close, 400);
+    expect(zoomOf(cam.view)).toBeCloseTo(2.3385, 3);
+  });
+
+  it("the letterbox bars: 0.05 in the tick after each tick asked for, out as much once not", () => {
+    const bars = new Letterbox();
+    const game = (shot: number) => ({ adventure: { area: 0, enemies: [{ type: "SLK2", shot }] } }) as unknown as AdventureGame;
+    bars.step(game(SHADOW_STATE.taken));
+    expect(bars.shown).toBe(0);
+    for (let n = 0; n < 25; n++) bars.step(game(SHADOW_STATE.portal));
+    expect(bars.shown).toBe(1);
+    bars.step(game(SHADOW_STATE.ready));
+    bars.step(game(SHADOW_STATE.ready));
+    expect(bars.shown).toBeCloseTo(0.95, 5);
+    for (let n = 0; n < 19; n++) bars.step(game(SHADOW_STATE.ready));
+    expect(bars.shown).toBe(0);
   });
 });
