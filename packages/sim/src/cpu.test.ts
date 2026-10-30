@@ -7,9 +7,9 @@ import { describe, expect, it } from "vitest";
 import { ARENA_ROOMS, arenaName, arenaSpawns, buildArenaWorld } from "./arena.ts";
 import { COUNTDOWN_TICKS, createBattle, restartBattle, type BattleRules, type Spawn } from "./battle.ts";
 import { addCpus, cpuInputs, cpuLevel, type CpuLevel } from "./cpu.ts";
-import { spawnEntity } from "./entities.ts";
+import { battleWorld, spawnEntity } from "./entities.ts";
 import { startRide } from "./epona.ts";
-import { navGrid, region, nearestWalkable } from "./cpunav.ts";
+import { cellAt, NAV, navGrid, region, nearestWalkable } from "./cpunav.ts";
 import { switchTriggers } from "./cpuswitches.ts";
 import { cloneGame, stepGame, type GameState } from "./game.ts";
 import { BLAZE, BURNING, setAlight } from "./firerod.ts";
@@ -20,7 +20,7 @@ import { arenaProps, NO_PROPS, type ArenaProps } from "./props.ts";
 import { decodeWarps, launchFlying, screenAt, sideRoomY } from "./siderooms.ts";
 import { ownSwitch, switchOn } from "./switches.ts";
 import { arena, worldFrom } from "./testarena.ts";
-import { SURFACE_CODES, surfaceAt, type World } from "./world.ts";
+import { CELL, SURFACE_CODES, surfaceAt, type World } from "./world.ts";
 
 /** Plays a battle with CPUs (and `human` for the other players) until the match is over or `max` ticks. */
 function play(game: GameState, world: World, max: number, human: (game: GameState) => number[] = () => [], each?: (game: GameState) => void): number {
@@ -452,6 +452,38 @@ describe.skipIf(!existsSync(boss500) || !existsSync(dol))("CPU players on the re
       else expect(lit, level).toBeGreaterThan(0);
     }
   });
+
+  it("the Tower of Flames' empty bomb sockets are pits to a CPU, and lifting from them it's rarely knocked through one", () => {
+    const room = ARENA_ROOMS.find((r) => arenaName(r) === "Tower of Flames")!;
+    const { world, props } = arenaOf(room);
+    const sockets = props.actors.flatMap((a, k) => (a.id === "HBMB" && world.solid[Math.floor(a.y / CELL) * world.widthCells + Math.floor(a.x / CELL)] === 1 ? [{ k, x: a.x, y: a.y }] : []));
+    expect(sockets.length).toBeGreaterThan(0);
+    const game = createBattle(room, arenaSpawns(stage, room).slice(0, 4), { hearts: 4, timeLimit: 0, wins: 1 }, props, 1);
+    const b = game.battle!, { k, x, y } = sockets[0]!;
+    const pitThere = () => {
+      const nav = navGrid(battleWorld(world, b), props);
+      return (nav.flags[cellAt(nav, x, y)]! & NAV.pit) !== 0;
+    };
+    expect(pitThere()).toBe(false);
+    b.entities.find((e) => e.kind === "bomb" && e.home === k)!.hp = -1; // (isRemoved: lifted off)
+    expect(pitThere()).toBe(true);
+    // Four hard CPUs: falls into the lava within 24 px of a socket (a wall until its bomb is lifted). Seeds 1-6 gave 9
+    // before they kept off the open sockets and stopped lifting with a rival close behind, 1 after.
+    let through = 0;
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const game = addCpus(createBattle(room, arenaSpawns(stage, room).slice(0, 4), { hearts: 4, timeLimit: 0, wins: 2 }, props, seed * 7919), [0, 1, 2, 3].map((player) => ({ player, level: "hard" as const })));
+      const falling = [false, false, false, false];
+      play(game, world, 30_000, undefined, (g) => {
+        g.battle!.fighters.forEach((f, i) => {
+          const p = g.players[i]!, now = f.mode === "falling";
+          if (now && !falling[i] && sockets.some((s) => Math.abs(p.x / SUBPX - s.x) <= 24 && Math.abs(p.y / SUBPX - s.y) <= 24)) through++;
+          falling[i] = now;
+        });
+      });
+    }
+    console.log(`Tower of Flames, 4 hard CPUs, 6 matches: ${through} falls through an empty socket`);
+    expect(through).toBeLessThanOrEqual(3);
+  }, 60_000);
 
   it("the colored panels (Above the Clouds) split the arena for everyone but the Link of their color", () => {
     const { world, props } = arenaOf(4);

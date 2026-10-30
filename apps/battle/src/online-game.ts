@@ -93,8 +93,10 @@ import {
  * 33: the arenas against Dolphin, more: The Field's house door opens as a Link faces it (not before the round's 48th
  *    tick), only its doorway walked through; Up at a ladder's top stands; a lift decided where the Link stands, its
  *    press tick walking on, reaching ±8 px across (a socket bomb ±10); a cannon's catch and its 19-tick dip.
+ * 34: the CPUs keep off the Tower of Flames' empty bomb sockets (pits to their nav) and don't go for a socket bomb with
+ *    another Link within 72 px.
  */
-export const ONLINE_VERSION = 33;
+export const ONLINE_VERSION = 34;
 
 /** A free room's match: free play on the free map, or a Shadow Battle for everyone who was on it. */
 export type MatchMode = "free" | "battle";

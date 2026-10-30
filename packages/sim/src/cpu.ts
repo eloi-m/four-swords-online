@@ -464,8 +464,9 @@ function decide(ctx: Ctx): number | null {
     const use = useItem(ctx, rival);
     if (use !== null) return use;
   }
-  // A bomb in its socket (the Tower of Flames': lifting lights it) with a rival within throwing range.
-  if (rival && dist(ctx, rival) < 160 && chance(brain, t.lift)) {
+  // A bomb in its socket (the Tower of Flames': lifting lights it) with a rival within throwing range, not so close
+  // he'd catch us at it.
+  if (rival && dist(ctx, rival) < 160 && !rivalWithin(ctx, SOCKET_GUARD) && chance(brain, t.lift)) {
     const socket = nearestEntity(ctx, (e) => e.kind === "bomb" && e.phase === "rest" && e.timer === 0 && e.home >= 0, 40);
     if (socket) return setPlan(ctx, "bomb", px(socket.x), px(socket.y), target, socket.id);
   }
@@ -1086,6 +1087,7 @@ function bombPlan(ctx: Ctx): number {
   }
   const e = brain.thing ? entityById(b, brain.thing) : undefined;
   if (!e || isRemoved(e) || e.phase !== "rest" || (e.timer > 0 && e.timer < 120) || brain.planTicks > 150) return replan(ctx);
+  if (e.home >= 0 && rivalWithin(ctx, SOCKET_GUARD)) return replan(ctx);
   const bx = px(e.x), by = px(e.y), face = facingOf(bx - ctx.x, by - ctx.y), [sx, sy] = FACING_STEP[face];
   // Lift from 16 px away (carry.ts liftTarget: the point 16 px ahead within ±7 px of it).
   const gx = bx - sx * LIFT_REACH, gy = by - sy * LIFT_REACH;
@@ -1452,6 +1454,17 @@ function linkMark(ctx: Ctx, j: number): Mark {
 
 const dist = (ctx: Ctx, m: { x: number; y: number }) => Math.abs(m.x - ctx.x) + Math.abs(m.y - ctx.y);
 
+/**
+ * A socket bomb is lifted facing the rim, and its socket opens into the lava once it's off (entities.ts battleWorld): a
+ * rival this close (px, as dist) would reach us during the lift (LIFT_TICKS) and knock us through it.
+ */
+const SOCKET_GUARD = 72;
+
+/** Is another Link still in the round within `range` px (as dist)? */
+function rivalWithin(ctx: Ctx, range: number): boolean {
+  return ctx.b.fighters.some((g, j) => j !== ctx.i && g.hearts > 0 && dist(ctx, linkMark(ctx, j)) < range);
+}
+
 /** The nearest entity passing `test` within `range` px (Manhattan) that we can walk up to. */
 function nearestEntity(ctx: Ctx, test: (e: Entity) => boolean, range: number): Entity | undefined {
   let best: Entity | undefined, bestD = range;
@@ -1747,6 +1760,7 @@ function lightPlan(ctx: Ctx): number {
   const c = entityById(b, brain.thing);
   if (!c || isRemoved(c) || c.phase !== "rest") return replan(ctx);
   const bomb = ownBomb(ctx) ?? nearestEntity(ctx, socketBomb, SOCKET_RANGE);
+  if (bomb && bomb.home >= 0 && rivalWithin(ctx, SOCKET_GUARD)) return replan(ctx);
   if (bomb) return liftAt(ctx, px(bomb.x), px(bomb.y));
   if (f.item === "bomb" && !b.entities.some((o) => o.kind === "bomb" && o.owner === ctx.i && !isRemoved(o))) {
     const [sx, sy] = FACING_STEP[ctx.p.facing];

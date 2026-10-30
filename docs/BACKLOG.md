@@ -365,6 +365,16 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   costs about 55 µs a tick (two CPUs, one running alight; p99 130 µs, from 140 / 300 before the search was narrowed).
   Bench after (`pnpm --filter @fso/sim bench`, a busy machine; no fire in it): 4 CPUs 3.3-10.5 µs a tick (3.4-9.7
   before, same run), p99 10.6-106 µs (11.3-105). Left: the Fire Rod's stream isn't used; a burning CPU in side view (not seen in the game) is left running.
+- **The Tower of Flames' open sockets** (2026-10-30, `ONLINE_VERSION` 34): since a socket emptied by its bomb's lift
+  opens into the lava (`World.ledges`), CPUs lifting one were knocked through it by a rival coming up behind (they lift
+  facing the rim). An empty socket is now a pit to the nav (kept off, not fought in front of), and a CPU doesn't go for
+  a socket bomb (the "bomb" and "light" plans) with another Link within 72 px (Manhattan: he'd reach it during the
+  24-tick lift). Four hard CPUs on the Tower of Flames, seeds 1-20 (`wins: 2`), falls into the lava within 24 px of a
+  socket: none with the sockets as walls (before the change), 33 after it (3 of them deaths), 3 with this (0); falls of
+  any kind 105 / 110 / 98, fall deaths 14 / 9 / 10, a socket bomb lifted 264 / 273 / 125 times (none by accident
+  since the change: always the "bomb", "light" or "toss" plan). Mixed levels (easy, normal, hard, normal), 20 seeds: socket falls 0 /
+  24 / 7. `cpu.test.ts` checks the nav and caps the socket falls (6 seeds: 9 before this, 1 after). Self-play after:
+  hard vs easy 74-46, 4 walk-ins in 20 four-CPU matches, 60/60 against a Link doing nothing.
 
 ### B5. Online robustness
 - **Rejoining** (done 2026-10-09, `docs/netcode.md` "Rejoining"): a reload or a lost lobby connection brings a player

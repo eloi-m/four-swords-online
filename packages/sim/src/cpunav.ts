@@ -3,8 +3,9 @@
 // 4 px below the anchor) over a pit or a colored panel (panels.ts: another player's color is a pit), and distance fields
 // toward a goal cell over those cells (Dijkstra: 10 straight, 14 diagonal, plus a penalty for cells next to a wall or a
 // pit, on a trick floor, under a fire bar, or on a panel). Everything here is derived from the battle's view of the
-// arena (entities.ts battleWorld: cut bushes, open trapdoors) and its props, and memoized: the caches only save work,
-// their contents are a pure function of those inputs, so resimulating a frame (rollback) gives the same answers.
+// arena (entities.ts battleWorld: cut bushes, open trapdoors, empty bomb sockets, pits to a CPU) and its props, and
+// memoized: the caches only save work, their contents are a pure function of those inputs, so resimulating a frame
+// (rollback) gives the same answers.
 // One grid per screen (the TV, each side room). A side-view screen's (the Tower of Winds' TV, the side-view side rooms:
 // siderooms.ts) has cells a Link stands in (the ground under him, or a ladder) and the moves between them (left and
 // right, off a ledge down to where he lands, up and down a ladder), its distance fields over those moves.
@@ -128,7 +129,9 @@ function buildNav(world: World, props: ArenaProps, panels: boolean, screen: numb
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       wall[at(x, y)] = world.solid[(y + Y0) * W + x] === 1 ? 1 : 0;
-      hole[at(x, y)] = world.surface[(y + Y0) * W + x] === PIT ? 1 : 0;
+      // An empty bomb socket on the rim (World.ledges) is walked over, but only leads into the lava: a pit to a CPU,
+      // so it keeps off it and doesn't fight in front of it (a knock would send it through).
+      hole[at(x, y)] = world.surface[(y + Y0) * W + x] === PIT || world.ledges?.[(y + Y0) * W + x] ? 1 : 0;
       ladder[y * w + x] = world.surface[(y + Y0) * W + x] === LADDER ? 1 : 0;
     }
   }
