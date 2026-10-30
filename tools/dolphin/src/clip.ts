@@ -15,6 +15,7 @@ import { FORMATION_BUTTONS } from "@fso/sim/adventure";
 import { clipDiff, CLIP_TOLERANCE, type ClipLink } from "./diff.ts";
 import { gbaButtons } from "./fixture.ts";
 import type { FrameSnapshot } from "./fsa.ts";
+import { actorVtables, readLive, readMem1 } from "./live.ts";
 import { describePlace, EXTRACTED, knownPlace, readRecipe, RUNS, runTrace, userDirFor, withScreen } from "./place.ts";
 import { battleStateName } from "./recipe.ts";
 import { adventureSim, battleSim, loadAdventureStage, placePx, type Sim } from "./sim.ts";
@@ -81,7 +82,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // Ours from where Dolphin's Links stand on the clip's first frame.
   const first = frames[0]!;
   const start = { ...place, links: first.links.map(withScreen) };
-  const sim: Sim = place.arena ? battleSim(EXTRACTED, start, { live: first.links, ...(values.lead ? { lead: Number(values.lead) } : {}) }) : adventureSim(loadAdventureStage(EXTRACTED, place.stage), start);
+  const sim: Sim = place.arena ? battleSim(EXTRACTED, start, { live: first.links, ...(values.lead ? { lead: Number(values.lead) } : {}) }) : adventureSim(loadAdventureStage(EXTRACTED, place.stage), start, [], readLive(readMem1(state, EXTRACTED), actorVtables(EXTRACTED)).links);
   const players = sim.game.players.length;
   // Battle: the players in the round are the first ones (absent Links trail).
   const dolphinLinks = (f: (typeof frames)[number]): ClipLink[] =>
