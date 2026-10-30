@@ -669,6 +669,26 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   7. Measured, already known: room 6's ladder foot out of the water is a push of ~20 frames, then a 27-frame ledge jump
      (state 56); ours walks out 34 ticks sooner (`TRACED_WATER_STAGES`).
   Not compared (no savestate reaches them): areas 3/2, 3/3, 3/5, 5/2, 7/6 and room 58.
+- **The Cave of No Return against Dolphin (2026-10-30):** rooms 12, 6, 7, 13, 0, 2, 1, 3, 8, 11 and 4 compared with
+  `compare.ts` and clipped with `clip.ts` (reports in `out/dolphin-compare/cave-*`). Matching within 1 px: the lamp's
+  take and the candles, the sword's swing and stab tick for tick, a pot's lift, carry and throw, room 8's throw onto
+  the island and the D-pad handover, room 0's door change on the same tick. Different:
+  1. Room 4: Shadow Link's entrance isn't played. Dolphin holds the Links 527 ticks (letterbox bars, the camera on
+     him) while `SLK2` (state +0x248) goes 3 → 4 (tick 214) → 5 (259) → 9 (275) → 12 (334) → 14 (526); ours gives
+     control at once (`shadowlink.ts` has no states 3-12).
+  2. Room 12 (the stage's first screen): beside the cave door, outside the torches at (216, 88) and (296, 88), Dolphin
+     draws two stone gargoyles on a mossy base (2 × 2 tiles each); ours plain grey blocks. No live actor there: a stage
+     model or a tile drawn differently.
+  3. Unsure: room 4's old man (`JIJI`, (56, 200)) is a dark crouched mound with blue sweat drops rising during the
+     fight in Dolphin, standing in ours (the darkening may be the unsimulated `VWMD`, not the drops); a lit bomb
+     (`HBMB`) at Shadow Link's feet in Dolphin that doesn't explode in 3.5 s, seen only after RAM pokes moved him.
+  4. Small: a fireball's knockback (room 1) lasts 26 ticks with a ~3-tick stall in Dolphin, 24 and 2.3 px further in
+     ours (`traps.ts`); room 13's `BLCK` starts moving 21 ticks after the push again in Dolphin, ~9 later in ours, and
+     ours stands 0.5 px nearer a block; room 8's thrown Link lands 0.5 px short in ours.
+  Not compared: room 5 and the goal (no state with Shadow Link beaten), the GBA areas, room 7's ring of fire (the
+  cameras frame different areas). The tool's limits there: our frames carry no lamp (dark rooms are black on our
+  side), no room progress (switches, blocks, doors, actor states) is carried into ours, our followers start stacked on
+  the leader, and most of the old `ref/adv/w1-011-*` chains no longer replay where they say.
 
 ### B7. Code health
 - **Dependencies:** `playwright-core` is only in `tools/e2e`, for WebKit; its browser lives in `~/.cache/fso-webkit`
