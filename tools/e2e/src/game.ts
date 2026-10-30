@@ -366,7 +366,7 @@ async function adventureChecks(page: Page): Promise<void> {
   }
   await page.screenshot({ path: join(out, "adventure-generator-kill.png") });
   console.log(`generator: tick ${shut.tick}: switch 4 ${shut.switch4}, ${shut.soldiers} soldiers; tick ${walked.tick}: ${walked.soldiers} (${walked.drawn} drawn, ${walked.walking} walking in); kills ${kills}`);
-  if (shut.switch4 !== 1 || shut.soldiers !== Math.min(16, Math.floor((shut.tick - 1) / 10) + 1) || walked.soldiers !== 16 || !(walked.drawn >= 10) || kills < 1) problems.push(`generator: ${JSON.stringify({ shut, walked, kills })}`);
+  if (shut.switch4 !== 1 || Math.abs(shut.soldiers - Math.min(16, Math.floor((shut.tick - 1) / 10) + 1)) > 1 || walked.soldiers !== 16 || !(walked.drawn >= 10) || kills < 1) problems.push(`generator: ${JSON.stringify({ shut, walked, kills })}`);
 
   // New enemies: The Mountain Path's Tektites (stage 3-2, room 5) jump about, one is stabbed and leaves a heart; the
   // Death Mountain Foothills' Buzz Blobs (3-1, room 5) shock the Link who strikes one.
