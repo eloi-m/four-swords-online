@@ -341,6 +341,30 @@ Traced with a copy of the adventure user folder (`ref/dolphin-user-adventure-tin
   207.5) to (320.3, 183.1) (the ladder's middle in the tile above the foot, landing a step past it), stood (state 13)
   and walked up at 1.5 px/tick.
 
+## Adventure: Force Gems spilled by a Link struck (Dolphin, 2026-10-30)
+From `ref/places/tingle-room5.sav` left idle (the leader under room 5's falls, 301 Force Gems: Link +0xC04 301, 0, 0,
+0, the HUD's 0x80529ED4 the same): `trace.ts --break` on the hit method and the drop, `--raw` on the counts,
+`actor-trace.ts --ids RUPY,GOLD --scan 812D8000:81320000` (1800 frames; `ref/dolphin-user-adventure-gems`, GDB port
+2550). Applied in the sim (pickups.ts `spillOf`, `spillGems`, `GEM_LIFE`; adventure.ts `noteSpill`).
+- **When**: the current carries him onto a river stone on frame 217 (hit method 0x802710C8 for each Link: damage 1, hit
+  type 4); state 15 for 33 frames; on frame 251, his first back in the swim (state 74), 0x802796B8 (called from the
+  hurt state's end, 0x80287754) drops the gems: +0xC04 301 → 293 at once, the HUD counting down one a frame.
+- **How many** (0x802796B8, by the hit type kept in +0x11E4): types 4 and 7 → 0x8024E46C: 5 + rand(5) (here 8); 5 and
+  8 → 0x8024E3D8: 20 + rand(10); 6 and 9 → 0x8024E344: 50 + rand(20); others none. On a GBA screen (+0x3B4 ≥ 8)
+  exactly 5, 20, 50. The skips: a Link grouped with others under another's control (+0xD60 ≥ 0, mode 4 from
+  0x802486A0 and not its group's own) drops none; the followers of a game alone hold no gems anyway.
+- **The drop** (0x8024E694(link, worth, round)): at most what he holds (his +0xC04, or his group's 0x80236228), taken
+  off it; a `GOLD` at his place and height of params = the worth (kind 0: the burst, `RUPY`s worth it, as Phantom
+  Ganon's), kind 6 when he's in state 81; on a GBA screen the worth rounded down to one gem's (1, 5, 20 … 3000) and a
+  GOLD of kind 4 (that gem; 7 in state 81). The death drop (0x80277F98) asks it for 2000, the hit method's
+  0x802710C8 for 100 rounded (not traced).
+- **The gems**: eight green, flung from his place at 2-4 px/frame up; two rose past him and were taken coming down at
+  about 4.8 px (not at 7.2 px); one fell in the pool: below 4 px over deep water (0x8032B0A4, surface 13) a gem sinks
+  0.1 px/frame (state 6, +0x24C = 30) and went 27 frames after; the five on the bank lay (state 1) and went on frame
+  1080: RUPY's init sets +0x24C = 830 (1010 with several players), counted down while it lies, gone at 0.
+- **Shadow Battle**: no Force Gems are held there (the orbs' table 4 has no gem), so nothing spills; the battle sim is
+  unchanged.
+
 ## Adventure: Tingle's Tower and Hyrule Castle, loading them
 The stage pokes that load the Cave of No Return (stage 0x80529F08 = 1, gs + 0x58 = 1, byte gs + 0x84 = 1 from
 `ref/save-lake-hylia.sav`) load Hyrule Castle with 3 (`ref/adv/w1-boss013-start.sav`: the Links on its `PLAS` starts,

@@ -722,8 +722,15 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      (state 13, ~40 ticks), the pads light with lightning between them, and the flying tiles (`FLYO`) lift off one by
      one ((296, 184) first, then (312, 184), (328, 184) ~2 s later) and strike him (state 15, twice in 100 ticks); ours
      walks over the pads and on to the room's top, the tiles static (`tingle-room10-climb`, `tingle-room10-field`).
-  2. A stone's strike scatters Force Gems in Dolphin (room 5, idle under the falls: 301 → 295, six `RUPY` round the
-     Link, `tingle-room5` t5); ours loses none.
+  2. **Done (2026-10-30):** a stone's strike scatters Force Gems (room 5, idle under the falls: 301 → 293, eight
+     green `RUPY` flung as the knockback ends, two taken back): main.dol's rule by hit type (4/7 5-9 gems, 5/8 20-29,
+     6/9 50-69; GBA screens one gem of 5/20/50) from the leader's count, the flung gems gone 830 ticks after (sinking
+     in 30 in deep water), taken only coming down under 6 px (pickups.ts `spillGems`; measurements/adventure-world1.md
+     "Force Gems spilled by a Link struck"). The routes step round: Tingle's room 2 between its stones, the Castle's
+     room 1 out of the bomb's blast (the Cave and Lake Hylia take no such hit). Left: the same 830 ticks for the rains',
+     kill streaks' and enemies' gems (likely the same RUPY code; the routes gather some later than that), the GBA
+     screens' GOLD kind 4 and the side view's kind 6 flights, a rained gem's take height; compare.ts carries no gem
+     count into ours (its frames show 0), so the spill was checked in the sim (spill.realdisc.test.ts).
   3. Room 11: ours shows the owl (`KEPO`) on his perch from the start; Dolphin's perch is empty until he flies in.
   4. Small: a stone's knock-back lasts 34 ticks in ours, 32 in Dolphin, and the next strike comes 55 ticks after the
      first in ours, 61 in Dolphin (room 1, `tingle-room1-swim`); the walk on from the ladder's top starts 3 ticks
