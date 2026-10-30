@@ -33,7 +33,7 @@ import {
   opaqueFrame,
 } from "@fso/render";
 import { fighterFrame, fighterHeight, fighterVisible, HURTBOX, linkDisplayFrame, SUBPX, switchOn, type PixelBox } from "@fso/sim";
-import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, shadowHolds, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
+import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { CloudShadow, cloudShadowLevel } from "../../battle/src/cloudshadow.ts";
 import { EntityView } from "../../battle/src/entities.ts";
@@ -646,10 +646,10 @@ export class AdventureView {
     this.renderLight(game, tv, dpr);
     this.renderWindow(game, tv, ch);
     this.renderBars();
-    // A scene (Shadow Link's entrance) hides the HUD from its take to its end (0x8037AE00, 0x8037AE30; at once:
-    // assumed).
-    if (this.hud && !shadowHolds(game)) {
-      this.hud.update(game);
+    // A scene (Shadow Link's entrance) fades the HUD out while the bars are asked for (camera.ts Letterbox).
+    const hudShown = this.camera.bars.hud;
+    if (this.hud && hudShown > 0) {
+      this.hud.update(game, hudShown);
       r.clearDepth();
       r.render(this.hud.scene, this.hud.camera);
     }

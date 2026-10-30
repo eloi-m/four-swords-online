@@ -691,10 +691,12 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   the island and the D-pad handover, room 0's door change on the same tick. Different:
   1. **Done (2026-10-30):** room 4's Shadow Link entrance (states 0-14, read in main.dol and traced from room 11's
      door: measurements/adventure-world1.md "Shadow Link's entrance"): the scene holds the Links 548 ticks from his
-     wake, the letterbox bars, the HUD hidden, the camera's special focus on him and then its boss mode (apps/game
+     wake, the letterbox bars, the HUD faded out, the camera's special focus on him and then its boss mode (apps/game
      camera.ts, Dolphin's box to 0.000 px), his portal; from `ref/places/cave-room4` with Up held his states and the
      leader's release land on Dolphin's frames (527); "Defeat Shadow Link!" on the message window (apps/game
-     messagewindow.ts). Left: the entrance's sounds, the HUD's fade (hidden at once in ours).
+     messagewindow.ts); its sounds (the portal's, his jump's, his BGM from the challenge), the HUD's fade (0.1 a tick
+     while the bars are asked for), his tumble out of the portal (player_sob 241-272), and his state carried in a
+     replay record (compare.ts's frames on Dolphin's).
   2. Room 12 (the stage's first screen): beside the cave door, outside the torches at (216, 88) and (296, 88), Dolphin
      draws two stone gargoyles on a mossy base (2 × 2 tiles each); ours plain grey blocks. No live actor there: a stage
      model or a tile drawn differently.

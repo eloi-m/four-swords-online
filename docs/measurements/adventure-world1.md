@@ -154,18 +154,31 @@ in a row at y 224 east of the island's pit), `w1-011-room8-island` (the red Link
     - **0** (unseen): the Link in control within that reach (squared distance; the leader at (231, 266.5) woke him,
       268 didn't) and all four on his screen (0x801CD228) → **1**: the scene takes the game (0x801F68E0: a Link
       carrying something has it dropped first, 0x80230C6C, and it tries again the next tick; then each Link held,
-      +0x3041 = 15, the HUD hidden by 0x8037AE00) and asks for the bars; the group's flag 8 makes the coordinator (each
+      +0x3041 = 15, the pause menu barred by 0x8037AE00: its flag [0x8053AF40]+0x13F is read only by START's check
+      0x80136364) and asks for the bars; the group's flag 8 makes the coordinator (each
       frame, before the actors) put every 0x4000 member in **2** (1 tick); the Links' last step is the take's tick,
       then not a step or a frame of theirs moves (the leader stays in state 2 on his walking frame 63, the others 3).
-    - **3**, the dark portal: JPA 1043, 1044, 1045 at his spot (0x80214740, param 0; 1048-1050 with 1: his state 13,
-      back into it), 235 ticks (160 when the group's +0x50 ≥ 0). **4**, out of it: +0x11D = 1 (drawn from here),
-      animation 4, sound 0x40035, up 4.5 px/tick less 0.2 a tick, at most 4 down: 4.3, 8.4 … 48.4 at the top (22
+    - **3**, the dark portal: JPA 1043, 1044, 1045 at his spot and sound 0x40048 `JA_SE_CHR_SLINK_APP_EFFECT`
+      (0x80214740, param 0; 1048-1050 and 0x4004E `_APP_EFF_S` with 1: his state 13, back into it; with the group's
+      +0x50 ≥ 0, JPA 470-473 and 0x400D6 `_APP_EFF_G` instead: none in World 1), 235 ticks (160 when the group's +0x50
+      ≥ 0). **4**, out of it: +0x11D = 1 (drawn from here), animation 4, sound 0x40035 `JA_SE_CHR_SLINK_APPEAR`, up 4.5 px/tick less 0.2 a tick, at most 4 down: 4.3, 8.4 … 48.4 at the top (22
       ticks) … 0.4, then on the ground on the 45th tick. **5**: 15 ticks (60 when 0x801C11F0 or the group's flag 1),
       then +0x230 0x8000 and the group's flag 0x10; once every member is (+2: their count) the coordinator poses them
       (0x801C272C: 6 when 0x801C11F0, 7 with flag 1, else **9**). **9**: 60 ticks, then 10 (115) and 11 (60) for a
       skill with flag 2, else **12**: the message window's "Defeat Shadow Link!" (0x8043D67C with 411: BMG 0x19C) and the
       stage call 0x802D6BC8(1); when the window is free again (+0x10A, 191 ticks on) the group's flag 0x20 puts him in
-      **14** on the next frame: the scene's end (0x801F6884, the HUD back) and standing as in 15 for 5 + rand(26) ticks.
+      **14** on the next frame: the scene's end (0x801F6884) and standing as in 15 for 5 + rand(26) ticks. 12's start
+      also asks for BGM 0x0100000D `JA_BGM_SHADOW_LINK` (0x80458FF0).
+    - **His animation** (+0x340: set 0x800FEB78, stepped each tick 0x800FE8C0 by step lists, 0xFF looping, 0xFE
+      holding; the frame +0x348 = the facing's first frame (right, left, down, up) + the step's offset; table
+      0x80463AA0): 0 standing (60-63), 1 walking (8 × facing + 0-7, 3 ticks each, looping), 4 the tumble (241 + 8 ×
+      facing + 0-7: 3, 6, 6, 3, 3, 3, 6, 80 ticks, then held). In the entrance: 4 in state 4, 0 in 5 (0x801C3CC8), 9
+      (0x801C3F04, shared by 7, 8, 11) and 14 (0x801C4020), none set in 12; 10 walks (1). A Link's frames in his
+      palette, not frames of his own.
+    - **The HUD's fade** (the adventure HUD's corner update, 0x80419E28): every tick a player's parts lose 0.1 of
+      alpha while the bars are asked for (overlay +0x284), his corner is hidden (message manager +0xDC) or he isn't
+      in, and gain 0.1 back toward each part's own (0.6, 0.9 or 1) otherwise: gone 10 ticks after the take, back 10
+      ticks after 12 stops asking.
     - **Timeline from the wake (tick T):** T+1 the take, T+2 state 3, T+237 state 4, T+282 5, T+297 ready, T+298 9,
       T+357 12, T+548 the window free, T+549 14, T+550 the leader's first step (traced, all of it).
     - **The camera** (0x801C283C every tick): in states 3-12, the one that leads asks for the bars (overlay +0x284 = 1,

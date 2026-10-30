@@ -6,8 +6,9 @@
 // counter: four digits with leading zeros on main2D's kk_rupyNum_00-09, the fifth hidden (docs/formats/j2d-and-bmg.md "How the game
 // drives main_bat"). The item box: the leader's item's icon pair Php1ii(2k+1) + shadow, the others hidden (the icons'
 // order is main_bat's, apps/battle hud.ts; Dolphin frame dumps, the Cave of No Return room 8: the lantern while the
-// lamp is held, the bow once taken). It only reads the state.
-import { findPane, type BloPane, type BloScreen } from "@fso/formats";
+// lamp is held, the bow once taken). While the letterbox bars are asked for (a scene: Shadow Link's entrance) it fades
+// out 0.1 a tick, and back in 0.1 a tick after (camera.ts Letterbox). It only reads the state.
+import { findPane, walkPanes, type BloPane, type BloScreen } from "@fso/formats";
 import { screenCamera, ScreenView, type ScreenAssets } from "@fso/render";
 import { HEART } from "@fso/sim";
 import type { AdventureGame, GearKind } from "@fso/sim/adventure";
@@ -42,6 +43,10 @@ export class AdventureHud {
   private readonly visible = new Map<BloPane, boolean>();
   private readonly texture = new Map<BloPane, string>();
   private readonly items: BloPane[][] = [];
+  /** Every drawn pane with its file alpha, for the fade. */
+  private readonly alphas: { pane: BloPane; alpha: number }[] = [];
+  /** The fade last applied (0-1). */
+  private applied = 1;
   /** What's shown (for tests): per heart slot "4" … "1", "dot" or "-"; the counter's digits; the item icon's index (-1 none). */
   shown = { hearts: [] as string[], gems: "", icon: -1 };
 
@@ -49,6 +54,10 @@ export class AdventureHud {
     this.view = new ScreenView(screen, assets);
     this.scene.add(this.view.object);
     for (const pane of screen.root.children) this.setVisible(pane, SINGLE_PLAYER.includes(pane.tag));
+    for (const root of screen.root.children) {
+      if (!SINGLE_PLAYER.includes(root.tag)) continue;
+      for (const { pane: p } of walkPanes(root)) if (p.kind !== "pane") this.alphas.push({ pane: p, alpha: screen.materials[p.material]?.matColors[0]?.[3] ?? 255 });
+    }
     const pane = (tag: string) => findPane(screen, tag);
     for (let i = 1; i <= HEART_SLOTS; i++) {
       const two = (n: number) => String(n).padStart(2, "0");
@@ -67,7 +76,12 @@ export class AdventureHud {
     if (this.digits[4]!.shadow) this.setVisible(this.digits[4]!.shadow, false);
   }
 
-  update(game: AdventureGame): void {
+  /** `fade`: how much of it shows (0-1: camera.ts Letterbox `hud`), every pane's file alpha times it. */
+  update(game: AdventureGame, fade = 1): void {
+    if (fade !== this.applied) {
+      this.applied = fade;
+      for (const { pane, alpha } of this.alphas) this.view.setPaneAlpha(pane, alpha * fade);
+    }
     const f = game.battle.fighters[0];
     if (!f) return;
     const max = Math.min(HEART_SLOTS, game.battle.rules.hearts);

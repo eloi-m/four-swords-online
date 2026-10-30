@@ -421,7 +421,7 @@ only the leader there (a follower walks its trail without collision): all four n
   measurements/adventure-world1.md "Shadow Link's entrance"): unseen until the leader comes within 80 px, then the
   scene holds the Links where they stand (not a step or a frame) for 548 ticks while he comes out of his dark portal
   (JPA 1043-1045, 235 ticks), jumps out (45), poses and "Defeat Shadow Link!" shows (191), under the letterbox bars
-  with the HUD hidden and the camera on him alone (its special focus); then the camera's boss mode (every Link
+  with the HUD faded out (0.1 a tick) and the camera on him alone (its special focus); then the camera's boss mode (every Link
   counted, 2.338). The sim's states and the Links' release match Dolphin's frame for frame (`clip.ts` from
   `ref/places/cave-room4`); apps/game draws the bars, the portal, the message window (messagewindow.ts, apps/battle's
   timing) and the camera (its box and view to 0.000 px against the trace). **His moves, read from main.dol and traced in Dolphin**
@@ -472,9 +472,9 @@ only the leader there (a follower walks its trail without collision): all four n
 - Also: an arrow that sticks in a crystal's own tile lights it (`bow.ts`: room 3's from below depended on the pixel it
   was shot from, room 9's across the chasm never lit).
 - **Still open:** Shadow Link's lunge (state 36), how he joins his rail (0x801C844C), his looking about while he
-  stands, the items on him (state 16); his entrance's sounds (0x40035, 0x400D6), the poses' animations (+0x340) and the HUD's
-  fade; room 3's arrow lighting in Dolphin; the blue bracelet (chest content 0x15
-  gives nothing); Shadow Link's own animation (his frames are a Link's, assumed, below).
+  stands, the items on him (state 16); room 3's arrow lighting in Dolphin; the blue bracelet
+  (chest content 0x15 gives nothing); which of his animations (a Link's frames: measurements/adventure-world1.md "His
+  animation") his states after the entrance set (assumed, below).
 - **The stage's items: the lamp, the bow, the blue bracelet** (the wiki). Pedestals (tile 0x017, a `TRCH` kind 1 glow
   beside each) stand in rooms 6 (two), 13 (48, 112) and 0 (432, 336: the pocket by the east door, beside the candles the
   lamp lights); off the grid, room 8 (a draft of room 9 with a pedestal where room 9 has its four floor switches) and

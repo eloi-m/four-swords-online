@@ -354,21 +354,31 @@ export class FocusPoints {
  * eases their amount (+0x288) 0.05 in, else 0.05 out. Drawn black over the TV's top and bottom, 48 px × a² tall at
  * alpha a² (view.ts). Who asks: Shadow Link from the scene's take to his state 12 (0x801F68E0, 0x801C283C; traced:
  * 0.05 the tick after the take, 1 twenty ticks on, 0 twenty ticks after 14's start).
+ * The adventure HUD fades out 0.1 a tick while they're asked for, and back in 0.1 a tick after (its corner's update
+ * 0x80419E64 reads +0x284; back in toward each part's own alpha, some 0.6 or 0.9: drawn here as one factor).
  */
 export class Letterbox {
   /** Twentieths (0-20). */
   private amount = 0;
   private asked = false;
+  /** The HUD's part, tenths (0-10). */
+  private shownHud = 10;
 
   /** Their amount now (0-1). */
   get shown(): number {
     return this.amount / 20;
   }
 
+  /** How much of the HUD shows now (0-1). */
+  get hud(): number {
+    return this.shownHud / 10;
+  }
+
   /** A tick (after the sim's): the step on the last tick's request, then this tick's request. */
   step(game: AdventureGame): void {
     this.amount = Math.max(0, Math.min(20, this.amount + (this.asked ? 1 : -1)));
     this.asked = game.adventure.area === 0 && game.adventure.enemies.some((e) => shadowOnStage(e) || (e.type === "SLK2" && e.shot === SHADOW_STATE.taken));
+    this.shownHud = Math.max(0, Math.min(10, this.shownHud + (this.asked ? -1 : 1)));
   }
 }
 

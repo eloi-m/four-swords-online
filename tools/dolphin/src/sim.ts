@@ -8,7 +8,7 @@ import {
   applyRoundStart, arenaProps, buildArenaWorld, createBattle, SIDE_ROOM_STRIDE, stepGame, SUBPX, type AdventureRecord, type BattleRules, type Facing, type GameState, type RoundStart,
   type Spawn, type World,
 } from "@fso/sim";
-import { actorStats, ADVENTURE_HEARTS, ALONE_ROOMS, AdventureStage, enterShadowAt, GEAR_BY_NUMBER, messageBook, playedAlone, startAdventure, stepAdventure, type AdventureGame } from "@fso/sim/adventure";
+import { actorStats, ADVENTURE_HEARTS, ALONE_ROOMS, AdventureStage, GEAR_BY_NUMBER, messageBook, playedAlone, SHADOW_STATE, startAdventure, stepAdventure, type AdventureGame } from "@fso/sim/adventure";
 import type { Body, ClipLink } from "./diff.ts";
 import { UNDRAWN, type LiveActor, type LiveLink } from "./live.ts";
 import { CELL_H, CELL_W, localPx, type Place } from "./recipe.ts";
@@ -89,10 +89,15 @@ export function adventureSim(
   const local = place.links.map((l) => localPx(l, cell));
   const carry = links[0] && { hearts: links.map((l) => l.life), maxHearts: ADVENTURE_HEARTS, gear: GEAR_BY_NUMBER[links[0].item] ?? "" };
   // The start as a replay record (@fso/sim replay.ts), so that apps/game replaying it (compare.ts's frames) starts the same.
+  // Shadow Link in his entrance: Dolphin's state and its ticks (the scene holding the Links with it), a tick on: a
+  // trace's first frame is the game's frame after the state's RAM (traced: his +0x24C 20 in cave-room4.sav, 21 there).
+  const shadowTwin = live.find((a) => a.screen === 0 && a.fields?.state !== undefined && a.id.split("/").includes("SLK2"));
+  const shadow = shadowTwin && shadowTwin.fields!.state! < SHADOW_STATE.ready ? { state: shadowTwin.fields!.state!, tick: shadowTwin.fields!.tick! + 1 } : null;
   const record: AdventureRecord = {
     kind: "adventure", stage: place.stage, room, x: Math.round(local[0]!.x), y: Math.round(local[0]!.y), players: place.links.length,
     ...(carry ? { carry } : {}),
     ...(switches !== null ? { switches } : {}),
+    ...(shadow ? { shadow } : {}),
     links: local.map((l, i) => {
       const facing = links[i] && FACINGS[links[i]!.facing];
       return { x: l.x, y: l.y, ...(facing ? { facing } : {}) };
@@ -114,12 +119,6 @@ export function adventureSim(
     const f = twin.fields!, at = localPx(twin, cell);
     [it.x, it.y] = [sub(at.x), sub(at.y)];
     Object.assign(it.shuttle!, { dir: f.dir, timer: f.timer, vx: sub(f.vx!), vy: sub(f.vy!), tvx: sub(f.tvx!), tvy: sub(f.tvy!) });
-  }
-  // Shadow Link in his entrance: Dolphin's state and its ticks (the scene holding the Links with it), a tick on: a
-  // trace's first frame is the game's frame after the state's RAM (traced: his +0x24C 20 in cave-room4.sav, 21 there).
-  for (const e of g.adventure.enemies) {
-    const twin = e.type === "SLK2" && live.find((a) => a.screen === 0 && a.fields?.state !== undefined && a.id.split("/").includes("SLK2"));
-    if (twin) enterShadowAt(e, twin.fields!.state!, twin.fields!.tick! + 1);
   }
   const px = (v: number) => v / SUBPX;
   return {

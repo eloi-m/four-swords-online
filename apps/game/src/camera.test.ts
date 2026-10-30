@@ -169,4 +169,19 @@ describe("the adventure camera", () => {
     for (let n = 0; n < 19; n++) bars.step(game(SHADOW_STATE.ready));
     expect(bars.shown).toBe(0);
   });
+
+  it("the HUD: 0.1 out each tick the bars are asked for, 0.1 back in each tick after", () => {
+    const bars = new Letterbox();
+    const game = (shot: number) => ({ adventure: { area: 0, enemies: [{ type: "SLK2", shot }] } }) as unknown as AdventureGame;
+    bars.step(game(SHADOW_STATE.wait));
+    expect(bars.hud).toBe(1);
+    bars.step(game(SHADOW_STATE.taken));
+    expect(bars.hud).toBeCloseTo(0.9, 5);
+    for (let n = 0; n < 9; n++) bars.step(game(SHADOW_STATE.portal));
+    expect(bars.hud).toBe(0);
+    bars.step(game(SHADOW_STATE.ready));
+    expect(bars.hud).toBeCloseTo(0.1, 5);
+    for (let n = 0; n < 9; n++) bars.step(game(SHADOW_STATE.ready));
+    expect(bars.hud).toBe(1);
+  });
 });
