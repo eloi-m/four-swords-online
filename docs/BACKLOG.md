@@ -710,6 +710,34 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   cameras frame different areas). The tool's limits there: our frames carry no lamp (dark rooms are black on our
   side), no room progress (switches, blocks, doors, actor states) is carried into ours, our followers start stacked on
   the leader, and most of the old `ref/adv/w1-011-*` chains no longer replay where they say.
+- **Tingle's Tower against Dolphin (2026-10-30):** rooms 11, 0-10 and room 10's field compared with `compare.ts`
+  (places `ref/places/tingle-*`: rooms 1-3 and 5-10 reached by a `--tele` to the room's edge and swum across;
+  reports in `out/dolphin-compare/tingle-*`) and clipped with `clip.ts`. Matching: every placed actor (the hovering
+  gems, all kind 0, still; the villagers; room 10's goal and flying tiles where they lie), the walk to the owl's stop
+  (302.0, 0.00 px), swimming in still water and against the current (room 4: within the one tick our clips start
+  late, see below), a stone's strike and knock-back (room 1: same tick, 0.75 px/tick up), room 2's blade trap (`TRAP`:
+  out and back at 0.5 px/tick, the same cycle, our phase only offset by the place's), the ladder's jump out of
+  room 10's pool (state 56, landing within 0.04 px). Different:
+  1. Room 10's goal: the leader stepping on its pads with 301 Force Gems (quota 2000) is held there in Dolphin
+     (state 13, ~40 ticks), the pads light with lightning between them, and the flying tiles (`FLYO`) lift off one by
+     one ((296, 184) first, then (312, 184), (328, 184) ~2 s later) and strike him (state 15, twice in 100 ticks); ours
+     walks over the pads and on to the room's top, the tiles static (`tingle-room10-climb`, `tingle-room10-field`).
+  2. A stone's strike scatters Force Gems in Dolphin (room 5, idle under the falls: 301 → 295, six `RUPY` round the
+     Link, `tingle-room5` t5); ours loses none.
+  3. Room 11: ours shows the owl (`KEPO`) on his perch from the start; Dolphin's perch is empty until he flies in.
+  4. Small: a stone's knock-back lasts 34 ticks in ours, 32 in Dolphin, and the next strike comes 55 ticks after the
+     first in ours, 61 in Dolphin (room 1, `tingle-room1-swim`); the walk on from the ladder's top starts 3 ticks
+     later in Dolphin (states 0, 2, 13 twice: 4.5 px behind ours, room 10); swimming into room 10's pool edge ours
+     stops 1 px lower (up) and 1.5 px further right than Dolphin; followers trail up to 4 px further behind the
+     leader on a walk (room 11), 1.5 px once stopped.
+  5. Unsure: in room 4 Dolphin draws dark gem-shaped shadows in the water where nothing is listed, ours nothing (the
+     hidden Zoras?); its Zoras surface at other spots than ours (random in both?).
+  Not compared: the GBA-screen areas (room 0's and room 4's houses, room 3's passage and tree house with its chest,
+  room 7's shaft with its floor switches and fish: compare.ts and clip.ts start ours in a room's TV part only); the
+  stage has no Octoroks. The tool's limits there: a swimming Link starts walking in ours (one tick late) with no
+  current drift (Dolphin's carried at full: 0.5 px/tick at once, ours ramping over ~10 ticks), so clips in a current
+  drift apart from the first frames; places mid-river can't be rebuilt from their roots (`w1-boss012-room3`/`room4`/
+  `passage`'s parents are gone).
 
 ### B7. Code health
 - **Dependencies:** `playwright-core` is only in `tools/e2e`, for WebKit; its browser lives in `~/.cache/fso-webkit`
