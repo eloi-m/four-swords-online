@@ -114,7 +114,7 @@ export function adventureSim(
     adventure: g,
     cell,
     step: (buttons) => stepAdventure(g, [buttons[0] ?? 0], stage),
-    links: () => g.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${g.adventure.links[i]?.mode ?? ""}` })),
+    links: () => g.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${g.adventure.links[i]?.mode ?? ""}${moveOf(g.battle.fighters[i])}` })),
     bodies: () => {
       const a = g.adventure;
       const placed = stage.area(a.room, a.area).actors;
@@ -134,6 +134,9 @@ export function adventureSim(
     },
   };
 }
+
+/** A Link's move (lifting, carrying, throwing, rolling…: carry.ts, roll.ts) after his state, when he has one. */
+const moveOf = (f: { move: string } | undefined) => (f && f.move !== "none" ? `/${f.move}` : "");
 
 /** Our entities' kinds as the game's actor types, where one matches. */
 const ENTITY_TYPES: Readonly<Record<string, string>> = {
@@ -161,7 +164,7 @@ export function battleSim(extracted: string, place: Place, opts: { seed?: number
     world,
     start,
     step: (buttons) => stepGame(game, [...buttons], world),
-    links: () => game.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${game.battle!.fighters[i]!.mode}` })),
+    links: () => game.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${game.battle!.fighters[i]!.mode}${moveOf(game.battle!.fighters[i])}` })),
     bodies: () => {
       const b = game.battle!;
       // A prop's own entity (its switch, its bees, its flame, its soldier…) stands for it; what a prop makes (an orb,
