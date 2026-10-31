@@ -106,7 +106,11 @@ describe.skipIf(!existsSync(root))("the adventure's stage machinery", () => {
     Object.assign(game.players[0]!, { y: 130 * SUBPX });
     step(game, 2);
     expect(game.adventure.cleared).toBe(0);
+    // (Short of the quota the lightning between the pads struck him off: knocked back 20 ticks.)
+    expect(game.battle.fighters[0]!.mode).toBe("hurt");
     game.adventure.gems = 2000;
+    step(game, 30);
+    Object.assign(game.players[0]!, { x: 212 * SUBPX, y: 130 * SUBPX });
     step(game);
     expect(game.adventure.cleared).toBeGreaterThan(0);
   });

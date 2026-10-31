@@ -718,10 +718,16 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   late, see below), a stone's strike and knock-back (room 1: same tick, 0.75 px/tick up), room 2's blade trap (`TRAP`:
   out and back at 0.5 px/tick, the same cycle, our phase only offset by the place's), the ladder's jump out of
   room 10's pool (state 56, landing within 0.04 px). Different:
-  1. Room 10's goal: the leader stepping on its pads with 301 Force Gems (quota 2000) is held there in Dolphin
-     (state 13, ~40 ticks), the pads light with lightning between them, and the flying tiles (`FLYO`) lift off one by
-     one ((296, 184) first, then (312, 184), (328, 184) ~2 s later) and strike him (state 15, twice in 100 ticks); ours
-     walks over the pads and on to the room's top, the tiles static (`tingle-room10-climb`, `tingle-room10-field`).
+  1. Room 10's goal and flying tiles: **done** (docs/measurements/adventure-world1.md "Room 10's flying tiles and
+     goal"). Short of the quota the goal's pads and the lightning between them are solid and the lightning strikes a
+     Link against it (no damage, 10 px back; logic.ts), and the flying tiles (`FLYO`, sim traps.ts) wake on switch 16
+     (the floor switches below), lift `order` × 60 + 60 ticks later (the second the tick after the first), rise 30 px,
+     hover 60, fly at the leader at 4 px/tick and break on him (2), a sword, a wall or another tile; drawn (their tile
+     spinning, the holes left, the break's effect 855, the pads' effects 266 and 270). Same ticks as Dolphin from the
+     switch on (ours ~6 ticks early to it: the 4.5 px walk lead and SWTH's offset, below). Left: the pads' aura covers
+     them (Dolphin draws the pads over it) and the lightning is gold (Dolphin's green and white); the tiles' shadows;
+     the pads' eye (gc 602); the rule behind tiles 2+ keeping their own count (0x8033AD7C); ours slides along the
+     barrier where Dolphin's leader stays wedged between two pads (up-right held).
   2. **Done (2026-10-30):** a stone's strike scatters Force Gems (room 5, idle under the falls: 301 → 293, eight
      green `RUPY` flung as the knockback ends, two taken back): main.dol's rule by hit type (4/7 5-9 gems, 5/8 20-29,
      6/9 50-69; GBA screens one gem of 5/20/50) from the leader's count, the flung gems gone 830 ticks after (sinking

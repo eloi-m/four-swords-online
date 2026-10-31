@@ -341,6 +341,31 @@ Traced with a copy of the adventure user folder (`ref/dolphin-user-adventure-tin
   207.5) to (320.3, 183.1) (the ladder's middle in the tile above the foot, landing a step past it), stood (state 13)
   and walked up at 1.5 px/tick.
 
+### Room 10's flying tiles and goal (2026-10-31)
+From `ref/places/tingle-room10.sav` (301 Force Gems), script `36 right; 150 up; 60 up; 90 up-right; 200 idle`:
+`clip.ts --links 1` (`tingle-room10-climb`) and `actor-trace.ts --ids FLYO --scan 81000000:81800000 --fields
+FLYO=230,238,244,c:f,10:f,14:f` (`out/traces/flyo-room10.json`); main.dol read in sim traps.ts and logic.ts.
+- **The floor switches wake the tiles.** The leader walking up over `SWTH` (240-256, 224) (params 0x80000004) turns
+  switch 16 on; the 17 `FLYO` (switch (p >> 11) & 31 = 16) go from state 4 to 0 on frame 118 and count. Lifts (state
+  1): (296, 184) order 0 at 179, (312, 184) order 1 at **180** (its order became 0 the tick before: +0x244), (328, 184)
+  at 299, (344, 184) at 359 (their own `order` × 60 + 60). Each rises 1 px/tick to z 30 by its 30th tick, hovers to its
+  90th, then flies (state 2, 269 and 270).
+- **The flight.** Aimed at the leader from where it's seen (y − z): 4 px/tick eased in (tile 0: (296, 184) → (294.7,
+  181.2) → (292.3, 176.1) every 2 ticks, then 3.2-3.6 px per tick each way). Tile 0 broke at 285 (state 3, its 16th
+  flight tick) meeting tile 1 (12 px apart); tile 1 struck the leader at 291 (its 23rd, life 14 → 12, state 15, 60
+  invincible ticks), seen 6 px across and 13 px below him. A follower (256, 87) it passed within 7 px of wasn't struck.
+- **The goal short of the quota.** GOL2 params 2 (layout 2: pads (168, 56) … (264, 56)). Walking up at x 256 the
+  leader stopped at y 73.1 (frame 230: his body's top on the pad's ±10 box, y 66) and pushed (state 13, 40 ticks and
+  more, no harm). Knocked to (248.6, 70.1) by the tile, between two pads, he pushed up again at y 70.1 (the lightning's
+  box, y 48-64, walls the gap) and was struck as his invincibility ran out (frame 352: state 15, life unchanged, 60
+  invincible ticks, 0.5 px/tick down for 20 ticks to y 80.1). Ours (sim logic.ts GOAL_SHOCK): stops at 74.1, struck
+  at 349, 10 px down.
+- Ours against it: the same ticks from the switch on (switch 16 at ~113 in ours: 6 ticks early, the walk's 4.5 px lead
+  from the ladder's top and SWTH's offset); lifts 173/174/293/353, tile 0 broken on tile 1 in its 16th flight tick, tile
+  1's strike in its 23rd. Side by side (`compare.ts` at `tingle-room10-field`, `side-t2.6`, `side-t2.8`: ours from the
+  place with the switch on, counting from it): the tiles in the air, the holes they leave (tile 0x79), the break's
+  effect (855); the pads' aura (266) and lightning (270) drawn, their look not Dolphin's (below the pads, green).
+
 ## Adventure: Force Gems spilled by a Link struck (Dolphin, 2026-10-30)
 From `ref/places/tingle-room5.sav` left idle (the leader under room 5's falls, 301 Force Gems: Link +0xC04 301, 0, 0,
 0, the HUD's 0x80529ED4 the same): `trace.ts --break` on the hit method and the drop, `--raw` on the counts,

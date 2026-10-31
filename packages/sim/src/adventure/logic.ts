@@ -18,9 +18,18 @@
 //   the bottom Links' bodies reached the box, set at (120, 85.5), (136, 85.5), (120, 101.5), (136, 101.5) in one tick.
 //   Trailing 18 px apart they can't all fit, so a leader stopping on it alone doesn't press it.
 // - GOL2 "goal 2" (the stage's goal, four pads gc 603, lit 602, laid out by params & 0x1F): the stage is cleared when
-//   the Links have the Force Gem quota (pickups.ts GEM_QUOTA) and the leader steps on a pad. TODO(measure): its switch
-//   (the top bits: Lake Hylia's waits for 16, which nothing in its room sets: the quota is assumed), the pads' box, the
-//   four Links on four pads.
+//   the Links have the Force Gem quota (pickups.ts GEM_QUOTA) and the leader steps on a pad. Short of the quota each pad
+//   is solid, a ±10 px box (its update 0x802E2C28 sets that box round each pad in turn; clipped in Dolphin, Tingle's
+//   Tower room 10 with 301 gems: the leader walking up stopped with his body's top at the box's bottom, y 66, and
+//   pushed). Between the pads runs lightning (GOAL_LIGHTNING: from pad i a JPA effect, 270 for layout 2, made by its init
+//   with 266 on each pad, offset by tables 0x8046EAD0 / 0x8046EB30; and a box, 0x8046EBC0; effects 0x8046EB90) that strikes a Link it meets (0x801F2B7C with its atcp, 0, and hit type 26): no
+//   damage, knocked 0.5 px/tick for 20 ticks away from the box's middle, 60 invincible ticks. It walls the gap too
+//   (Dolphin: the leader pushing up into the gap between two pads stood with his body's top at the box's bottom, y 64,
+//   struck as his invincibility ran out, 10 px down); the sim's Link stops a px further off a box than the game's
+//   (74.1 against 73.1 below a pad), so the strike takes a body within 2 px of the box. Layouts 1 and 4 have
+//   code of their own (0x802E325C, 0x802E338C; not read: no lightning here), 5 none. Assumed: the lightning only short
+//   of the quota (Dolphin seen short of it). TODO(measure): its switch (init 0x802E3B2C: (p >> 22) & 31; Hyrule
+//   Castle's 16), the box the leader steps into with the quota, the four Links on four pads, the pads' eye (gc 602).
 // - SPBG "drawbridge" (Hyrule Castle rooms 1, 3 and 6's gates; init 0x80348698, update 0x8034821C): once its switch
 //   (params >> 27) is on, it opens and some ticks later sets switch (p >> 22) & 31, whose PNPCs turn the gate's tiles
 //   to floor: kind p & 15 0 (room 1's drawbridge) after 120 ticks, kind 1 (rooms 3 and 6's) after 30 (measured: room 1's
@@ -59,6 +68,8 @@ import { brokenTiles } from "./zoras.ts";
 import { openDoorTiles } from "./doors.ts";
 import { blockTiles } from "./tileblocks.ts";
 import { quotaMet } from "./pickups.ts";
+import { hurtFighter, type Knock } from "../combat.ts";
+import { FLYING_TILE } from "./traps.ts";
 import type { AdventureStage, Area, AreaActor } from "./stage.ts";
 
 /** A switchless PNPC acts while a Link is within this many px of it (0x8023AF14 with a ±48 box). */
@@ -131,6 +142,10 @@ export function rewrittenTiles(game: AdventureGame, stage: AdventureStage): Map<
     if (actor.id !== "THRN" || !base || !a.rewritten.includes(actorKey(a.room, actor.index))) continue;
     for (let i = 0; i < base.length; i++) if (stage.typeOf(base[i]! & 0x3ff) === SPIKE_TYPE) out.set(i, SPIKES_DOWN_TILE);
   }
+  // The floor the flying tiles (FLYO) lifted off (traps.ts).
+  for (const actor of area.actors) {
+    if (actor.id === "FLYO" && a.rewritten.includes(actorKey(a.room, actor.index))) out.set((actor.y >> 4) * LAYER_TILES + (actor.x >> 4), FLYING_TILE.hole);
+  }
   // Burnt stumps (gear.ts), open doors' stones (doors.ts).
   burntTiles(game, out);
   brokenTiles(game, stage, out);
@@ -166,9 +181,67 @@ export function goalPads(a: AreaActor): { x: number; y: number }[] {
   return [0, 1, 2, 3].map((i) => ({ x: a.x + l[i]!, y: a.y + l[4 + i]! }));
 }
 
+/** A goal's pads are solid short of the quota: this box's half size round each, px. */
+export const GOAL_SOLID_HALF = 10;
+
+/** `world` with the current area's goal pads and the lightning between them solid while the Links are short of the quota. */
+export function goalWorld(world: World, game: AdventureGame, stage: AdventureStage): World {
+  if (quotaMet(game)) return world;
+  const goals = currentArea(game, stage).actors.filter((a) => a.id === "GOL2");
+  if (!goals.length) return world;
+  const boxes = [...(world.boxes ?? [])], h = GOAL_SOLID_HALF;
+  for (const g of goals) {
+    for (const p of goalPads(g)) boxes.push({ left: p.x - h, top: p.y - h, right: p.x + h, bottom: p.y + h });
+    for (const l of goalLightning(g)) boxes.push({ left: l.left, top: l.top, right: l.right, bottom: l.bottom });
+  }
+  return { ...world, boxes };
+}
+
+/**
+ * The lightning from each pad by layout (0x8046EB90: its JPA effect; 0x8046EAD0 / 0x8046EB30: where, about the pad;
+ * 0x8046EBC0: its box about the pad, left, top, right, bottom px), for the layouts the update's common branch strikes
+ * with (0, 2, 3).
+ */
+export const GOAL_LIGHTNING: Readonly<Record<number, readonly { effect: number; dx: number; dy: number; box: readonly [number, number, number, number] }[]>> = {
+  0: [
+    { effect: 269, dx: 32, dy: 0, box: [0, -8, 64, 8] },
+    { effect: 271, dx: 0, dy: 32, box: [-8, 0, 8, 64] },
+    { effect: 271, dx: 0, dy: -32, box: [-8, -64, 8, 0] },
+    { effect: 269, dx: -32, dy: 0, box: [-64, -8, 0, 4] },
+  ],
+  2: [0, 1, 2].map(() => ({ effect: 270, dx: 16, dy: 0, box: [0, -8, 32, 8] as const })),
+  3: [0, 1, 2].map(() => ({ effect: 272, dx: 0, dy: 16, box: [-8, 0, 8, 32] as const })),
+};
+/** The effect on each pad its init makes with the lightning (JPA). */
+export const GOAL_PAD_EFFECT = 266;
+/** The lightning's strike: no damage, 0.5 px/tick for 20 ticks (hit type 26: traced). */
+export const GOAL_SHOCK: Knock = { speed: 128, hop: 608 };
+
+/** How near the box the lightning strikes a Link's body (±7), px: see the file comment. */
+export const GOAL_SHOCK_REACH = 2;
+
+/** A goal's lightning (area px): from each pad its effect's spot and its box. */
+export function goalLightning(a: AreaActor): { x: number; y: number; effect: number; left: number; top: number; right: number; bottom: number }[] {
+  const pads = goalPads(a);
+  return (GOAL_LIGHTNING[a.params & 0x1f] ?? []).map((l, i) => ({ x: pads[i]!.x + l.dx, y: pads[i]!.y + l.dy, effect: l.effect, left: pads[i]!.x + l.box[0], top: pads[i]!.y + l.box[1], right: pads[i]!.x + l.box[2], bottom: pads[i]!.y + l.box[3] }));
+}
+
 /** The pad of a goal a Link stands on, or -1. */
 export function padUnder(a: AreaActor, x: number, y: number): number {
   return goalPads(a).findIndex((p) => Math.abs(x - p.x) <= GOAL_PAD_HALF && Math.abs(y - p.y) <= GOAL_PAD_HALF);
+}
+
+/** Short of the quota, a goal's lightning strikes the Links it meets (GOAL_SHOCK). */
+function shockLinks(game: AdventureGame, goal: AreaActor): void {
+  const b = game.battle, h = 7 + GOAL_SHOCK_REACH;
+  for (const l of goalLightning(goal)) {
+    game.players.forEach((p, i) => {
+      const x = p.x / SUBPX, y = p.y / SUBPX, f = b.fighters[i]!;
+      if (f.mode !== "active" || x + h < l.left || x - h > l.right || y + h < l.top || y - h > l.bottom) return;
+      const hit = hurtFighter(p, f, i, 0, ((l.left + l.right) / 2) * SUBPX, ((l.top + l.bottom) / 2) * SUBPX, { cause: "goal", knock: GOAL_SHOCK });
+      if (hit) b.hits.push(hit);
+    });
+  }
 }
 
 /** One tick of the area's PNPCs (latching), ZNSWs, spikes, drawbridges and FOCSes, after the enemies and the arena stepped. */
@@ -199,6 +272,7 @@ export function stepLogic(game: AdventureGame, stage: AdventureStage): void {
         break;
       }
       case "GOL2": {
+        if (!a.cleared && !quotaMet(game)) shockLinks(game, actor);
         if (a.cleared || !quotaMet(game)) break;
         const l = game.players[0]!;
         if (b.fighters[0]!.mode === "active" && padUnder(actor, l.x / SUBPX, l.y / SUBPX) >= 0) a.cleared = game.tick + 1;

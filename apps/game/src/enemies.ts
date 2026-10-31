@@ -148,6 +148,9 @@ function lookOf(e: Enemy, tick: number): Look | null {
       // A blade trap (TRAP's draw 0x80164640): its look's kind 0 enemy_both2 340, the others enemy_gc 378 + its step
       // (sim bladeFrame). Not drawn: the big one's size (none in World 1).
       return bladeFrame(e);
+    case "FLYO":
+      // A flying floor tile: its tile, in the floor until it lifts, then a quad of its own (view.ts renderFlyingTiles).
+      return null;
     case "FBGE":
       // The fireball trap draws nothing (its shots are effects: view.ts).
       return null;

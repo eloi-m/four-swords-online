@@ -40,7 +40,7 @@ import { spawnGanon, stepGanon, type Ganon } from "./phantomganon.ts";
 import { shadowHolds } from "./shadowlink.ts";
 import { stepTingle, tingleHolds, type Tingle } from "./tingle.ts";
 import { carryingKey, doorWorld, keyThrowHolds, knockKeyOut, liftKey, shutDoors, stepDoors, stepKeyLift, stepKeyThrow, throwKey, type CarriedKey, type KeyThrow } from "./doors.ts";
-import { rewriteWorld, rewrittenTiles, savedSwitches, saveSwitches, stepFourSwitch, stepLogic } from "./logic.ts";
+import { goalWorld, rewriteWorld, rewrittenTiles, savedSwitches, saveSwitches, stepFourSwitch, stepLogic } from "./logic.ts";
 import { barrierWorld, stepZoras, type Escort } from "./zoras.ts";
 import { spawnPickups, spillGems, spillOf, stepPickups, stepRains, type Pickup, type Rain } from "./pickups.ts";
 import { boomerangFetch, flyingWorld, giveGear, swordOnCrystals, friendlyFire, stepFire, stepFirePose, takeFromPedestal, useFireRod, type FireBolt, type GearKind } from "./gear.ts";
@@ -442,7 +442,7 @@ export function currentArea(game: AdventureGame, stage: AdventureStage): Area {
 /** The current area's collision with this arena's changes (cut bushes, open trapdoors), the PNPCs' tiles and the shut doors. */
 export function areaWorld(game: AdventureGame, stage: AdventureStage): World {
   const world = rewriteWorld(battleWorld(currentArea(game, stage).world, game.battle), rewrittenTiles(game, stage), stage);
-  return barrierWorld(colorBlockWorld(ringWorld(blockWorld(gateWorld(rockWorld(doorWorld(world, shutDoors(game, stage)), game.adventure.rocks), game, stage), game), game, stage), game, stage), game, stage);
+  return goalWorld(barrierWorld(colorBlockWorld(ringWorld(blockWorld(gateWorld(rockWorld(doorWorld(world, shutDoors(game, stage)), game.adventure.rocks), game, stage), game), game, stage), game, stage), game, stage), game, stage);
 }
 
 /** Advances the adventure one 60 Hz tick; `inputs` are the players' button masks (the leader's first). */

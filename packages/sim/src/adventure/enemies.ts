@@ -13,7 +13,7 @@
 // - one whose params' top 5 bits name a switch shows (and moves) only once that switch is on (as WARPs, PNPCs and
 //   Force Gems read them; assumed for enemies, TODO(measure)).
 // Per type below. Every value marked TODO(measure) is a placeholder.
-import { isHiddenUnsimulated } from "@fso/formats";
+import { isHiddenUnsimulated, LAYER_TILES } from "@fso/formats";
 import { attackMeets, type SubBox } from "../attacks.ts";
 import { linkAttack } from "./whirl.ts";
 import { BALL_KNOCK } from "../castlesoldiers.ts";
@@ -35,7 +35,7 @@ import { FIREBALL_KIND, hurtZora, initPuku, initZora, PUKU, pukuHalf, stepFireba
 import { initRaisedStalfos, initWizzrobe, isCaster, RAISED_STALFOS, raisedStalfosHit, raisedStalfosHurtable, raisedStalfosHurts, stepRaisedStalfos, stepWizzrobe, wizzrobeDies, wizzrobeHurt, wizzrobeHurts, wizzrobeSolid, WIZZROBE, WIZZROBE_BOLTS, type WizzrobeHooks } from "./wizzrobe.ts";
 import { initShadowLink, shadowAfterKnock, shadowBeaten, shadowForm, shadowHurtable, shadowMatches, shadowParries, shadowStruck, SHADOW, stepShadowLink } from "./shadowlink.ts";
 import { initJumpingShadow, initMinorShadow, stepJumpingShadow, stepMinorShadow } from "./minorshadow.ts";
-import { bladeClanks, bladeHalf, FIRE_TRAP, FIRE_TRAP_KIND, initBladeTrap, initFireTrap, stepBladeTrap, stepFireTrap } from "./traps.ts";
+import { bladeClanks, bladeHalf, FIRE_TRAP, FIRE_TRAP_KIND, breakTile, FLYING_TILE, initBladeTrap, initFireTrap, initFlyingTile, stepBladeTrap, stepFireTrap, stepFlyingTile, tileFlying } from "./traps.ts";
 import { dropHinoxRock, HINOX, HINOX_ROCK, hinoxBox, hinoxContact, initHinox, rockHurts, ROCK_KIND, stepHinox, stepHinoxRock, strikeHinox } from "./hinox.ts";
 
 export type EnemyState = "walk" | "spit" | "fly" | "rest" | "stop" | "chase" | "hide" | "knock" | "die" | "patrol" | "turn" | "look" | "notice" | "rise" | "dive" | "change";
@@ -102,7 +102,7 @@ export interface Enemy {
 }
 
 /** The enemy types the adventure animates (others stay static sprites, apps/game). */
-export const ENEMY_TYPES: readonly string[] = ["OKTA", "KETH", "SLR1", "SLR2", "SLR4", "TKTA", "STAL", "BZBR", "POOH", "MOZO", "NZMI", "PEAC", "AMOS", "ROPE", "ZASL", "PAME", "ZORA", "PUKU", "HINO", "WIZR", "SLK2", "SLR3", "ZSLH", "ZSLJ", "FBGE", "TRAP"];
+export const ENEMY_TYPES: readonly string[] = ["OKTA", "KETH", "SLR1", "SLR2", "SLR4", "TKTA", "STAL", "BZBR", "POOH", "MOZO", "NZMI", "PEAC", "AMOS", "ROPE", "ZASL", "PAME", "ZORA", "PUKU", "HINO", "WIZR", "SLK2", "SLR3", "ZSLH", "ZSLJ", "FBGE", "TRAP", "FLYO"];
 
 /** Knocked back by Link's attacks (measured on an Octorok hit by a stab): 15.66 px/tick, × 0.78 a tick, ≤ 24 ticks. */
 export const ENEMY_KNOCK_SPEED = 4009;
@@ -304,6 +304,11 @@ export function spawnEnemy(game: AdventureGame, stage: AdventureStage, type: str
     case "TRAP":
       initBladeTrap(e);
       break;
+    case "FLYO": {
+      const area = currentArea(game, stage);
+      initFlyingTile(e, (area.base?.[(y >> 4) * LAYER_TILES + (x >> 4)] ?? 0) & 0x3ff);
+      break;
+    }
   }
   return e;
 }
@@ -370,6 +375,8 @@ function halfOf(e: Enemy): number {
       return pameBig(e) ? PAME.bigHalf : PAME.half;
     case "TRAP":
       return bladeHalf(e);
+    case "FLYO":
+      return FLYING_TILE.half;
     default:
       return OCTOROK.half;
   }
@@ -391,7 +398,7 @@ export function enemyShown(game: AdventureGame, e: Enemy): boolean {
 export const enemyActive = (e: Enemy) => e.state !== "die" && e.life > 0;
 /** Whether it counts for "all enemies beaten" (ZNSW): not a shot, a thrown rock, a Wizzrobe's spell, the minor Shadow Link
  *  or a trap. */
-export const countsAsEnemy = (e: Enemy) => e.type !== "OKTM" && e.type !== "OIWA" && e.type !== "ZSLH" && e.type !== "ZSLJ" && e.type !== "FBGE" && e.type !== "TRAP" && !(e.type === "WIZR" && !isCaster(e));
+export const countsAsEnemy = (e: Enemy) => e.type !== "OKTM" && e.type !== "OIWA" && e.type !== "ZSLH" && e.type !== "ZSLJ" && e.type !== "FBGE" && e.type !== "TRAP" && e.type !== "FLYO" && !(e.type === "WIZR" && !isCaster(e));
 
 export function stepEnemies(game: AdventureGame, stage: AdventureStage, world: World): void {
   const a = game.adventure;
@@ -445,6 +452,14 @@ export function stepEnemies(game: AdventureGame, stage: AdventureStage, world: W
         else if (e.type === "ZSLJ") stepJumpingShadow(game, e, world);
         else if (e.type === "FBGE") stepFireTrap(game, e, (vx, vy) => newEnemy(game, "OKTM", e.x, e.y, { kind: FIRE_TRAP_KIND, state: "fly", vx, vy, atcp: FIRE_TRAP.damage, life: 1, tick: -1 }));
         else if (e.type === "TRAP") stepBladeTrap(game, e, world);
+        else if (e.type === "FLYO") {
+          const area = currentArea(game, stage);
+          stepFlyingTile(game, e, world, area, (x, y) => stage.tileTypeAt(area, x, y), () => {
+            const first = !area.actors.some((x) => x.id === "FLYO" && a.rewritten.includes(actorKey(a.room, x.index)));
+            a.rewritten.push(actorKey(a.room, e.actor));
+            return first;
+          }, () => swordMeets(game, enemyBox(e)));
+        }
         else if (e.type === "ZASL") stepZol(game, e, world);
         else if (e.type === "PAME") {
           stepPame(game, e, world, e.grace);
@@ -921,7 +936,8 @@ function hurtable(e: Enemy): boolean {
       return false; // (the minor Shadow Links: what a sword does to them isn't known, minorshadow.ts)
     case "FBGE":
     case "TRAP":
-      return false; // (traps.ts: nothing beats them; a sword clanks on a blade trap)
+    case "FLYO":
+      return false; // (traps.ts: nothing beats them; a sword clanks on a blade trap, breaks a flying tile)
     case "TKTA":
       return e.state !== "hide";
     case "STAL":
@@ -955,6 +971,16 @@ function hurtable(e: Enemy): boolean {
 /** A Stalfos's bone (OKTM kind 2) from where it landed, `vx`, `vy` toward the Link. */
 function spawnBone(game: AdventureGame, stage: AdventureStage, s: Enemy, vx: number, vy: number): void {
   newEnemy(game, "OKTM", s.x, s.y, { kind: BONE_KIND, state: "fly", z: STALFOS.boneZ, vx, vy, atcp: stage.stats.get("OKTM")?.atcp ?? s.atcp, life: 1 });
+}
+
+/** Whether a Link's sword meets a box now. */
+function swordMeets(game: AdventureGame, box: SubBox): boolean {
+  return game.players.some((_, i) => {
+    const f = game.battle.fighters[i]!;
+    if (f.mode !== "active" || (f.move !== "none" && f.move !== "ready")) return false;
+    const attack = linkAttack(game, i);
+    return !!attack && attackMeets(attack, box);
+  });
 }
 
 // Link's sword on enemies (attacks.ts: the attack's two boxes against the enemy's box).
@@ -1052,11 +1078,11 @@ function contact(game: AdventureGame): void {
   for (const e of game.adventure.enemies) {
     if (!enemyActive(e) || e.state === "knock" || e.atcp <= 0 || !enemyShown(game, e)) continue;
     // Not while it's hidden or in a Stalfos's air (or grace); Shadow Link hurts with his sword (shadowlink.ts), not by touch.
-    if (e.state === "hide" || e.type === "SLK2" || (e.type === "STAL" && !stalfosHurtable(e)) || (e.type === "AMOS" && e.state !== "fly") || (e.type === "PAME" && !pameHarms(e)) || (e.type === "ZORA" && !zoraUp(e)) || (e.type === "OIWA" && !rockHurts(e)) || (e.type === "WIZR" && !wizzrobeHurts(e)) || (e.type === "STAL" && e.kind === RAISED_KIND && !raisedStalfosHurts(e))) continue;
+    if (e.state === "hide" || e.type === "SLK2" || (e.type === "STAL" && !stalfosHurtable(e)) || (e.type === "AMOS" && e.state !== "fly") || (e.type === "PAME" && !pameHarms(e)) || (e.type === "ZORA" && !zoraUp(e)) || (e.type === "OIWA" && !rockHurts(e)) || (e.type === "FLYO" && !tileFlying(e)) || (e.type === "WIZR" && !wizzrobeHurts(e)) || (e.type === "STAL" && e.kind === RAISED_KIND && !raisedStalfosHurts(e))) continue;
     const box = enemyBox(e);
     game.players.forEach((p, i) => {
       const f = b.fighters[i]!;
-      if (!vulnerable(f) || !onGround(f)) return;
+      if (!vulnerable(f) || !onGround(f) || (e.type === "FLYO" && i > 0)) return;
       const h = 7 * SUBPX;
       if (!boxesMeet(box, { left: p.x - h, top: p.y - h, right: p.x + h, bottom: p.y + h })) return;
       // A Buzz Blob shocks (hit type 10) instead.
@@ -1085,6 +1111,7 @@ function contact(game: AdventureGame): void {
       if (e.type === "PAME") e.grace |= 1 << i; // (a sliding one bounces off him)
       if (hit && e.type === "PUKU") e.vz = 1; // (a big one's charge ends on a bite)
       if (e.type === "OKTM") e.life = -1;
+      if (hit && e.type === "FLYO") breakTile(game, e);
     });
   }
 }

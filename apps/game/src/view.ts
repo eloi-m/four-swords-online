@@ -22,6 +22,7 @@ import {
   riverBedPalettes,
   roomQuad,
   screenCamera,
+  tileQuad,
   SpriteAtlas,
   SpriteMesh,
   stageParticles,
@@ -33,7 +34,7 @@ import {
   opaqueFrame,
 } from "@fso/render";
 import { fighterFrame, fighterHeight, fighterVisible, HURTBOX, linkDisplayFrame, SUBPX, switchOn, type PixelBox } from "@fso/sim";
-import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
+import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FLYING_STATE, FLYING_TILE, GOAL_PAD_EFFECT, goalLightning, goalPads, quotaMet, tileFlying, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { CloudShadow, cloudShadowLevel } from "../../battle/src/cloudshadow.ts";
 import { EntityView } from "../../battle/src/entities.ts";
@@ -169,6 +170,10 @@ export class AdventureView {
   private rockKey = "";
   /** Tingle (sim tingle.ts) in the area shown, or on the TV behind the GBA window; what he was last drawn as. */
   private readonly tingleGroup = new THREE.Group();
+  /** Room 10's flying floor tiles in the air (by enemy id) and the goal's lightning. */
+  private readonly flyingGroup = new THREE.Group();
+  private readonly flyingTiles = new Map<number, THREE.Mesh>();
+  private goalSince = -1;
   private readonly tvTingle = new THREE.Group();
   private tingleKey = "";
   private areaBounds = { x0: 0, y0: 0, x1: GBA_W, y1: GBA_H };
@@ -215,7 +220,7 @@ export class AdventureView {
     this.entities = new EntityView(this.actorSources, data);
     this.enemies = new EnemyView(this.actorSources, data);
     this.ganon = new GanonView(stage.archive ?? null);
-    this.local.add(this.entities.group, this.enemies.group, this.rockGroup, this.tingleGroup, this.ganon.group);
+    this.local.add(this.entities.group, this.enemies.group, this.rockGroup, this.tingleGroup, this.ganon.group, this.flyingGroup);
     const tileset = loadTileset(data, stage.layout.tilesetIndex);
     this.tiles = new TilemapTextures(tileset);
     this.riverBed = new RiverBed(data);
@@ -420,7 +425,7 @@ export class AdventureView {
     }
     const specs = this.near.filter((e) => (e.actor !== "TRCH" || this.torchFlame(game, e)) && (e.actor !== "FLME" || this.ringBurning(game, e))).map((e) => e.spec);
     this.drawnWhirlpools = this.near.filter((e) => e.room === room && e.actor === "WARP" && e.spec.placement.id === 1363).length;
-    this.particles.sync(game.tick, [...specs, ...this.burningArrows(game), ...this.barriers(game), ...this.minorShadows(game), ...this.traps(game), ...this.shadowPortal(game)]);
+    this.particles.sync(game.tick, [...specs, ...this.burningArrows(game), ...this.barriers(game), ...this.minorShadows(game), ...this.traps(game), ...this.goal(game), ...this.shadowPortal(game)]);
   }
 
   /**
@@ -477,6 +482,11 @@ export class AdventureView {
       if (e.type === "OKTM" && e.kind === FIRE_TRAP_KIND) {
         const placement = fsaParticlePlacement(FIRE_TRAP_EFFECT, room.origin.x + e.x / SUBPX, room.origin.y + e.y / SUBPX, e.z / SUBPX, { layer: 0, sublayer: 0 });
         if (placement) out.push({ key: `fbal:${e.id}`, start: game.tick - e.tick, placement });
+      }
+      // A flying tile's break (FLYO kind 1: JPA 855 at its spot).
+      if (e.type === "FLYO" && e.shot === FLYING_STATE.broken) {
+        const placement = fsaParticlePlacement(FLYING_TILE.breakEffect, room.origin.x + e.x / SUBPX, room.origin.y + e.y / SUBPX, e.z / SUBPX);
+        if (placement) out.push({ key: `flyo:${e.id}`, start: game.tick - e.timer, placement });
       }
       const sparks = e.type === "TRAP" ? bladeSparks(e) : null;
       if (sparks && game.tick - sparks.start < SPARKS_LISTED) {
@@ -609,6 +619,7 @@ export class AdventureView {
     this.renderLinks(game);
     this.renderRocks(game);
     this.renderTingle(game);
+    this.renderFlyingTiles(game);
     this.entities.update(game);
     this.patchArea(game);
     this.enemies.update(game, this.adventure);
@@ -840,6 +851,74 @@ export class AdventureView {
       into.add(mesh);
     }
   }
+
+  /**
+   * The flying floor tiles in the air (sim traps.ts): each its tile as the floor drew it (tileQuad) where it's seen, y −
+   * z, turned by its spin. The game draws it on a model (floor1_smp.bin, not read): turned in the screen's plane here,
+   * assumed, and no shadow.
+   */
+  private renderFlyingTiles(game: AdventureGame): void {
+    const shown = new Set<number>();
+    if (game.adventure.area === 0) {
+      for (const e of game.adventure.enemies) {
+        if (e.type !== "FLYO" || !tileFlying(e)) continue;
+        shown.add(e.id);
+        let mesh = this.flyingTiles.get(e.id);
+        if (!mesh) {
+          mesh = tileQuad(e.leader, this.tiles);
+          this.flyingTiles.set(e.id, mesh);
+          this.flyingGroup.add(mesh);
+        }
+        const x = e.x / SUBPX, y = e.y / SUBPX, z = e.z / SUBPX;
+        mesh.position.set(x, -(y - z), 2 + y * DEPTH_PER_PIXEL + (z + 1) * DEPTH_PER_PIXEL);
+        mesh.rotation.z = (-e.angle / 0x10000) * 2 * Math.PI;
+      }
+    }
+    for (const [id, mesh] of this.flyingTiles) {
+      if (shown.has(id)) continue;
+      this.flyingGroup.remove(mesh);
+      mesh.geometry.dispose();
+      const material = mesh.material as THREE.ShaderMaterial;
+      (material.uniforms.uLayer!.value as THREE.Texture).dispose();
+      material.dispose();
+      this.flyingTiles.delete(id);
+    }
+  }
+
+  /** Flying tiles in the air drawn in the last frame (for tests). */
+  get drawnFlyingTiles(): number {
+    return this.flyingTiles.size;
+  }
+
+  /**
+   * A goal's lightning short of the quota (sim logic.ts goalLightning; GOL2's init makes the effects): JPA 266 on each
+   * pad (layer 0), and between them the lightning (270 for layout 2; layer 1, sublayer 1), emitting while the Links are
+   * short of it (assumed: Dolphin seen short of it only). TV areas only. Not like Dolphin's: the pads' aura covers their
+   * sprites here (Dolphin draws the pads over it), the lightning gold where Dolphin's is green and white.
+   */
+  private goal(game: AdventureGame): JpaEffectSpec[] {
+    const out: JpaEffectSpec[] = [];
+    const a = game.adventure, room = this.rooms.get(a.room);
+    if (!room || a.area !== 0 || a.cleared || quotaMet(game)) {
+      this.goalSince = -1;
+      this.drawnLightning = 0;
+      return out;
+    }
+    if (this.goalSince < 0) this.goalSince = game.tick;
+    for (const goal of this.adventure.area(a.room, 0).actors) {
+      if (goal.id !== "GOL2") continue;
+      const spots = [...goalPads(goal).map((p) => ({ ...p, effect: GOAL_PAD_EFFECT, layer: 0 })), ...goalLightning(goal).map((l) => ({ ...l, layer: 1 }))];
+      spots.forEach((s, i) => {
+        const placement = fsaParticlePlacement(s.effect, room.origin.x + s.x, room.origin.y + s.y, 0, { layer: s.layer, sublayer: s.layer });
+        if (placement) out.push({ key: `gol2:${a.room}:${goal.index}:${i}:${this.goalSince}`, start: this.goalSince, placement });
+      });
+    }
+    this.drawnLightning = out.length;
+    return out;
+  }
+
+  /** The goal's effects synced in the last frame (for tests). */
+  drawnLightning = 0;
 
   /** How open the GBA window is (0-1), as last rendered (for tests). */
   get gbaWindow(): number {
