@@ -5,7 +5,7 @@
 // Link steps before the leader moves (19.5 px behind him while walking, 18.5 once he stopped), the third and fourth
 // after the Link ahead (18 px). A room change or a door stacks them onto the leader.
 // The four share one heart meter (the single-player HUD has one): damage to any is taken off all.
-import type { Fighter } from "../combat.ts";
+import { AWAY, type Fighter } from "../combat.ts";
 import { isqrt } from "../entities.ts";
 import { HITBOX, HITBOX_CORNER, moveAxis, SUBPX, wallAhead, WALK_SPEED, type Facing, type PlayerState } from "../player.ts";
 import { isSolidAt, type World } from "../world.ts";
@@ -379,3 +379,10 @@ export function markTouchable(game: AdventureGame): void {
   const a = game.adventure, together = game.players.length === 4 && !a.away && a.formation !== "apart" && a.formation !== "gather";
   game.battle.fighters.forEach((f, i) => (f.untouchable = together && i > 0));
 }
+
+/**
+ * A Link the enemies may go for (0x801EEC98, the nearest Link, its checks on each: in play, not dying, not +0x454's,
+ * not state 73, and 0x80240670: no follower of a group, only the one in control): invincible or hurt alike.
+ */
+export const targetable = (f: Fighter): boolean =>
+  f.hearts > 0 && !f.untouchable && f.mode !== "dying" && f.mode !== "dead" && f.move !== "held" && f.move !== "thrown" && !AWAY.has(f.move);

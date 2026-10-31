@@ -508,8 +508,15 @@ Read in main.dol and traced from `ref/places/castle-room10-area2.sav` (`5 idle; 
 - **Traced:** the Armos's three hits (frames 93, 162, 238) each called 0x80238548 for Link 0 only (2 damage, type 1),
   though the followers stood stacked on him at 162; the hurt ran for all four Links and the damage once (0x80236468
   for Link 0); the followers' +0x464 stayed 0 and they never went to state 15.
-- Not read: which Links 0x801EEC98 (the nearest Link, the enemies' target) passes over; Links apart (X didn't part
-  them from this place).
+- **The enemies' target** (0x801EEC98, the nearest Link and its other modes): each Link is passed over when not in
+  play (+0xCAC), +0x454 set, in state 73, dying (51, 52: 0x80270A8C), on another kind of screen (TV / GBA), or when
+  0x80240670 says so: in a group of four every Link but the one at the group's +0x1224, in another group every
+  follower (+0xD60 ≥ 0). No invincibility nor height check. Traced (`actor-trace.ts --ids AMOS`, the same clip): the
+  Armos aimed each hop (0.5 px/tick, re-aimed every landing) at the leader through his knock-back and his 60 ticks,
+  never stopping, and hit him as soon as its box met him (box ±12 against ±7: 18.6-19 px across). Its hurt came from
+  its box's middle, its height off (0x801F2B7C: y + the box − z), 7 px up its hop at the first hit: the leader was
+  knocked 40° down from level where its feet would have given 24°.
+- Not read: Links apart (X didn't part them from this place).
 
 ## Hyrule Castle room 11: Phantom Ganon
 Traced 2026-10-10 (a copy of `ref/dolphin-user-adventure2`, `ref/dolphin-user-adventure-ganon`, GDB port 55433;
