@@ -136,7 +136,7 @@ export function adventureSim(
     cell,
     record,
     step: (buttons) => stepAdventure(g, [buttons[0] ?? 0], stage),
-    links: () => g.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${g.adventure.links[i]?.mode ?? ""}${moveOf(g.battle.fighters[i])}` })),
+    links: () => g.players.map((p, i) => ({ x: px(p.x), y: px(p.y), state: `${p.action}/${g.adventure.links[i]?.mode ?? ""}${moveOf(g.battle.fighters[i])} ♥${g.battle.fighters[i]?.hearts ?? ""}` })),
     bodies: () => {
       const a = g.adventure;
       const placed = stage.area(a.room, a.area).actors;

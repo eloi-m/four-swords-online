@@ -1096,7 +1096,7 @@ function contact(game: AdventureGame): void {
       // A Hinox: charging 4 (hit type 3); its rock 2 (hit type 6).
       if (e.type === "HINO" || e.type === "OIWA") {
         const c = e.type === "HINO" ? hinoxContact(e) : { damage: e.atcp, knock: KNOCK_HARD };
-        const hit = hurtFighter(p, f, i, c.damage, e.x, e.y, { cause: e.type === "OIWA" ? "rock" : "enemy", ...(c.knock ? { knock: c.knock } : {}) });
+        const hit = hurtFighter(p, f, i, c.damage, e.x, e.y, { cause: e.type === "OIWA" ? "boulder" : "enemy", ...(c.knock ? { knock: c.knock } : {}) });
         if (hit) b.hits.push(hit);
         if (hit && e.type === "OIWA") e.life = -1;
         return;
@@ -1105,7 +1105,7 @@ function contact(game: AdventureGame): void {
       const blockable = e.type === "OKTM" || e.type === "SLR1";
       // (A big rat's bite: hit type 4.)
       const knock = e.type === "NZMI" && e.kind === 1 ? KNOCK_SLOW : undefined;
-      const hit = hurtFighter(p, f, i, e.atcp, e.x, e.y, { cause: e.type === "OKTM" ? "rock" : e.type === "SLR1" ? "soldier" : "enemy", blockable, ...(knock ? { knock } : {}) });
+      const hit = hurtFighter(p, f, i, e.atcp, e.x, e.y, { cause: knock ? "bite" : e.type === "OKTM" ? "rock" : e.type === "SLR1" ? "soldier" : "enemy", blockable, ...(knock ? { knock } : {}) });
       if (hit) b.hits.push(hit);
       if (hit && e.type === "NZMI") e.grace = 1; // (a bite: the rat runs off)
       if (e.type === "PAME") e.grace |= 1 << i; // (a sliding one bounces off him)

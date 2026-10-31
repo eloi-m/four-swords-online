@@ -168,13 +168,14 @@ describe.skipIf(!existsSync(root))("Hyrule Castle", () => {
     expect(game.adventure.sunk).toContain(actorKey(10, stage.area(10, 2).actors.find((a) => a.id === "STBL")!.index));
     run(game, HYRULE_CASTLE_MILESTONES[36]!.goals);
     expect([game.adventure.room, game.adventure.area]).toEqual([11, 0]);
-    // Phantom Ganon beaten, the staircase's switch; the Force Gems his two falls and his end flung out (GOLD worths 99,
-    // 99 and 80) all gathered.
+    // Phantom Ganon beaten, the staircase's switch; the Force Gems his end flung out (a GOLD worth 80) gathered, and
+    // what's left of his two falls' (99 each): flung gems go 830 ticks after they were made (pickups.ts GEM_LIFE), and
+    // the route gathers them once he's beaten.
     const beforeGanon = game.adventure.gems;
     run(game, HYRULE_CASTLE_MILESTONES[37]!.goals);
     expect([game.adventure.room, game.adventure.ganon?.gone, on(16)]).toEqual([11, true, true]);
     expect(game.battle.fighters[0]!.hearts).toBeGreaterThan(0);
-    expect(game.adventure.gems - beforeGanon).toBe(99 + 99 + 80);
+    expect(game.adventure.gems - beforeGanon).toBe(104); // 80 + what's left of 99 + 99
     // Down the staircase into room 12, onto the goal with the quota (room 6's gem rain, room 10's throne room and
     // cannon columns: 2,523; Phantom Ganon's: 2,801): the stage cleared. (The totals are rolled: the rain's gems are
     // green, blue or red at random, as are the soldiers' drops, and the route's changes since move the random

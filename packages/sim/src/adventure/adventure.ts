@@ -42,7 +42,7 @@ import { stepTingle, tingleHolds, type Tingle } from "./tingle.ts";
 import { carryingKey, doorWorld, keyThrowHolds, knockKeyOut, liftKey, shutDoors, stepDoors, stepKeyLift, stepKeyThrow, throwKey, type CarriedKey, type KeyThrow } from "./doors.ts";
 import { goalWorld, rewriteWorld, rewrittenTiles, savedSwitches, saveSwitches, stepFourSwitch, stepLogic } from "./logic.ts";
 import { barrierWorld, stepZoras, type Escort } from "./zoras.ts";
-import { spawnPickups, stepPickups, stepRains, type Pickup, type Rain } from "./pickups.ts";
+import { spawnPickups, spillGems, spillOf, stepPickups, stepRains, type Pickup, type Rain } from "./pickups.ts";
 import { boomerangFetch, flyingWorld, giveGear, swordOnCrystals, friendlyFire, stepFire, stepFirePose, takeFromPedestal, useFireRod, type FireBolt, type GearKind } from "./gear.ts";
 import { followHop, noteLadder, noteLedge, startJump, startLadderClimb, stepJump } from "./ledge.ts";
 import { createMotion, type LinkMotion } from "./motion.ts";
@@ -138,6 +138,8 @@ export interface AdventureState {
   grab: number;
   /** Force Gems collected. */
   gems: number;
+  /** The Force Gems the leader's knockback spills as it ends (pickups.ts spillOf: the hit's base, 0 none). */
+  spill: number;
   /** Keys carried (doors.ts), and the ticks left of one's lift. */
   keys: number;
   keyLift: number;
@@ -339,6 +341,7 @@ export function createAdventure(stage: AdventureStage, opts: AdventureStart = {}
     levers: [],
     grab: -1,
     gems: 0,
+    spill: 0,
     keys: 0,
     keyLift: 0,
     taken: [],
@@ -597,7 +600,8 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
     stepGates(game, stage);
     stepReveal(game);
     stepRains(game, stage);
-    stepPickups(game);
+    noteSpill(game);
+    stepPickups(game, view);
     stepStrikes(game);
     bushDrops(game);
     // (A hit on the leader carrying a key knocks it out of his hands: doors.ts.)
@@ -624,9 +628,23 @@ function bushDrops(game: AdventureGame): void {
 /** The swimming leader run into a river stone: struck by it, away from the sensor that ran into it (swim.ts STONE_DAMAGE). */
 function strikeOnStone(game: AdventureGame, sensor: readonly [number, number]): void {
   const p = game.players[0]!, f = game.battle.fighters[0]!, m = game.adventure.links[0]!;
-  if (!vulnerable(f) || !hurtFighter(p, f, 0, STONE_DAMAGE, p.x + sensor[0], p.y + sensor[1], { cause: "stone", knock: KNOCK_SLOW })) return;
+  const hit = vulnerable(f) ? hurtFighter(p, f, 0, STONE_DAMAGE, p.x + sensor[0], p.y + sensor[1], { cause: "stone", knock: KNOCK_SLOW }) : null;
+  if (!hit) return;
+  game.battle.hits.push(hit);
   m.cx = m.cy = 0;
   m.speed = 0;
+}
+
+/**
+ * The leader struck by a hit that spills Force Gems (pickups.ts spillOf) spills them as his knockback ends, on the
+ * first tick he's back on his feet (traced: the stone's strike on frame 217, the gems on 251); not if he dies of it.
+ */
+function noteSpill(game: AdventureGame): void {
+  const a = game.adventure, f = game.battle.fighters[0]!, p = game.players[0]!;
+  for (const h of game.battle.hits) if (h.victim === 0 && !h.blocked) a.spill = spillOf(h)?.[0] ?? a.spill;
+  if (!a.spill || f.mode === "hurt") return;
+  if (f.mode !== "active") a.spill = 0;
+  else spillGems(game, p.x, p.y, f.z);
 }
 
 /** Struck (the knockback's hop), dying or dead: the battle's fighter step plays it out, not the walk, swim or side view's. */

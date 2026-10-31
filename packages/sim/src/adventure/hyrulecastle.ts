@@ -162,6 +162,8 @@ export const HYRULE_CASTLE_MILESTONES: readonly { name: string; goals: readonly 
       travelTo(344, 88),
       ...swing(Left),
       waitUntil("the crystal lit", switchOn(1), 30),
+      // Out of the blast of the bomb going off beside the crystal (a blast spills Force Gems: pickups.ts spillGems).
+      travelTo(376, 66),
       waitUntil("the drawbridge down", switchOn(17), 600),
     ],
   },

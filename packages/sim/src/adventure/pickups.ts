@@ -21,9 +21,28 @@
 //   type at random from 0 to it (below 20 left, a green one), taken off what's left; each gem leaves the GOLD's place
 //   at its height flying (−1…1, −1…1) px a tick across and 2-4 px a tick up, falling 0.3 px/tick², stopping where it
 //   lands (traced).
-import { HEART } from "../combat.ts";
+// - A Force Gem made at run time (RUPY's init 0x8032D6C0: +0x24C = 830, 1010 with several players) goes 830 ticks
+//   after it was made, unless taken; one that comes down (4 px up or less) over deep water (0x8032B0A4: surface 13)
+//   sinks 0.1 px a tick and goes 30 ticks later (traced in Tingle's Tower room 5: the four lying gems gone 826 ticks
+//   after they were flung, one into the pool gone 27 ticks after it touched it). Applied to the gems a GOLD flings
+//   (the traced case); the rains', the kill streaks' and the enemies' drops are left lying (TODO(measure): the same
+//   RUPY code, likely the same 830 ticks; the routes gather some later than that). In the air a flung gem is taken
+//   only coming down, under 6 px (traced: two flung at the Link's feet rose past him and were taken coming down, at
+//   about 4.8 px, not at 7.2; a rained gem's height not measured).
+// - A Link struck by a hit of the game's types 4 to 9 spills Force Gems as his knockback ends (0x802796B8, from the hurt
+//   state 15's end; 0x8024E694 makes a GOLD of kind 0 worth that at his place, at most what he holds, and takes them off
+//   his count): types 4 and 7 (a river stone, a thrown Link, the eternal flames, the Fire Rod's blaze, a rat's bite)
+//   5 + rand(5), 5 and 8 (a bomb's blast) 20 + rand(10), 6 and 9 (an explosion, the fire pit's jets, a Hinox's rock)
+//   50 + rand(20); on a GBA screen exactly 5, 20 or 50, rounded down to one gem's worth and dropped as that gem (a GOLD
+//   of kind 4). Traced: a river stone's strike in room 5 cost 8 of the leader's 301 (eight green gems), the hit on
+//   frame 217, the gems flung on 251 as he swam on. The Links' gems are one count here (the leader's: in a game alone
+//   the Link in control holds them all, traced 301, 0, 0, 0), so only the leader spills; Shadow Battle has no gems
+//   (none spilled there).
+import { HEART, type Hit } from "../combat.ts";
+import { FLAME_DAMAGE } from "../hazards.ts";
 import { SUBPX } from "../player.ts";
 import { switchOn } from "../switches.ts";
+import { surfaceAt, type World } from "../world.ts";
 import { actorKey, currentArea, nextRandom, type AdventureGame, type AdventureState } from "./adventure.ts";
 import { GEAR_BY_NUMBER, giveGear } from "./gear.ts";
 import type { AdventureStage } from "./stage.ts";
@@ -61,8 +80,39 @@ export const RAIN_SPREAD = 50;
 export const GEM_GRAVITY = 77;
 export const GEM_FALL_START = SUBPX;
 export const GEM_MAX_FALL = 16 * SUBPX;
-/** A falling gem can be taken this close to the ground. TODO(measure). */
+/** A falling gem can be taken this close to the ground. TODO(measure): a rained one's. */
 export const TAKE_HEIGHT = 12 * SUBPX;
+/** One a GOLD flung, only coming down and this close (traced: taken at ~4.8 px, not at 7.2). */
+export const FLUNG_TAKE_HEIGHT = 6 * SUBPX;
+/** A gem a GOLD flung goes this many ticks after it was made (RUPY's init: 830 for a game alone). */
+export const GEM_LIFE = 830;
+/** Over deep water (4 px up or less) it sinks this fast (1/256 px per tick) and goes this many ticks later. */
+export const GEM_SINK = 26;
+export const GEM_SINK_TICKS = 30;
+export const GEM_SINK_HEIGHT = 4 * SUBPX;
+/**
+ * The Force Gems a hit spills (as its knockback ends), by its cause: the game's hit types 4 and 7 5 + rand(5), 5 and 8
+ * 20 + rand(10), 6 and 9 50 + rand(20) (main.dol 0x802796B8; "flame" is the eternal flames' type 7 at FLAME_DAMAGE,
+ * else the fire pit's jets, type 9). Other hits (swords, soldiers, most enemies' touch: type 1) spill none.
+ */
+const SPILL_SLOW = [5, 5] as const, SPILL_BLAST = [20, 10] as const, SPILL_BLOW = [50, 20] as const;
+export function spillOf(hit: Hit): readonly [number, number] | null {
+  switch (hit.cause) {
+    case "stone":
+    case "thrown":
+    case "fire":
+    case "bite":
+      return SPILL_SLOW;
+    case "flame":
+      return hit.damage === FLAME_DAMAGE ? SPILL_SLOW : SPILL_BLOW;
+    case "bomb":
+      return SPILL_BLAST;
+    case "boulder":
+      return SPILL_BLOW;
+    default:
+      return null;
+  }
+}
 /** RYRN: gems made per tick. */
 export const RAIN_PER_TICK = 2;
 
@@ -91,6 +141,8 @@ export interface Pickup {
   vy?: number;
   /** The boomerang bringing it back (its entity id), 0 when it lies where it is (gear.ts). */
   fetched?: number;
+  /** A gem sinking in deep water: the ticks it has left (GEM_SINK_TICKS). */
+  sink?: number;
   /** A shuttling hovering gem (HOVER_SHUTTLE): the way it goes (0 right, 1 left, 2 down, 3 up), its timer, whether it
    *  swings about its place (kinds 6, 7), its velocity and target velocity (1/256 px per tick). */
   shuttle?: Shuttle;
@@ -259,6 +311,36 @@ export function burstGems(game: AdventureGame, x: number, y: number, z: number, 
   }
 }
 
+/** The gem a GOLD of kind 4 drops on a GBA screen: the largest type worth no more than `worth` (0x8024E694). */
+function tierGem(worth: number): number {
+  let kind = -1;
+  for (let k = 0; k < GEM_VALUES.length; k++) if (GEM_VALUES[k]! <= worth) kind = k;
+  return kind;
+}
+
+/**
+ * The leader's knockback ended: the Force Gems its hit spills (spillOf; a.spill, set as he was struck) flung out at his
+ * place, taken off the count (at most what it holds). On a GBA screen (area 1 and up) its base exactly, as one gem.
+ */
+export function spillGems(game: AdventureGame, x: number, y: number, z: number): void {
+  const a = game.adventure, base = a.spill;
+  a.spill = 0;
+  if (!base || a.gems <= 0) return;
+  const rand = (n: number) => nextRandom(a) % n;
+  if (a.area > 0) {
+    const kind = tierGem(Math.min(base, a.gems));
+    if (kind < 0) return;
+    a.gems -= GEM_VALUES[kind]!;
+    const vz = 2 * SUBPX + rand(2 * SUBPX) + GEM_GRAVITY;
+    a.pickups.push({ id: a.nextId++, type: "gem", from: "RUPY", actor: -1, x, y, z: Math.max(1, z), kind, gate: 0, tick: 0, vz, vx: SUBPX - rand(2 * SUBPX + 1), vy: SUBPX - rand(2 * SUBPX + 1) });
+    return;
+  }
+  const spread = [SPILL_SLOW, SPILL_BLAST, SPILL_BLOW].find((s) => s[0] === base)![1];
+  const worth = Math.min(base + rand(spread), a.gems);
+  a.gems -= worth;
+  burstGems(game, x, y, z, worth);
+}
+
 /** The area's gem rains, one tick. */
 export function stepRains(game: AdventureGame, stage: AdventureStage): void {
   const a = game.adventure;
@@ -299,8 +381,8 @@ export function pickupShown(game: AdventureGame, p: Pickup): boolean {
   return !p.gate || ((game.battle.switches >>> p.gate) & 1) === 1;
 }
 
-/** The Links take what their bodies touch. */
-export function stepPickups(game: AdventureGame): void {
+/** The Links take what their bodies touch; Force Gems a GOLD flung go after a while, or sink in deep water. */
+export function stepPickups(game: AdventureGame, world?: World): void {
   const a = game.adventure, b = game.battle;
   if (!a.pickups.length) return;
   let taken = false;
@@ -309,14 +391,31 @@ export function stepPickups(game: AdventureGame): void {
     if (!pickupShown(game, it) || it.fetched || it.type === "key") continue;
     it.tick++;
     if (it.shuttle) stepShuttle(it, it.shuttle);
+    if (it.sink !== undefined) {
+      if (--it.sink <= 0) (it.tick = -1), (taken = true);
+      else it.z -= GEM_SINK;
+      continue;
+    }
+    const flung = it.vx !== undefined;
+    if (flung && it.tick >= GEM_LIFE) {
+      it.tick = -1;
+      taken = true;
+      continue;
+    }
     if (it.actor < 0 && it.z > 0) {
       // Falling to the ground.
       it.vz = Math.max(-GEM_MAX_FALL, it.vz - GEM_GRAVITY);
       it.z = Math.max(0, it.z + it.vz);
       if (it.vx || it.vy) (it.x += it.vx ?? 0), (it.y += it.vy ?? 0);
-      if (it.z === 0) (it.vz = 0), (it.vx = it.vy = 0);
+      if (flung && world && it.z <= GEM_SINK_HEIGHT && surfaceAt(world, Math.floor(it.x / SUBPX), Math.floor(it.y / SUBPX)) === "deep") {
+        it.sink = GEM_SINK_TICKS;
+        it.vz = it.vx = it.vy = 0;
+        continue;
+      }
+      if (it.z === 0) (it.vz = 0), flung && (it.vx = it.vy = 0);
     }
-    if (it.z > TAKE_HEIGHT && it.actor < 0) continue;
+    if (it.actor < 0 && it.z > (flung ? FLUNG_TAKE_HEIGHT : TAKE_HEIGHT)) continue;
+    if (flung && it.z > 0 && it.vz > 0) continue;
     const half = (it.type === "gem" && it.kind >= 8 ? HUGE_GEM_HALF : it.type === "gem" ? GEM_HALF : PICKUP_HALF) * SUBPX;
     const who = game.players.findIndex((p, i) => {
       const f = b.fighters[i]!;
