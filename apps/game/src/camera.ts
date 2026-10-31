@@ -15,11 +15,11 @@
 // room's (as it stands around the leader then) over 30 ticks, quadratically, starting 2 ticks after the sim switched
 // rooms (render's RoomPan, measured); then the box starts over around the leader. A warp or a stairway snaps.
 // The camera acts on the points of the tick before (the game's camera runs before its actors).
-// A boss (an actor that sets +0x178 with its point: Shadow Link from his state 14) puts it in entry 2: all four Links
+// A boss (an actor that sets +0x178 with its point: Shadow Link from his state 14, Phantom Ganon always) puts it in entry 2: all four Links
 // on the TV count, its points aren't pulled, 64 px of margin, at least 260 px wide (2.338), back in at 1 px a tick
 // after a 60-tick hold, a tenth of the gap a tick; the margin and the least half width ease to a mode's own (+0x1D4,
 // +0x1D8: a tenth of the gap a tick, 3 px at most). The special focus (+0x7F4 with kind +0x7F8 = 4, set every tick by
-// an actor: Shadow Link's entrance, states 3-12) makes the box its one point, the Links left out and the holds cleared
+// an actor: Shadow Link's entrance, states 3-12; Phantom Ganon's appearance, states 1-5) makes the box its one point, the Links left out and the holds cleared
 // (traced in the Cave of No Return's room 4: 3 px a tick toward him, then a fifth of the gap). The letterbox bars
 // (the stage's overlay [[0x8053AB10]+0x30], asked for every tick: +0x284, +0x28C 0.05) come in 0.05 a tick and go
 // 0.05 a tick once no one asks (`Letterbox`).
@@ -328,6 +328,13 @@ export class FocusPoints {
       if ((it.type === "gem" && it.from === "RUPY" && it.kind >= 3) || it.type === "key") out.push(at(it.x / SUBPX, (it.y - it.z) / SUBPX));
     }
     this.boss = false;
+    // Phantom Ganon (FGAN kind 0, his update 0x8017C40C before its states): +0x178 (0x8017ECC0) and his point 16 px
+    // above his place (x, y − 16) every tick, whatever his state (his death, 0x801F4E0C, not read: kept till he goes).
+    const g = a.ganon;
+    if (g && !g.gone) {
+      this.boss = true;
+      out.push(at(g.x / SUBPX, g.y / SUBPX - 16));
+    }
     for (const e of a.enemies) {
       if (shadowFollowed(e)) {
         this.boss = true;
@@ -353,7 +360,8 @@ export class FocusPoints {
  * actor asks for them every tick it wants them (+0x284, with the speed +0x28C: 0.05 for the ones read); the next step
  * eases their amount (+0x288) 0.05 in, else 0.05 out. Drawn black over the TV's top and bottom, 48 px × a² tall at
  * alpha a² (view.ts). Who asks: Shadow Link from the scene's take to his state 12 (0x801F68E0, 0x801C283C; traced:
- * 0.05 the tick after the take, 1 twenty ticks on, 0 twenty ticks after 14's start).
+ * 0.05 the tick after the take, 1 twenty ticks on, 0 twenty ticks after 14's start); Phantom Ganon in his states 1-5,
+ * from the tick after the take to the scene's end (0x8017EB1C with 0.05).
  * The adventure HUD fades out 0.1 a tick while they're asked for, and back in 0.1 a tick after (its corner's update
  * 0x80419E64 reads +0x284; back in toward each part's own alpha, some 0.6 or 0.9: drawn here as one factor).
  */
@@ -377,9 +385,17 @@ export class Letterbox {
   /** A tick (after the sim's): the step on the last tick's request, then this tick's request. */
   step(game: AdventureGame): void {
     this.amount = Math.max(0, Math.min(20, this.amount + (this.asked ? 1 : -1)));
-    this.asked = game.adventure.area === 0 && game.adventure.enemies.some((e) => shadowOnStage(e) || (e.type === "SLK2" && e.shot === SHADOW_STATE.taken));
+    const a = game.adventure;
+    this.asked = a.area === 0 && (ganonScene(game) || a.enemies.some((e) => shadowOnStage(e) || (e.type === "SLK2" && e.shot === SHADOW_STATE.taken)));
     this.shownHud = Math.max(0, Math.min(10, this.shownHud + (this.asked ? -1 : 1)));
   }
+}
+
+/** Phantom Ganon in his appearance (states 1-5: the tick after the scene's take, 0x801F68E0 in his state 0, to its end,
+ *  0x801F6884 as 5 ends), when he asks for the bars and the special focus on his place every tick. */
+export function ganonScene(game: AdventureGame): boolean {
+  const g = game.adventure.ganon;
+  return !!g && !g.gone && g.state >= 1 && g.state <= 5;
 }
 
 /** The TV camera as the view drives it, once per simulation tick: the rooms on the stage's grid, its points. */
@@ -405,8 +421,9 @@ export class TvCamera {
     const o = { x: cell.cx * ROOM_W, y: cell.cy * ROOM_H };
     const at = (x: number, y: number) => ({ x: o.x + x / SUBPX, y: o.y + y / SUBPX });
     const focus = a.area === 0 ? this.focus.points(game, this.stage, o, (q) => this.onTv(q)) : [];
-    // The special focus: Shadow Link in his entrance's states 3-12 (not while the Links are in a GBA area: +0x7F5).
-    const star = a.area === 0 ? a.enemies.find(shadowOnStage) : undefined;
+    // The special focus: Shadow Link in his entrance's states 3-12, Phantom Ganon in his appearance's 1-5 (0x8017EB44,
+    // on his place) (not while the Links are in a GBA area: +0x7F5).
+    const star = a.area !== 0 ? undefined : (a.enemies.find(shadowOnStage) ?? (ganonScene(game) ? a.ganon! : undefined));
     const targets: CameraTargets = {
       leader: at(p.x, p.y),
       focus,

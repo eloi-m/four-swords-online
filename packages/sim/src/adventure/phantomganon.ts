@@ -22,7 +22,8 @@
 // - his appearance: when the Links come near (the game: when the camera sees him) the Links are held (a demo lock)
 //   for 100 + 300 ticks, he appears (a vertical line widening, faded in), waits 100, swings, the screen's tint, then
 //   the fight; struck down they're held too (traced), dying not (traced).
-// Not modelled: the JPA effects, his tint, the 2-4 player rules (no dashes, the ball passed from Link to Link).
+// Not modelled: the JPA effects and the scene's colour (drawn by apps/game ganon.ts from his states), the 2-4 player
+// rules (no dashes, the ball passed from Link to Link).
 import { attackMeets, type SubBox } from "../attacks.ts";
 import { linkAttack } from "./whirl.ts";
 import { hurtFighter, KNOCK_HARD, onGround, vulnerable } from "../combat.ts";
