@@ -1,7 +1,8 @@
 // Draws Phantom Ganon (packages/sim adventure/phantomganon.ts) from the BTIs his draw (main.dol 0x8017C078) picks in the
 // stage archive's fganon/ by his animation group and frame (name tables 0x804A1290, 0x804A12D0): dawn, kenhuri (the
-// swing, its last three frames shifted 21 px), wait, yarare; scaled and faded as the sim has him, his shadow under him.
-// His energy ball and its shards are JPA effects in the game; here plain glowing discs. It only reads the state.
+// swing, its last three frames shifted 21 px), wait, yarare; scaled and faded as the sim has him, his shadow under him,
+// multiplied by the scene's colour (`sceneTint`). His energy ball and its shards are JPA effects in the game; here plain
+// glowing discs. It only reads the state.
 import { decodeBti, type RarcArchive } from "@fso/formats";
 import { SUBPX } from "@fso/sim";
 import type { AdventureGame } from "@fso/sim/adventure";
@@ -16,6 +17,22 @@ const FRAMES: readonly (readonly string[])[] = [
 ];
 /** The swing's frames' x offsets (0x804A12A8). */
 const SWING_DX = [0, 0, -21, 21, 21];
+const WHITE: readonly [number, number, number] = [255, 255, 255];
+/** The colour his appearance leaves the scene in. */
+export const GANON_TINT: readonly [number, number, number] = [159, 127, 255];
+
+/**
+ * The scene's colour (the stage's [[0x8053AB10]+0x2C]+4, set by 0x8013A884; white from its init 0x8013A27C), which
+ * Phantom Ganon's appearance sets: white at the scene's take (state 0), then each tick of state 5 (after his swing) red
+ * 2 and green 3 lower, down to (159, 127, 255) (+0x250, +0x254), set again at its end; none of his later states sets it
+ * back. It multiplies the room's tiles and him, not the Links nor the HUD (Dolphin's frames, `castle-room11`: the
+ * floor's red × 0.63, green × 0.50, blue as it was).
+ */
+export function sceneTint(game: AdventureGame): readonly [number, number, number] {
+  const g = game.adventure.ganon;
+  if (!g || game.adventure.area !== 0 || g.state < 5) return WHITE;
+  return g.state === 5 ? [g.c250, g.c254, 255] : GANON_TINT;
+}
 
 export class GanonView {
   readonly group = new THREE.Group();
@@ -28,8 +45,8 @@ export class GanonView {
 
   constructor(archive: RarcArchive | null) {
     this.archive = archive;
-    // His BTIs are grey; tinted with his aura's colour (159, 127, 255: the JPA 896 he keeps, assumed for the body).
-    this.body = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0xc8b4ff, transparent: true, alphaTest: 0.02, depthWrite: false }));
+    // His BTIs are black and white: so he shows till the scene's colour turns (`sceneTint`).
+    this.body = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.02, depthWrite: false }));
     this.shadow = new THREE.Mesh(new THREE.CircleGeometry(12, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 100 / 255, depthWrite: false }));
     this.shadow.scale.y = 0.4;
     const glow = new THREE.MeshBasicMaterial({ color: 0xd8a0ff, transparent: true, opacity: 0.9, depthWrite: false });
@@ -74,7 +91,11 @@ export class GanonView {
       // Centered on his anchor lifted by his height (TODO(measure) the game's placement).
       this.body.position.set(x + dx, -(y - z), 2 + y * DEPTH_PER_PIXEL + 0.001);
       m.opacity = g.alpha / 255;
+      const [r, gr, b] = sceneTint(game);
+      m.color.setRGB(r / 255, gr / 255, b / 255, THREE.SRGBColorSpace);
     }
+    // No shadow before he shows (Dolphin's frames: none under the vertical line he appears from).
+    this.shadow.visible = g.alpha > 0;
     this.shadow.position.set(x, -y, 1.9);
     this.shadow.scale.set((0.8 * g.scaleY) / 256, (0.32 * g.scaleY) / 256, 1);
     this.ball.visible = !!g.ball;

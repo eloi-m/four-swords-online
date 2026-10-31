@@ -782,10 +782,17 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      (y − z: the Armos's knock-back 40° down in Dolphin, 24° in ours; moving it also shifted the Cave's gems); the bent
      route `castle-bombs` "from another side" no longer clears room 9's blade traps in 240 ticks since the followers
      aren't hurt (not looked into).
-  2. Phantom Ganon's appearance (room 11, `castle-room11` t8): Dolphin's camera is on him with the letterbox bars and
-     the HUD hidden, him black and white; ours stays on the Links with the HUD, him tinted purple. Once he fights
-     (t12, t19) Dolphin tints the whole room purple (walls, floor, spikes; a dark blue backdrop round it as its
-     camera draws back to zoom 1.22), him black with purple swirls; ours plain.
+  2. **Done (2026-10-31):** Phantom Ganon's appearance (room 11, `castle-room11`): Dolphin's camera on him with the
+     letterbox bars and the HUD hidden, him black and white, the room tinted purple once he fights, the camera drawn
+     back. Read in main.dol (measurements/adventure-world1.md "His appearance's scene"): his states 1-5 ask for the bars
+     and the special focus on his place, every state hands his point (x, y − 16) as a boss, his state 5 eases the
+     scene's colour to (159, 127, 255), which multiplies the room's tiles and him; JPA 866-869 the swirls he comes out
+     of. Now ours at t5, t8, t12 and t19 matches but for: the floor's Ganon mural (`BTIN` kind 39 `phantom_ganon.bti`,
+     params >> 27 = 18; kind 44 `phantom_ganon1_2.bti`, 16: switches, assumed; BTIN's draw 0x802CDD9C, its names
+     0x804A90F0), not drawn; the dark blue backdrop above the room at t19
+     (Dolphin's view reaches ~45 px above the room's top, ours stops at it: room 11's `OFFS` (64, 0) p 0x84800003
+     not read); him drawn ~19 px lower than Dolphin's (his placement, a TODO in ganon.ts); the t19 zoom (Dolphin's
+     Force Gems round the Links, its own hurt, hand points too).
   3. Room 6's three sword soldiers come round the Links in Dolphin (at 5 s at their sides, y 337-344, the Links
      y 295-344); ours bunch up on one another ~50 px above the leader and wait there (`castle-room6` t2, t5). Neither
      hits in 300 frames. Their start isn't carried (Dolphin's were already walking), so the paths differ anyway.

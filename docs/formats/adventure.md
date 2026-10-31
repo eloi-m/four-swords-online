@@ -14,7 +14,8 @@ Ganon": what the trace corrected is marked *traced* below): `FGAN` ctor 0x802024
   +768 a frame). Frame tables: wait 4 × 8 (loop, 0x804A125C), swing 2, 2, 2, 2, 5 (0x804A1248), dawn 4, 4, 4, 4, 2, 4
   (0x804A1230), hurt 4, 4, 4, 8, 4 (0x804A127C).
 - Intro (states 0-5): once the camera sees him a demo lock; 100 then 300 frames; he appears (scale y 5 → 1, x 0 → 1,
-  alpha → 255), waits 100, swings; the screen tint (R → 159, G → 127); the boss music.
+  alpha → 255), waits 100, swings; the scene's colour (R → 159, G → 127: measurements/adventure-world1.md "His
+  appearance's scene", with the bars and the camera); the boss music.
 - Fight (6-17): throw timer 200 + 100 rand, dash cooldown 50 + 50 rand; hovering he wanders 2 px/frame (a = 8192 −
   16384 rand, toward home once 64 px off it, new heading every 50 + 50 rand); playing alone he charges (30 frames) and
   dashes at the nearest Link at 13 px/frame (2 damage, hit type 6), a wall within 48 px stopping him; to throw he rises

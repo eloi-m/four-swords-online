@@ -314,8 +314,10 @@ clear (`#route`, `window.fso.route`).
   pickups.ts `burstGems`) his first two falls (99 each) and his end (80) fling out; the room's switches then bring
   the staircase. `PHANTOM_GANON_MILESTONES` fights him from room 11's way in (~6,100 ticks: three falls) and gathers
   his 278 Force Gems, tested in node (`hyrulecastle.realdisc.test.ts`, `phantomganon.realdisc.test.ts` against the
-  trace) and in the browser (`#stage=boss013&room=11&route`, game.ts), drawn from his `fganon/` BTIs (tinted with his
-  aura's colour: assumed), his ball and shards as plain discs (the game's are JPA effects); the staircase
+  trace) and in the browser (`#stage=boss013&room=11&route`, game.ts), drawn from his `fganon/` BTIs, his ball and
+  shards as plain discs (the game's are JPA effects); his appearance's scene (main.dol): the letterbox bars, the HUD
+  faded, the camera on him then in its boss mode, the swirls he comes out of (JPA 866-869), the room's tiles and him
+  multiplied by the scene's colour (159, 127, 255) once he fights (apps/game camera.ts, ganon.ts); the staircase
   (`stairs.ts`, kind 5) then takes the route to room 12's goal. Not done: the 2-4 player rules.
 - **Music and sounds (World 1), `apps/game/src/sound.ts`.** The shared synth player (`@fso/web/audio`, as Shadow
   Battle's) plays each stage's BGM, from its map CSV's bgmId through main.dol's stage table (**game**: Lake Hylia and
