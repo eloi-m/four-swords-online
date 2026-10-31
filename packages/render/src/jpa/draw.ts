@@ -343,10 +343,11 @@ export class JpaRenderer {
       f[o + 5] = -m[5]!;
       f[o + 6] = -m[9]!;
       f[o + 7] = origin.y - m[13]!;
-      f[o + 8] = zScale * m[2]!;
-      f[o + 9] = zScale * m[6]!;
-      f[o + 10] = zScale * m[10]!;
-      f[o + 11] = zBase + zScale * m[14]!;
+      const flat = e.sceneZ !== null;
+      f[o + 8] = flat ? 0 : zScale * m[2]!;
+      f[o + 9] = flat ? 0 : zScale * m[6]!;
+      f[o + 10] = flat ? 0 : zScale * m[10]!;
+      f[o + 11] = e.sceneZ ?? zBase + zScale * m[14]!;
       f.set(d.texS, o + 12);
       f.set(d.texT, o + 15);
       f.set(d.prm, o + 18);
@@ -371,7 +372,7 @@ export class JpaRenderer {
       const o = part.vertices * STRIPE_STRIDE, f = part.data;
       f[o] = x - origin.x;
       f[o + 1] = origin.y - y;
-      f[o + 2] = zBase + zScale * z;
+      f[o + 2] = e.sceneZ ?? zBase + zScale * z;
       f[o + 3] = ts[0]! * s + ts[1]! * t + ts[2]!;
       f[o + 4] = tt[0]! * s + tt[1]! * t + tt[2]!;
       f[o + 5] = s;

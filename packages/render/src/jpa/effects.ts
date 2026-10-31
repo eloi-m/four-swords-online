@@ -60,6 +60,11 @@ export interface JpaEffectSpec {
   start: number;
   /** The tick it stops emitting (its particles play out), if known. */
   stop?: number;
+  /**
+   * The scene depth its particles are drawn at, in place of the mapping's (an effect the game sorts with the sprites
+   * rather than over them).
+   */
+  sceneZ?: number;
   /** Once it's no longer listed its particles vanish at once (the game deletes the emitter), instead of playing out. */
   vanish?: boolean;
 }
@@ -155,6 +160,7 @@ export class JpaEffects {
         this.live.set(spec.key, live);
       }
       live.placement = p;
+      live.emitter.sceneZ = spec.sceneZ ?? null;
       live.stop = spec.stop;
       live.vanish = spec.vanish ?? false;
       this.advance(live, tick);
