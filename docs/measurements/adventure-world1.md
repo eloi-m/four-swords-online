@@ -557,6 +557,23 @@ the u32 at 0x8113B3C0 (stage data 0x8113B244 + 0x178 + 4).
 - **Placement:** `FGAN` 0x2000 at (256, 192): he stands there (z 0), his home (+0x2A0) 16 px below, (256, 208).
 - **The intro:** the camera on the room at frame 23: state 1, +0x254 counting to 101, then +0x250 to 300 (frame 421:
   state 2), shown by frame ~470 (alpha +0x290 255), state 3 for 100, 4 (the swing) at 574, 5, 6/7 at 659 (z → 40).
+- **His appearance's scene** (2026-10-31; read in main.dol, the states 0x8017C75C…, checked against `compare.ts`
+  frames from `ref/places/castle-room11`): every tick, before his states (0x8017C40C, kind 0), he sets the camera's
+  boss flag +0x178 (0x8017ECC0) and hands it (x, y − 16) (0x8030C210): the camera in its boss mode from the room's
+  start (Dolphin's zoom 2.1624 at t0.5, 2.3385 from t2: 608 / 260). **0**: once a box (−30, −30, 30, 30) round him
+  is on the screen (0x8017EB94), the BGM fades (0x80458F9C, 60), then the scene's take (0x801F68E0: the Links held,
+  tried again each tick), the scene's colour set white (0x8013A884 with (255, 255, 255, 0)) → **1**. States **1-5**
+  each tick ask for the letterbox bars (0x8017EB1C: overlay +0x284, +0x28C = 0.05) and the special focus of kind 4
+  on his place (0x8017EB44: camera +0x7F4 = 1, +0x7F8 = 4, +0x7FC… his x, y, z, +0x7F6 = 0; not while +0x7F5): the
+  HUD fades with the bars as in Shadow Link's entrance. State 1 at +0x254 = 100 makes JPA 866, 867, 868, 869 at his
+  place (0x8013CC50, param 4) with sound 0x40074: the white swirls in a blue glow he comes out of (t5). State 4 ends
+  with +0x250 = +0x254 = 255; **5** each tick lowers +0x250 by 2 (to 159) and +0x254 by 3 (to 127) and sets the
+  scene's colour (+0x250, +0x254, 255, 0); at its end (159, 127, 255, 0) again, BGM 0x01000004, the scene's end
+  (0x801F6884), state 6. Nothing later sets the colour back (its only other setter is the object's init 0x8013A27C:
+  0xFFFFFF00). The scene's colour is [[0x8053AB10]+0x2C]+4 (a getter 0x8018330C; the JPA emitters made through
+  0x801B99C0 and 0x801B9EE0 take it as their colour, +0xB8). In Dolphin's frames it multiplies the room's tiles (the
+  floor (131, 77, 59) → (82, 38.5, 59): × 0.63, 0.50, 1.00) and him (his BTIs are black and white: so at t8, black
+  with purple swirls from t12), not the Links nor the HUD.
 - **Hovering and the dash** (the Links idle at the bottom): wander 2 px/tick; the dash from (251.85, 268.78) at frame
   954: 12, 11, 10, … 3 px a tick (13 − 1, slowing 1 a tick), then ×0.7 (2.09, 1.45, 1.02 …): ~84 px; the Links lost 2
   (life 8 → 6) on the update into frame 957, him 21.7 px above the leader (z 38).

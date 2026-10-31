@@ -11,6 +11,7 @@ import { ACTOR_SOB_FILES, actorPieces, type ActorPiece, decodeBti, fsaParticlePl
 import {
   actorSpriteMeshes,
   blendLayer,
+  tintLayer,
   collisionQuad,
   DistortionPass,
   disposeChildren,
@@ -41,7 +42,7 @@ import { EntityView } from "../../battle/src/entities.ts";
 import { Lighting } from "../../battle/src/lighting.ts";
 import { growAboutAnchor, heightScale, LINK_SHADOW, linkShadow, ShadowSprite } from "../../battle/src/shadows.ts";
 import { EnemyView } from "./enemies.ts";
-import { GanonView } from "./ganon.ts";
+import { GanonView, sceneTint } from "./ganon.ts";
 import type { AdventureHud } from "./hud.ts";
 import type { DialogueBox } from "./dialogue.ts";
 import type { GbaWindow } from "./gbawindow.ts";
@@ -142,6 +143,9 @@ export class AdventureView {
   readonly light: AdventureLight;
   private lightKey = "";
   private readonly rooms = new Map<number, RoomMeshes>();
+  private tintKey = "";
+  /** The tick Phantom Ganon's swirls started (`ganonAppearing`). */
+  private ganonSwirl: number | null = null;
   private readonly atlases: SpriteAtlas[] = [];
   private readonly sheet: SpriteSheet;
   private readonly linkFrames: SpriteFrame[];
@@ -430,7 +434,24 @@ export class AdventureView {
     }
     const specs = this.near.filter((e) => (e.actor !== "TRCH" || this.torchFlame(game, e)) && (e.actor !== "FLME" || this.ringBurning(game, e))).map((e) => e.spec);
     this.drawnWhirlpools = this.near.filter((e) => e.room === room && e.actor === "WARP" && e.spec.placement.id === 1363).length;
-    this.particles.sync(game.tick, [...specs, ...this.burningArrows(game), ...this.barriers(game), ...this.minorShadows(game), ...this.traps(game), ...this.goal(game), ...this.shadowPortal(game)]);
+    this.particles.sync(game.tick, [...specs, ...this.burningArrows(game), ...this.barriers(game), ...this.minorShadows(game), ...this.traps(game), ...this.goal(game), ...this.shadowPortal(game), ...this.ganonAppearing(game)]);
+  }
+
+  /**
+   * Phantom Ganon's appearance: 100 ticks into his state 1 (+0x254 at 100) he makes JPA 866, 867, 868 and 869 at his
+   * place (0x8013CC50) with sound 0x40074, 300 ticks before he shows (the swirls he comes out of: Dolphin's frames,
+   * `castle-room11` t5). Drawn from that tick while he's in states 1-3 (the emitters' own lives end them).
+   */
+  private ganonAppearing(game: AdventureGame): JpaEffectSpec[] {
+    const g = game.adventure.ganon, room = this.rooms.get(game.adventure.room);
+    if (!g || g.gone || !room || game.adventure.area !== 0 || g.state < 1 || g.state > 3) return [];
+    if (g.state === 1 && g.c254 < 100) return [];
+    const start = g.state === 1 ? game.tick - g.c250 : (this.ganonSwirl ?? game.tick);
+    this.ganonSwirl = start;
+    return GANON_SWIRL.flatMap((id) => {
+      const placement = fsaParticlePlacement(id, room.origin.x + g.x / SUBPX, room.origin.y + g.y / SUBPX, 0, { layer: 0, sublayer: 0 });
+      return placement ? [{ key: `fgan:${id}:${start}`, start, placement }] : [];
+    });
   }
 
   /**
@@ -629,6 +650,7 @@ export class AdventureView {
     this.patchArea(game);
     this.enemies.update(game, this.adventure);
     this.ganon.update(game);
+    this.tintRoom(game);
     this.tiles.setTick(game.tick);
     this.waterTiles?.setTick(game.tick);
     this.gbaTiles.setTick(game.tick);
@@ -685,6 +707,17 @@ export class AdventureView {
     }
     r.setScissorTest(false);
     opaqueFrame(r); // WebKit composites the canvas by its alpha (@fso/render opaque.ts)
+  }
+
+  // The scene's colour (ganon.ts `sceneTint`) on the current room's tile layers.
+  private tintRoom(game: AdventureGame): void {
+    const [r, g, b] = sceneTint(game), key = `${game.adventure.room}:${r},${g},${b}`;
+    if (key === this.tintKey) return;
+    for (const [room, m] of this.rooms) {
+      const [tr, tg, tb] = room === game.adventure.room ? [r, g, b] : [255, 255, 255];
+      for (const layer of [m.base, m.top]) if (layer) tintLayer(layer, tr, tg, tb);
+    }
+    this.tintKey = key;
   }
 
   // The letterbox bars: black, 48 × a² TV px tall at the top and the bottom, at alpha a² (the overlay's draw).
@@ -966,6 +999,8 @@ export class AdventureView {
 }
 
 const FILLER_TILE = 0x00b;
+/** The JPA effects Phantom Ganon appears from (his state 1, 0x8017C840…). */
+const GANON_SWIRL = [866, 867, 868, 869];
 /** The GBA picture's backdrop (Dolphin's frames). */
 const GBA_BACKDROP = 0x292929;
 const DIR_INDEX = { right: 0, left: 1, down: 2, up: 3 } as const;

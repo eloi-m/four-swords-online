@@ -40,6 +40,7 @@ const FRAGMENT = /* glsl */ `
   uniform float uFilterOn;
   uniform vec2 uOrigin;
   uniform vec2 uBlend;
+  uniform vec3 uTint;
   in vec2 vPixel;
   layout(location = 0) out vec4 fragColor;
   void main() {
@@ -57,7 +58,7 @@ const FRAGMENT = /* glsl */ `
     float f = texture(uFilter, (uOrigin + vPixel) / ${OVERLAY_SIZE}.0).r;
     // (Not on the river bed's half-transparent water: Dolphin, the overlay poked black, leaves it as it was.)
     float k = mix(1.0, ${OVERLAY_BASE.toFixed(4)} + ${OVERLAY_GAIN.toFixed(4)} * f, color.a < 1.0 ? 0.0 : uFilterOn);
-    fragColor = vec4(color.rgb * k, color.a);
+    fragColor = vec4(color.rgb * k * uTint, color.a);
     // A GBA alpha blend (blendLayer): color × EVA / 16 + what is under it × EVB / 16.
     if (uBlend.x >= 0.0) fragColor = vec4(color.rgb * uBlend.x, 1.0 - uBlend.y);
   }
@@ -174,6 +175,7 @@ function layerMaterial(layer: THREE.DataTexture, textures: TilemapTextures, filt
       uOrigin: { value: new THREE.Vector2(origin.x, origin.y) },
       uSize: { value: new THREE.Vector2(width, height) },
       uBlend: { value: new THREE.Vector2(-1, 0) },
+      uTint: { value: new THREE.Color(1, 1, 1) },
     },
     // Opaque colors replace what's under them, as before; the river bed's half-transparent water blends over it. The
     // frame's alpha stays 1 where a tile is (src + dst: the lighting pass and the page's compositing read it).
@@ -183,6 +185,11 @@ function layerMaterial(layer: THREE.DataTexture, textures: TilemapTextures, filt
     blendSrcAlpha: THREE.OneFactor,
     blendDstAlpha: THREE.OneFactor,
   });
+}
+
+/** Multiplies a layer made by roomQuad by a colour (0-255 a channel; white leaves it as it is). */
+export function tintLayer(mesh: THREE.Mesh, r: number, g: number, b: number): void {
+  ((mesh.material as THREE.ShaderMaterial).uniforms.uTint!.value as THREE.Color).setRGB(r / 255, g / 255, b / 255, THREE.LinearSRGBColorSpace);
 }
 
 /**
