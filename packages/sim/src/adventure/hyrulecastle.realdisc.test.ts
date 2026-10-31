@@ -175,8 +175,7 @@ describe.skipIf(!existsSync(root))("Hyrule Castle", () => {
     run(game, HYRULE_CASTLE_MILESTONES[37]!.goals);
     expect([game.adventure.room, game.adventure.ganon?.gone, on(16)]).toEqual([11, true, true]);
     expect(game.battle.fighters[0]!.hearts).toBeGreaterThan(0);
-    expect(game.adventure.gems - beforeGanon).toBeGreaterThanOrEqual(80);
-    expect(game.adventure.gems - beforeGanon).toBeLessThan(99 + 99 + 80);
+    expect(game.adventure.gems - beforeGanon).toBe(104); // 80 + what's left of 99 + 99
     // Down the staircase into room 12, onto the goal with the quota (room 6's gem rain, room 10's throne room and
     // cannon columns: 2,523; Phantom Ganon's: 2,801): the stage cleared. (The totals are rolled: the rain's gems are
     // green, blue or red at random, as are the soldiers' drops, and the route's changes since move the random
