@@ -83,7 +83,9 @@ Index of the docs: [README.md](README.md).
   every 10 frames (`--every`) and around it. A battle round state's control frame isn't the same in every state: when
   ours walks off a frame or two late, `--lead` lines it up (8 for Above the Clouds and the Tower of Flames, 9 for The
   Field); `--reuse` keeps Dolphin's side of the last run of the same clip to try ours again; `--links 1` compares the
-  leader alone (the others still in the table).
+  leader alone (the others still in the table); in the adventure each Link's state carries his life (`♥`, Dolphin's and ours, quarter hearts),
+  so a hit taken shows on both sides. On a loaded machine `GDB_CONTINUE_MS` (default 30000) lengthens the tracer's
+  wait for Dolphin (loading a state can take longer).
 - Output in `out/dolphin-compare/<name>/` (report.md, diff.json or clip.json, the frames); defaults GDB port 2490,
   user folders `ref/dolphin-user-compare` (GBA ports) and `ref/dolphin-user-compare-adventure` (`--user`, `--port`).
   Dolphin's camera is not ours (zoom in the report), and the live reader sees only actors spawned by ID.
