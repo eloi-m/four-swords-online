@@ -680,8 +680,8 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      draw 0x80307AC8 not read). Left: room 0's `YAJI` arrows pulse once lit (update 0x802AFCE8: alpha +0x254 from 20,
      +4 a frame to 200, −4 to 40 and back, 80 frames a cycle, sound 0x30025 at each low; unlit kind 0 alpha 96): ours
      are static meshes and the lit state lives in the camera's `FocusPoints`; "Z Close" is hidden on purpose (no way
-     back to the TV view in ours); the clock icon with a digit (9 at frame 90) over room 6 area 5's side-view water,
-     likely the Links' time under water, not found in main.dol.
+     back to the TV view in ours); the clock icon with a digit (9 at frame 90) over room 6 area 5's side-view water:
+     the Links' time under water, now in the sim (Tingle's Tower item 6; not drawn yet).
   7. Measured, already known: room 6's ladder foot out of the water is a push of ~20 frames, then a 27-frame ledge jump
      (state 56); ours walks out 34 ticks sooner (`TRACED_WATER_STAGES`).
   Not compared (no savestate reaches them): areas 3/2, 3/3, 3/5, 5/2, 7/6 and room 58.
@@ -753,7 +753,10 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   chest, room 7's shaft with its floor switches and fish; compare.ts and clip.ts now start ours in an area, below);
   the stage has no Octoroks. Places mid-river can't be rebuilt from their roots (`w1-boss012-room3`/`room4`/
   `passage`'s parents are gone).
-  6. Room 3's underwater passage (area 5) has a time limit in Dolphin: a clock icon by the area's top with the seconds
+  6. **Sim done (2026-10-31):** the side view's water clock (sim waterclock.ts, read in main.dol and traced:
+     docs/measurements/adventure-world1.md "The side view's water clock"); the route dives twice (the gem, the clock
+     run out, then straight to the shaft with 20 ticks to spare). Left: the clock drawn on the GBA picture in apps/game,
+     clip.ts carrying Dolphin's clock (Link +0xBE4) into ours, the bubbles. Was: room 3's underwater passage (area 5) has a time limit in Dolphin: a clock icon by the area's top with the seconds
      left (8 two seconds after `tingle-room3-passage`, `tingle-room3-passage/side-t2`; Lake Hylia room 6's area 5
      shows one too). Climbing its east shaft along the swim our route takes (747 ticks to the tree house in ours),
      Dolphin's leader stopped rising at (210.4, 57) ~560 ticks after the place (state 48, then up 0.5 px/tick for ~70

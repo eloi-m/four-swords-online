@@ -6,6 +6,7 @@ import { resetTrails } from "./formation.ts";
 import { enterShadowAt } from "./shadowlink.ts";
 import type { AdventureStage } from "./stage.ts";
 import { SWIM_UNIT } from "./swim.ts";
+import { whirlpoolInto } from "./waterclock.ts";
 
 /** The record's game before its first step, as apps/game starts it: the room entered with the carry (and its area,
  *  a GBA screen's), its switches set as the record's, its Shadow Link put in the record's state of his entrance, then
@@ -13,7 +14,12 @@ import { SWIM_UNIT } from "./swim.ts";
  *  at the Link ahead of him. */
 export function startAdventure(record: AdventureRecord, stage: AdventureStage): AdventureGame {
   const game = createAdventure(stage, { room: record.room, x: record.x, y: record.y, players: record.players, ...(record.carry ? { carry: record.carry } : {}) });
-  if (record.area) enterArea(game, stage, game.adventure.room, record.area, 0, 0);
+  // In an area, they came into it down the TV's whirlpool there if there's one (the way its water's clock run out
+  // takes them back: waterclock.ts).
+  if (record.area) {
+    enterArea(game, stage, game.adventure.room, record.area, 0, 0);
+    game.adventure.surface = whirlpoolInto(game, stage);
+  }
   if (record.switches !== undefined) game.battle.switches = record.switches >>> 0;
   const shadow = record.shadow && game.adventure.enemies.find((e) => e.type === "SLK2");
   if (shadow) enterShadowAt(shadow, record.shadow!.state, record.shadow!.tick);
@@ -23,6 +29,7 @@ export function startAdventure(record: AdventureRecord, stage: AdventureStage): 
     if (!p) return;
     [p.x, p.y] = [Math.round(l.x * SUBPX), Math.round(l.y * SUBPX)];
     if (l.facing) p.facing = l.facing;
+    if (i === 0 && l.air !== undefined) game.adventure.air = l.air;
     if (l.swim) Object.assign(game.adventure.links[i]!, { mode: "swim", tick: 0, speed: 0, dir: -1, vx: 0, cx: Math.round(l.swim.x * SWIM_UNIT), cy: Math.round(l.swim.y * SWIM_UNIT) });
   });
   resetTrails(game);

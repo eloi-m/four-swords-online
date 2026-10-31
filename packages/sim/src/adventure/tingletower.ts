@@ -149,12 +149,23 @@ export const TINGLE_TOWER_MILESTONES: readonly { name: string; goals: readonly G
       travelTo(120, 64, { swim: true }),
       holdUntil("over the falls", Down, (g) => g.players[0]!.y > 240 * 256 && g.adventure.links[0]!.mode === "swim", 300),
       collect("the pool's gem", (it) => it.type === "gem" && it.x < 352 * 256, 1800, true),
-      // The whirlpool down into the underwater passage, up its far shaft into the tree house, out of its door.
+      // The whirlpool down into the underwater passage, up its far shaft into the tree house, out of its door. The
+      // passage's clock (10 s: waterclock.ts) leaves no time for both its winged gem and the shaft: the gem first, the
+      // clock run out (back in the whirlpool), off it and down again, straight to the shaft.
       travelTo(328, 312, { swim: true }),
       waitUntil("in the passage", (g) => g.adventure.area === 5 && !g.adventure.warp, 300),
       collect("the passage's winged gem", (it) => it.type === "gem", 1800, true),
-      travelTo(216, 200, { swim: true }),
-      travelTo(216, 8, { swim: true }),
+      waitUntil("the passage's clock run out, back in the whirlpool", (g) => g.adventure.area === 0 && !g.adventure.warp, 700),
+      travelTo(328, 280, { swim: true }),
+      travelTo(328, 312, { swim: true }),
+      waitUntil("in the passage again", (g) => g.adventure.area === 5 && !g.adventure.warp, 300),
+      // The quick way: east along its upper reach sinking, down between the rock and the stub of wall under it, east
+      // along the bottom, up the shaft (up is the slow stroke, 0.7 px/tick).
+      holdUntil("down the passage's left side", Down, (g) => g.players[0]!.y >= 100 * SUBPX, 120),
+      holdUntil("east along its upper reach", Right, (g) => g.players[0]!.x >= 136 * SUBPX, 200),
+      holdUntil("down past its rock", Down, (g) => g.players[0]!.y >= 216 * SUBPX, 200),
+      swimPast("east along its bottom, kept from sinking", [{ x: 212, y: 217 }], 200),
+      holdUntil("up the shaft", Up, (g) => g.adventure.area === 2, 600),
       waitUntil("in the tree house", (g) => g.adventure.area === 2 && !g.adventure.warp, 600),
       // Its two red Force Gems and its chest.
       collect("the tree house's gems", (it) => it.type === "gem", 2400, true),
