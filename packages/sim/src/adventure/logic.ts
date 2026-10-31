@@ -18,9 +18,12 @@
 //   the bottom Links' bodies reached the box, set at (120, 85.5), (136, 85.5), (120, 101.5), (136, 101.5) in one tick.
 //   Trailing 18 px apart they can't all fit, so a leader stopping on it alone doesn't press it.
 // - GOL2 "goal 2" (the stage's goal, four pads gc 603, lit 602, laid out by params & 0x1F): the stage is cleared when
-//   the Links have the Force Gem quota (pickups.ts GEM_QUOTA) and the leader steps on a pad. TODO(measure): its switch
-//   (the top bits: Lake Hylia's waits for 16, which nothing in its room sets: the quota is assumed), the pads' box, the
-//   four Links on four pads.
+//   the Links have the Force Gem quota (pickups.ts GEM_QUOTA) and the leader steps on a pad. Short of the quota each pad
+//   is solid, a ±10 px box (its update 0x802E2C28 sets that box round each pad in turn; clipped in Dolphin, Tingle's
+//   Tower room 10 with 301 gems: the leader walking up stopped with his body's top at the box's bottom, y 66, and
+//   pushed), and the pads show their eye with lightning between them (apps/game). TODO(measure): its switch (init
+//   0x802E3B2C: (p >> 22) & 31; Hyrule Castle's 16), the box the leader steps into with the quota, the four Links on
+//   four pads.
 // - SPBG "drawbridge" (Hyrule Castle rooms 1, 3 and 6's gates; init 0x80348698, update 0x8034821C): once its switch
 //   (params >> 27) is on, it opens and some ticks later sets switch (p >> 22) & 31, whose PNPCs turn the gate's tiles
 //   to floor: kind p & 15 0 (room 1's drawbridge) after 120 ticks, kind 1 (rooms 3 and 6's) after 30 (measured: room 1's
@@ -59,6 +62,7 @@ import { brokenTiles } from "./zoras.ts";
 import { openDoorTiles } from "./doors.ts";
 import { blockTiles } from "./tileblocks.ts";
 import { quotaMet } from "./pickups.ts";
+import { FLYING_TILE } from "./traps.ts";
 import type { AdventureStage, Area, AreaActor } from "./stage.ts";
 
 /** A switchless PNPC acts while a Link is within this many px of it (0x8023AF14 with a ±48 box). */
@@ -131,6 +135,10 @@ export function rewrittenTiles(game: AdventureGame, stage: AdventureStage): Map<
     if (actor.id !== "THRN" || !base || !a.rewritten.includes(actorKey(a.room, actor.index))) continue;
     for (let i = 0; i < base.length; i++) if (stage.typeOf(base[i]! & 0x3ff) === SPIKE_TYPE) out.set(i, SPIKES_DOWN_TILE);
   }
+  // The floor the flying tiles (FLYO) lifted off (traps.ts).
+  for (const actor of area.actors) {
+    if (actor.id === "FLYO" && a.rewritten.includes(actorKey(a.room, actor.index))) out.set((actor.y >> 4) * LAYER_TILES + (actor.x >> 4), FLYING_TILE.hole);
+  }
   // Burnt stumps (gear.ts), open doors' stones (doors.ts).
   burntTiles(game, out);
   brokenTiles(game, stage, out);
@@ -164,6 +172,19 @@ export function drawnRewrites(game: AdventureGame, stage: AdventureStage): Map<n
 export function goalPads(a: AreaActor): { x: number; y: number }[] {
   const l = GOAL_LAYOUTS[a.params & 0x1f] ?? GOAL_LAYOUTS[0]!;
   return [0, 1, 2, 3].map((i) => ({ x: a.x + l[i]!, y: a.y + l[4 + i]! }));
+}
+
+/** A goal's pads are solid short of the quota: this box's half size round each, px. */
+export const GOAL_SOLID_HALF = 10;
+
+/** `world` with the current area's goal pads solid while the Links are short of the quota. */
+export function goalWorld(world: World, game: AdventureGame, stage: AdventureStage): World {
+  if (quotaMet(game)) return world;
+  const goals = currentArea(game, stage).actors.filter((a) => a.id === "GOL2");
+  if (!goals.length) return world;
+  const boxes = [...(world.boxes ?? [])], h = GOAL_SOLID_HALF;
+  for (const g of goals) for (const p of goalPads(g)) boxes.push({ left: p.x - h, top: p.y - h, right: p.x + h, bottom: p.y + h });
+  return { ...world, boxes };
 }
 
 /** The pad of a goal a Link stands on, or -1. */

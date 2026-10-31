@@ -293,3 +293,145 @@ export function bladeClanks(game: AdventureGame, i: number, meets: (box: { left:
   }
   return false;
 }
+
+// --- the flying floor tiles (FLYO; init 0x8033BAC8, update 0x8033A658; Tingle's Tower room 10's spiral of 17,
+// params 0x18000 + its order 0-0x10) ---
+// Read from main.dol; clipped in Dolphin (docs/measurements/adventure-world1.md "Room 10's flying tiles"). Params:
+// p & 0x7FF its order, (p >> 11) & 31 the switch it waits for (room 10's 16: the floor switches on the way up from
+// the pool), (p >> 16) & 15 its kind (1: a floor tile; the others, houses, statues, chests and wood, are in no World 1
+// room), ((p >> 24) & 7) × 5 + 15 how long it flies before a wall can stop it. Kind 1's box is ±7, its spin 0x1000 a tick.
+// - waiting (state 4): until its switch is on; then counting (0): `order` × 60 + 60 ticks, while the tile under it must
+//   be of type 0x21 (else it's gone). The lowest one still counting once takes the order of the one before it
+//   (0x8033AD7C): traced, the second lifts the tick after the first, the others keep their own count (why they do
+//   isn't read through: here only the first lift hands its order on);
+// - lifting (1): it takes its tile (the floor there becomes tile 0x79: logic.ts rewrittenTiles) and rises 1 px/tick for
+//   30 ticks, spinning up to full speed, then hovers 60;
+// - flying (2): at its Link (+0x198 through 0x801EEC98: the leader here), aimed from where it's seen (y − z) and again
+//   the next two ticks, its velocity easing toward 4 px/tick (0.3 of the gap a tick, by at most 1 px/tick a tick:
+//   0x801F71A4); 10 ticks more before a wall can stop it when he's below it.
+// While lifting or flying, a sword meeting it (0x801F2B7C), another flying tile met or a wall (0x801F2618, once it flew
+// long enough: traced, the first two, a tick apart, meet 16 ticks into their flight and the first breaks) or the Link
+// its box (±7 round where it's seen, 0x801F285C) meets breaks it (state 3), as does going 16 px off the area; that Link
+// is hurt by its atcp (kind 1's init sets 2; 0x801F37AC). In Dolphin it struck the leader, flying past a follower
+// within 7 px: here it aims at and hurts the leader only. Assumed: the wall test at its ground point, the break's look
+// (not drawn), the Link's hit type (the enemies' default).
+export const FLYING_TILE = {
+  /** The tile type it lifts (on another it's gone) and the tile it leaves. */
+  liftType: 0x21,
+  hole: 0x79,
+  half: 7,
+  /** Kind 1's atcp (+0x114). */
+  damage: 2,
+  /** Its count: order × every + every. */
+  every: 60,
+  rise: SUBPX,
+  riseTicks: 30,
+  hoverTicks: 60,
+  speed: 4 * SUBPX,
+  ease: 3,
+  accel: SUBPX,
+  /** It aims at its Link these ticks of its flight (0-2). */
+  aimTicks: 3,
+  /** The wall test's least flight (+ 5 × (p >> 24 & 7)), and 10 more toward a Link below. */
+  wallTicks: 15,
+  wallBelow: 10,
+  /** Its spin, 1/65536 turn a tick at full speed. */
+  spin: 0x1000,
+  /** Gone this many px off the area. */
+  off: 16,
+} as const;
+
+/** Its states (+0x230). */
+export const FLYING_STATE = { count: 0, lift: 1, fly: 2, wait: 4 } as const;
+
+// Its fields in the sim's enemy record: `shot` its state, `timer` its count (+0x238), `frame` its order, `speed` the
+// count it lifts at (+0x270), `flags` its switch (+0x250), `grace` its least flight before a wall stops it (+0x264),
+// `angle` its spin (+0x25A) and `turn` the spin's step (+0x25C), `leader` the tile it shows (+0x260), (`tvx`, `tvy`) the
+// velocity it eases toward (+0x27C).
+export function initFlyingTile(e: Enemy, tile: number): void {
+  const p = e.params;
+  e.kind = (p >>> 16) & 15;
+  e.frame = p & 0x7ff;
+  e.speed = e.frame * FLYING_TILE.every + FLYING_TILE.every;
+  e.flags = (p >>> 11) & 31;
+  e.grace = ((p >>> 24) & 7) * 5 + FLYING_TILE.wallTicks;
+  e.shot = e.flags ? FLYING_STATE.wait : FLYING_STATE.count;
+  e.turn = FLYING_TILE.spin;
+  e.leader = tile;
+  e.atcp = FLYING_TILE.damage;
+  e.state = "hide";
+  e.gate = 0;
+  e.timer = e.angle = 0;
+}
+
+/** Whether it's off its floor: lifting or flying (it hurts, a sword breaks it). */
+export const tileFlying = (e: Enemy) => e.shot === FLYING_STATE.lift || e.shot === FLYING_STATE.fly;
+
+/**
+ * One tick of a flying tile in an area `w` × `h` px: `tileType(x, y)` the tile type under a point (px), `lift()` takes
+ * its tile from the floor (true for the room's first), `struck()` whether a Link's sword meets it now. A break sets its
+ * life to −1 (gone).
+ */
+export function stepFlyingTile(game: AdventureGame, e: Enemy, world: World, area: { w: number; h: number }, tileType: (x: number, y: number) => number, lift: () => boolean, struck: () => boolean): void {
+  const T = FLYING_TILE, S = FLYING_STATE;
+  e.vx = easeTo(e.vx, e.tvx, T.ease, T.accel);
+  e.vy = easeTo(e.vy, e.tvy, T.ease, T.accel);
+  e.x += e.vx;
+  e.y += e.vy;
+  e.z += e.vz;
+  const px = e.x / SUBPX, py = e.y / SUBPX;
+  let wall = false;
+  switch (e.shot) {
+    case S.wait:
+      if (((game.battle.switches >>> e.flags) & 1) === 1) e.shot = S.count;
+      e.timer = 0;
+      return;
+    case S.count:
+      if (e.kind === 1 && tileType(px, py) !== T.liftType) {
+        e.life = -1;
+        return;
+      }
+      if (e.timer >= e.speed) {
+        e.shot = S.lift;
+        e.state = "fly";
+        // The first to lift hands its order on: the next lifts the tick after.
+        if (lift()) {
+          const next = game.adventure.enemies.filter((o) => o.type === "FLYO" && o.life >= 0 && o.shot === S.count).sort((p, q) => p.frame - q.frame)[0];
+          if (next) next.speed = next.timer + 1;
+        }
+        e.timer = 0;
+        e.vz = T.rise;
+      }
+      break;
+    case S.lift:
+      if (e.timer >= T.riseTicks + T.hoverTicks) {
+        e.angle = (e.angle + e.turn) & 0xffff;
+        e.shot = S.fly;
+        e.timer = 0;
+        if (aim(game, e) > 0) e.grace += T.wallBelow;
+        break;
+      }
+      if (e.timer >= T.riseTicks) {
+        e.angle = (e.angle + e.turn) & 0xffff;
+        e.vz = 0;
+      } else e.angle = (e.angle + Math.trunc((e.turn * e.timer) / T.riseTicks)) & 0xffff;
+      break;
+    case S.fly:
+      e.angle = (e.angle + e.turn) & 0xffff;
+      if (e.timer < T.aimTicks) aim(game, e);
+      wall = e.timer >= e.grace && (isSolidAt(world, px, py) || game.adventure.enemies.some((o) => o !== e && o.type === "FLYO" && o.life >= 0 && tileFlying(o) && Math.abs(o.x - e.x) <= 2 * T.half * SUBPX && Math.abs(o.y - o.z - (e.y - e.z)) <= 2 * T.half * SUBPX));
+      break;
+  }
+  if (tileFlying(e) && (px < -T.off || py < -T.off || px > area.w + T.off || py > area.h + T.off || wall || struck())) {
+    e.life = -1;
+    return;
+  }
+  e.timer++;
+}
+
+/** Aims its flight at the leader from where it's seen (y − z); returns the velocity's y (> 0: he's below). */
+function aim(game: AdventureGame, e: Enemy): number {
+  const p = game.players[0]!;
+  [e.tvx, e.tvy] = velocityAlong(p.x - e.x, p.y - (e.y - e.z), FLYING_TILE.speed);
+  return e.tvy;
+}
