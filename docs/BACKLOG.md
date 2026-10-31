@@ -760,12 +760,16 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   `out/dolphin-compare/castle-*`). Matching: the placed actors of rooms 1 and 11 (`FGAN` at (256, 192) until he
   moves), the walk up room 0 to the owl's stop (y 204.5, 0.00 px), the gatehouse's walk (0.5 px), the Armos waking
   as the leader comes within reach (hit on frame 91 in ours, 93 in Dolphin). Different:
-  1. **Hits come through the hurt's invincibility in ours:** the Links' life took four Armos hits in 30 ticks
-     (frames 91, 101, 111, 120: out of hearts, revived at the area's start on 202) where Dolphin's took one per
-     ~70 (93, 162, 238; the leader invincible 60 frames after each, his followers 0); Phantom Ganon's dash hit ours
-     twice (frames 931, 933) and Dolphin's once, 10 frames later (941) (`castle-room10-armos`,
-     `castle-room11-ganon`, life on both sides in the clip's table). Likely each Link hurt in turn taking the shared
-     life.
+  1. **Done (2026-10-31):** hits came through the hurt's invincibility in ours (four Armos hits in 30 ticks, Phantom
+     Ganon's dash twice): each follower was hurt in turn and took from the shared life. In a group of four only the
+     Link in control can be touched or hurt (main.dol, traced: measurements/adventure-world1.md "Who a hit can
+     reach"; formation.ts `markTouchable`). Now Phantom Ganon's dash hits once (931, Dolphin 941: his own timing) and
+     the Armos once at 91 (Dolphin 93). Left: Dolphin's Armos hits the leader again at 162 and 238, ours not by 270:
+     ours hops after the nearest follower (it can't hurt him), Dolphin's followers stack on the stopped leader where
+     ours keep their trail; which Links 0x801EEC98 (the nearest Link) skips isn't read. Targeting the leader alone
+     there broke the Cave of No Return's route (room 3's Keese). The bent route `castle-bombs` "from another side"
+     no longer clears room 9's blade traps in 240 ticks (a follower in their row sets them off again: their target
+     is the same unread 0x801EEC98).
   2. Phantom Ganon's appearance (room 11, `castle-room11` t8): Dolphin's camera is on him with the letterbox bars and
      the HUD hidden, him black and white; ours stays on the Links with the HUD, him tinted purple. Once he fights
      (t12, t19) Dolphin tints the whole room purple (walls, floor, spikes; a dark blue backdrop round it as its

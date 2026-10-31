@@ -367,3 +367,15 @@ export function shareHearts(fighters: Fighter[], before: number, max: number): v
   const shared = Math.max(0, Math.min(max, before + lost + gained));
   for (const f of fighters) f.hearts = shared;
 }
+
+/**
+ * Who can be touched or hurt (main.dol, traced): the four Links together in a formation are one group (+0xD60, each
+ * follower's leader), and in a group of four only the one in control is (the group's position +0x1224, which the
+ * D-pad steps on): the hurt (0x802710C8) and the touch test (0x802732C4) refuse the others, so an enemy that meets
+ * the formation hurts the leader alone, once a grace (measurements/adventure-world1.md "Who a hit can reach"). Assumed:
+ * apart or being called back, each Link is his own. (Enemies still go for the followers: who they pick isn't read.)
+ */
+export function markTouchable(game: AdventureGame): void {
+  const a = game.adventure, together = game.players.length === 4 && !a.away && a.formation !== "apart" && a.formation !== "gather";
+  game.battle.fighters.forEach((f, i) => (f.untouchable = together && i > 0));
+}

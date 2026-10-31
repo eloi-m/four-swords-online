@@ -242,6 +242,7 @@ export interface Fighter {
   plainFall: boolean; // falling into a plain pit (tile type 0x03: put back on the edge, no jump), not a hole or lava
   safeX: number; // where he last stood with his whole body off any pit (a plain pit puts him back there), 1/256 px
   safeY: number;
+  untouchable?: boolean; // nothing touches or hurts him: the adventure's followers in a group of four (formation.ts)
 }
 
 export function createFighter(hearts: number, spawn: { x: number; y: number; facing: Facing }): Fighter {
@@ -655,7 +656,7 @@ export function hurtbox(p: PlayerState): PixelBox {
 
 /**
  * Can this fighter be hit right now? Not while held or thrown (off the ground), riding Epona (invincible), or away
- * (AWAY: through a door, into a hole, in a cannon).
+ * (AWAY: through a door, into a hole, in a cannon). (The hits themselves also pass over an untouchable one.)
  */
 export function vulnerable(f: Fighter): boolean {
   return (
@@ -818,7 +819,7 @@ export function hurtFighter(
   y: number,
   opts: { attacker?: number; cause?: string; blockable?: boolean; knock?: Knock } = {},
 ): Hit | null {
-  if (!vulnerable(f)) return null;
+  if (!vulnerable(f) || f.untouchable) return null;
   const blocked = opts.blockable === true && shieldFaces(p, f, x, y);
   if (blocked) {
     [f.slideX, f.slideY] = velocityAlong(p.x - x, p.y - y, BLOCK_PUSH_SPEED * SLIDE_SCALE);
@@ -843,7 +844,7 @@ export const STUN_INVINCIBLE_TICKS = 60;
 export const STUN_FRAME_TICKS = 6;
 
 export function stunFighter(p: PlayerState, f: Fighter): boolean {
-  if (!vulnerable(f) || f.mode === "stunned") return false;
+  if (!vulnerable(f) || f.untouchable || f.mode === "stunned") return false;
   interrupt(p, f);
   setMode(f, "stunned");
   return true;
@@ -857,7 +858,7 @@ export const HOOK_SPEED = 1536;
 export const HOOK_RELEASE = 18 * SUBPX;
 
 export function hookFighter(p: PlayerState, f: Fighter, thrower: number): boolean {
-  if (!vulnerable(f)) return false;
+  if (!vulnerable(f) || f.untouchable) return false;
   interrupt(p, f);
   f.thrower = thrower;
   setMode(f, "hooked");
@@ -877,7 +878,7 @@ export const PIN_TICKS = PIN_CARRY_TICKS + 1;
 const PIN_FRAME_TICKS = 8;
 
 export function pinFighter(p: PlayerState, f: Fighter, victim: number, x: number, y: number, opts: { attacker?: number; cause?: string } = {}): Hit | null {
-  if (!vulnerable(f)) return null;
+  if (!vulnerable(f) || f.untouchable) return null;
   // (A shield facing it pushes him back, as for the quick arrow: assumed.)
   if (shieldFaces(p, f, x, y)) return hurtFighter(p, f, victim, PIN_DAMAGE, x, y, { ...opts, blockable: true });
   f.hearts = Math.max(0, f.hearts - PIN_DAMAGE);
