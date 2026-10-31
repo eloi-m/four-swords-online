@@ -754,6 +754,37 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   screen starts ours in that area (Lake Hylia room 2's area 5, `lake-room2-area5`: its actors the same, the leader's
   walk up the slope and back within 0.3 px over 140 frames; room 3's passage, `tingle-room3-passage`: its gem the
   same). The tree house (area 2) still has no place: the passage's clock runs out on the way.
+- **Hyrule Castle against Dolphin (2026-10-30):** places `ref/places/castle-*` (rooms 0, 1, 5's gatehouse and channel,
+  6, 58, 10's throne room, 11; each one step from a `ref/adv/w1-013-*` state, whose own chains don't replay), rooms 0,
+  1, 6 and 11 compared with `compare.ts` (room 11 to 19 s) and clipped with `clip.ts` (reports in
+  `out/dolphin-compare/castle-*`). Matching: the placed actors of rooms 1 and 11 (`FGAN` at (256, 192) until he
+  moves), the walk up room 0 to the owl's stop (y 204.5, 0.00 px), the gatehouse's walk (0.5 px), the Armos waking
+  as the leader comes within reach (hit on frame 91 in ours, 93 in Dolphin). Different:
+  1. **Hits come through the hurt's invincibility in ours:** the Links' life took four Armos hits in 30 ticks
+     (frames 91, 101, 111, 120: out of hearts, revived at the area's start on 202) where Dolphin's took one per
+     ~70 (93, 162, 238; the leader invincible 60 frames after each, his followers 0); Phantom Ganon's dash hit ours
+     twice (frames 931, 933) and Dolphin's once, 10 frames later (941) (`castle-room10-armos`,
+     `castle-room11-ganon`, life on both sides in the clip's table). Likely each Link hurt in turn taking the shared
+     life.
+  2. Phantom Ganon's appearance (room 11, `castle-room11` t8): Dolphin's camera is on him with the letterbox bars and
+     the HUD hidden, him black and white; ours stays on the Links with the HUD, him tinted purple. Once he fights
+     (t12, t19) Dolphin tints the whole room purple (walls, floor, spikes; a dark blue backdrop round it as its
+     camera draws back to zoom 1.22), him black with purple swirls; ours plain.
+  3. Room 6's three sword soldiers come round the Links in Dolphin (at 5 s at their sides, y 337-344, the Links
+     y 295-344); ours bunch up on one another ~50 px above the leader and wait there (`castle-room6` t2, t5). Neither
+     hits in 300 frames. Their start isn't carried (Dolphin's were already walking), so the paths differ anyway.
+  4. Room 1's wall soldiers (`SLR2` 2, (152, 200) and (360, 200)) are blue archers in Dolphin, green sword soldiers
+     in ours; the gate is Dolphin's wooden drawbridge (`SPBG`), ours grey blocks (known: not drawn).
+  5. Small, unsure: the Armos's knock-back sends Dolphin's leader ~40° down-right of the line, ours ~24° (ours hit
+     again on the way); Dolphin's room-11 Links lost 60 Force Gems to the dash (74 to 14, `RUPY`s round them at
+     t19: the hurt's gem spill, Tingle's Tower item 2).
+  Not compared: rooms 2, 3 (the captain `SLR4`, Keaton `KETH` in area 6) and 9 (no state there), 57; the gatehouse,
+  channel, room 58 and the throne room have places but no compare (the machine stalled: below); the bow's take (the
+  clip's R missed the pedestal); Phantom Ganon's ball, volleys and down (the idle clip ends before his bat, ~frame
+  1120; down needs four returns: pokes on Dolphin's side only). The tools' limits there: our `FGAN` isn't read by
+  `compare.ts` (shown `placed` at his spot all along), the soldiers' and Armos's start isn't carried, a dumped compare
+  of 1141 frames took 80 min on a loaded machine and Dolphin all but stopped (frame dumps, GDB timeouts) once the
+  display slept. `ONOF` crystals come out 8 px down-right in Dolphin, as `SWTH` switches do (room 1).
 
 ### B7. Code health
 - **Dependencies:** `playwright-core` is only in `tools/e2e`, for WebKit; its browser lives in `~/.cache/fso-webkit`

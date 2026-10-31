@@ -153,8 +153,9 @@ export class GdbClient {
     await this.expectOk(`z${kind},${address.toString(16)},${length.toString(16)}`);
   }
 
-  /** Resumes and waits for the next stop (breakpoint, watchpoint or interrupt). */
-  async continue(timeoutMs = 30000): Promise<StopReply> {
+  /** Resumes and waits for the next stop (breakpoint, watchpoint or interrupt); `GDB_CONTINUE_MS` lengthens the wait
+   *  on a loaded machine, where loading a savestate can take longer than the default. */
+  async continue(timeoutMs = Number(process.env.GDB_CONTINUE_MS ?? 30000)): Promise<StopReply> {
     this.send("c");
     return this.waitStop(timeoutMs);
   }

@@ -101,7 +101,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const players = sim.game.players.length;
   // Battle: the players in the round are the first ones (absent Links trail).
   const dolphinLinks = (f: (typeof frames)[number]): ClipLink[] =>
-    f.links.slice(0, players).map((l) => ({ ...placePx(place, withScreen(l)), state: String(l.state) }));
+    f.links.slice(0, players).map((l) => ({ ...placePx(place, withScreen(l)), state: place.arena ? String(l.state) : `${l.state} ♥${l.life}` }));
   const buttons = (f: (typeof frames)[number]): number[] =>
     place.arena ? Array.from({ length: players }, (_, i) => gbaButtons(f.gba?.[i] ?? 0)) : [adventureButtons(f.pad)];
   const d: ClipLink[][] = [dolphinLinks(first)], o: ClipLink[][] = [sim.links()];
@@ -122,7 +122,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     : `No divergence over ${d.length} frames (tolerance ${values.tol} px; worst ${Math.max(...worst).toFixed(2)} px).`;
   const lines = [
     `# ${name}: a clip in Dolphin and in ours`, "", `${state}: ${describePlace(place)}. Script: \`${script}\`.`, "",
-    "States: Dolphin's state number; ours action/mode. Positions in room px (a battle's side rooms below the arena).", "",
+    "States: Dolphin's state number; ours action/mode; in the adventure, ♥ the life (Dolphin's, ours in quarter hearts). Positions in room px (a battle's side rooms below the arena).", "",
     verdict, "", "| frame | input | Dolphin | ours | off (px) |", "|---|---|---|---|---|", ...[...shown].sort((a, b) => a - b).map(row), "",
   ];
   writeFileSync(join(out, "report.md"), lines.join("\n"));
