@@ -680,8 +680,8 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      draw 0x80307AC8 not read). Left: room 0's `YAJI` arrows pulse once lit (update 0x802AFCE8: alpha +0x254 from 20,
      +4 a frame to 200, −4 to 40 and back, 80 frames a cycle, sound 0x30025 at each low; unlit kind 0 alpha 96): ours
      are static meshes and the lit state lives in the camera's `FocusPoints`; "Z Close" is hidden on purpose (no way
-     back to the TV view in ours); the clock icon with a digit (9 at frame 90) over room 6 area 5's side-view water,
-     likely the Links' time under water, not found in main.dol.
+     back to the TV view in ours); the clock icon with a digit (9 at frame 90) over room 6 area 5's side-view water:
+     the Links' time under water, now in the sim and drawn (Tingle's Tower item 6).
   7. Measured, already known: room 6's ladder foot out of the water is a push of ~20 frames, then a 27-frame ledge jump
      (state 56); ours walks out 34 ticks sooner (`TRACED_WATER_STAGES`).
   Not compared (no savestate reaches them): areas 3/2, 3/3, 3/5, 5/2, 7/6 and room 58.
@@ -753,7 +753,15 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   chest, room 7's shaft with its floor switches and fish; compare.ts and clip.ts now start ours in an area, below);
   the stage has no Octoroks. Places mid-river can't be rebuilt from their roots (`w1-boss012-room3`/`room4`/
   `passage`'s parents are gone).
-  6. Room 3's underwater passage (area 5) has a time limit in Dolphin: a clock icon by the area's top with the seconds
+  6. **Done (2026-10-31):** the side view's water clock (sim waterclock.ts, read in main.dol and traced:
+     docs/measurements/adventure-world1.md "The side view's water clock"), drawn over the GBA picture from main2D.arc's
+     scrn/main_diving.blo (apps/game divingclock.ts: "8" at 2 s as Dolphin's, same spot); compare.ts and clip.ts carry
+     Dolphin's clock (Link +0xBE4). `clip.ts` from `tingle-room3-passage` idle 820 frames: the float up within 0.3 px,
+     on the TV spot on frame 626 as Dolphin (its world (1352, 696), ours room 3's (328, 312): clip.ts keeps the area's
+     px origin past the screen change, so it reports a divergence there). The route dives twice (the gem, the clock
+     run out, then straight to the shaft with 20 ticks to spare). Left: the bubbles (`PEFF`), the sounds, the clock's
+     own spot (the game moves `Ndata00`; ours is put where Dolphin's frames show it), each follower's own clock, a
+     stage's spot in another room. Was: room 3's underwater passage (area 5) has a time limit in Dolphin: a clock icon by the area's top with the seconds
      left (8 two seconds after `tingle-room3-passage`, `tingle-room3-passage/side-t2`; Lake Hylia room 6's area 5
      shows one too). Climbing its east shaft along the swim our route takes (747 ticks to the tree house in ours),
      Dolphin's leader stopped rising at (210.4, 57) ~560 ticks after the place (state 48, then up 0.5 px/tick for ~70

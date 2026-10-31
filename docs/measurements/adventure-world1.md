@@ -656,3 +656,18 @@ u32 at 0x8113B40C; world px = room px + (0, 768)). Script `10 idle; 3 c-left; 20
   and the bottom Link's charging sword met it (watched with `trace.ts --watch`: 0x802721A8 sets +0xCAE, the charge's
   update 0x8027C4B0 ends on +0xCAE/+0xCAF; ZSLJ's object at 0x813C0760 then, at (242.8, 304)). Charging soon after
   arriving (the script above) beats it.
+
+## The side view's water clock
+Read in main.dol and traced (`tingle-room3-passage`, idle 820 frames, Link fields +0xBE4, +0xCB0, +0xCD4, +0x430):
+- Per Link: +0xBE4 s32 ticks left, +0xBE8 u8 running. State 75's entry (0x80282E6C) starts it at 600 unless running;
+  its exit (0x80282AA8) stops it (but into 15/16, a knockback). 0x80242940 (each frame, states 74/75) counts it down,
+  holds it at 0 on the TV, and on a GBA screen at 0 calls the run-out 0x8028FC2C. No air pockets.
+- The digit: ceil(ticks / 60), at most 20, in the GBA picture's data (0x803085A4); followers in a group show the
+  leader's. Dolphin: 8 two seconds after the place (559 left at its first frame), 9 at frame 90 in Lake Hylia's.
+- The run-out: came in by a whirlpool (state 39 before 75: +0xD28 = 0), back to +0xCB0 (where he left the TV: Tingle's
+  room 3 whirlpool, world (1352, 696)); else a table by stage slot and room (Lake Hylia: (1960, 1000), room 6's
+  whirlpool; Tingle's Tower has none: nothing happens). Traced: the clock 0 at frame 559, state 48 from 560 (up 0.1
+  px/frame from (40, 136.6) for 66 frames, sprites 556-561, facing up), on the TV spot at its 67th (frame 626), state 49
+  frames 627-718 there (+0x430 92 down, sprites 856-862, facing down), swimming (74) from 719; the followers came along
+  (74 at 720). No damage. The clock's screen is main2D.arc's scrn/main_diving.blo (kk_timer_01, two kk_rupyNum digits
+  with shadows); Dolphin draws its clock's middle at about (279, 172) of the 608×448 frame, 56 px above the file's.

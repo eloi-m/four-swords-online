@@ -53,6 +53,7 @@ import { flyLinks, sideLiftLink, stepSideCarry } from "./sidecarry.ts";
 import { pullHandle, spawnPulls, stepPulls } from "./pullswitch.ts";
 import { holdLever, spawnLevers, stepLevers, type Lever } from "./lever.ts";
 import { recordTracks, SIDE_SWIM_FOLLOW_SPEED, stepSideFollower, stepSideView } from "./sideview.ts";
+import { stepSurfacing, stepWaterClock } from "./waterclock.ts";
 import { anchorInDeepWater, enterWater, stepSwim, STONE_DAMAGE, SWIM_ANIMATION_TICKS } from "./swim.ts";
 import { startCrossSpin, stepCrossSpin, stepCrossSpinFollower, type CrossSpin } from "./whirl.ts";
 
@@ -97,6 +98,8 @@ export interface WarpTrip {
   /** Shot up out of a side view's top edge into another side view (stepShotInto): the shot's speed then (1/256 px per
    *  tick, up). */
   shotVy?: number;
+  /** Back to the TV as the water's clock ran out (waterclock.ts stepSurfacing). */
+  surface?: boolean;
 }
 
 export interface AdventureState {
@@ -109,6 +112,9 @@ export interface AdventureState {
   entryX: number;
   entryY: number;
   entryFacing: Facing;
+  /** Came out of the whirlpool at the entry (stepRise, the water's clock run out: waterclock.ts) and not off it yet:
+   *  it doesn't take him back until he has been (Dolphin: swimming on in it after the clock's run out, not taken). */
+  landed: boolean;
   /** The tick the Links came into this room: its actors' clock, whichever area they're in (the game makes all of a
    *  room's areas' actors as it comes in: Lake Hylia room 7's hovering gems, TV and caves, on one timer). */
   roomTick: number;
@@ -233,6 +239,11 @@ export interface AdventureState {
   colors: number[];
   /** Ticks the leader has swum over a waterfall's lip (falls.ts). */
   falls: number;
+  /** The leader's clock in a side view's water (waterclock.ts): ticks left, -1 when he isn't in it. */
+  air: number;
+  /** Where the Links left the TV down a whirlpool into this area (room, room px), where the clock run out takes them
+   *  back; empty when they came in otherwise. */
+  surface: number[];
   /** Per Link, swimming and ledge jumps (motion.ts). */
   links: LinkMotion[];
   /** The Links apart left in another area when the one in control went through a door or a room change (formation.ts):
@@ -326,6 +337,7 @@ export function createAdventure(stage: AdventureStage, opts: AdventureStart = {}
     entryX: leader.x,
     entryY: leader.y,
     entryFacing: leader.facing,
+    landed: false,
     roomTick: 0,
     edge: null,
     warp: null,
@@ -394,6 +406,8 @@ export function createAdventure(stage: AdventureStage, opts: AdventureStart = {}
     hops: [],
     fourSnap: -1,
     fourCatch: 0,
+    air: -1,
+    surface: [],
     away: null,
     nextId: 1,
     rng: (opts.seed ?? 1) >>> 0 || 1,
@@ -610,7 +624,8 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
     shareHearts(b.fighters, hearts, b.rules.hearts * HEART);
     revive(game);
     // Apart, the one in control leaves the area alone (traced through a door; room changes assumed alike).
-    if (a.formation !== "gather" && !startEdge(game, stage, inputs[0] ?? 0) && !startStairs(game, stage)) startWarp(game, stage, inputs[0] ?? 0);
+    // The water's clock run out takes them back to the TV (waterclock.ts).
+    if (!stepWaterClock(game) && a.formation !== "gather" && !startEdge(game, stage, inputs[0] ?? 0) && !startStairs(game, stage)) startWarp(game, stage, inputs[0] ?? 0);
   }
   game.tick++;
   return game;
@@ -825,6 +840,8 @@ export function enterArea(game: AdventureGame, stage: AdventureStage, room: numb
   saveSwitches(game, a.room, old.switches);
   const newRoom = room !== a.room;
   a.focus = null;
+  a.surface = [];
+  a.landed = false;
   a.room = room;
   a.area = sublayer;
   game.room = room;
@@ -896,8 +913,10 @@ function startWarp(game: AdventureGame, stage: AdventureStage, buttons: number):
   const area = currentArea(game, stage), swimming = m.mode === "swim" && (!m.side || (buttons & Button.Up) !== 0), shot = m.mode === "shot";
   if (!swimming && !shot && (m.mode !== "walk" || !(area.sideView ? buttons & Button.Up : p.moving))) return false;
   const x = Math.floor(p.x / SUBPX), y = Math.floor(p.y / SUBPX);
-  // Come out of a whirlpool (Tingle's Tower's tree house pool), it doesn't take him back (until he comes in again).
-  const landed = (d: Door) => d.style === WHIRLPOOL_STYLE && Math.abs(a.entryX - (d.x + 8)) <= 24 && Math.abs(a.entryY - (d.y + 8)) <= 24;
+  // Come out of a whirlpool (Tingle's Tower's tree house pool, the water's clock run out), it doesn't take him back
+  // until he has been off it.
+  if (Math.abs(x - a.entryX) > 24 || Math.abs(y - a.entryY) > 24) a.landed = false;
+  const landed = (d: Door) => a.landed && d.style === WHIRLPOOL_STYLE && Math.abs(a.entryX - (d.x + 8)) <= 24 && Math.abs(a.entryY - (d.y + 8)) <= 24;
   const door = area.doors.find(
     (d) => !landed(d) && Math.abs(x - (d.x + 8)) < (d.style === LAUNCH_STYLE ? LAUNCH_REACH : WARP_REACH) && Math.abs(y - (d.y + 8)) < (d.style === SHAFT_STYLE ? SHAFT_REACH : WARP_REACH) && (!d.gate || switchSet(game.battle, d.gate)) && (!swimming || SWIM_WARP_STYLES.has(d.style) || d.style === 0) && (swimming || d.style !== WHIRLPOOL_STYLE) && shot === (d.style === LAUNCH_STYLE),
   );
@@ -990,6 +1009,7 @@ function stepRise(game: AdventureGame, stage: AdventureStage, w: WarpTrip): void
     a.entryX = w.x + 8;
     a.entryY = w.y + 8;
     a.entryFacing = leader.facing;
+    a.landed = true;
   }
   gatherOnLeader(game);
   if (t >= SHAFT_RISE_TICKS + 1 + SHAFT_STILL_TICKS) {
@@ -1011,6 +1031,7 @@ function stepWhirl(game: AdventureGame, stage: AdventureStage, w: WarpTrip): voi
       p.y = (w.y + 8) * SUBPX;
     }
     enterArea(game, stage, a.room, w.area, 0, 0);
+    a.surface = [a.room, w.fromX + 8, w.fromY + 8];
     a.entryX = w.x + 8;
     a.entryY = w.y + 8;
     a.entryFacing = leader.facing;
@@ -1099,6 +1120,7 @@ function stepWarp(game: AdventureGame, stage: AdventureStage, inputs: readonly n
   const t = ++w.tick;
   if (w.whirl) return stepWhirl(game, stage, w);
   if (w.rise) return stepRise(game, stage, w);
+  if (w.surface) return stepSurfacing(game, stage, w);
   if (w.launch) return stepLaunchOut(game, stage, w, inputs[0] ?? 0);
   const [sx, sy] = STEP[w.facing];
   const side = w.side ?? 0;
@@ -1217,6 +1239,7 @@ export function cloneAdventure(game: AdventureGame): AdventureGame {
       crossSpin: a.crossSpin ? { ...a.crossSpin, at: [...a.crossSpin.at] } : null,
       links: a.links.map((m) => ({ ...m })),
       hops: a.hops.map((h) => ({ ...h })),
+      surface: [...a.surface],
       away: a.away ? { ...a.away, at: [...a.away.at], cut: [...a.away.cut] } : null,
     },
   };

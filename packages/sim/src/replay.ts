@@ -96,8 +96,9 @@ export interface AdventureRecord {
   area?: number;
   /** Each Link put at this room px, facing this way, once the room is entered (a Dolphin place, tools/dolphin
    *  compare.ts); absent = all stacked on the leader at x, y. `swim`: he is swimming, the water's current carrying him
-   *  by this much (px/tick; swim.ts stepCurrent). */
-  links?: { x: number; y: number; facing?: Facing; swim?: { x: number; y: number } }[];
+   *  by this much (px/tick; swim.ts stepCurrent). `air`: the ticks left on his clock in a side view's water
+   *  (adventure waterclock.ts; the leader's is the one kept). */
+  links?: { x: number; y: number; facing?: Facing; swim?: { x: number; y: number }; air?: number }[];
   /** The room's switches once it is entered (bit n: switch n; a Dolphin place's); absent = the room's own. */
   switches?: number;
   /** The room's Shadow Link put at a state of his entrance (0-13) and its ticks once the room is entered (a Dolphin

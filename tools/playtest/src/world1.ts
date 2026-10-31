@@ -354,8 +354,8 @@ const LISTED: readonly Puzzle[] = [
     stage: TOWER,
     milestone: 4,
     name: "room 3's tree house: its chest",
-    spot: { at: 10, x: 168, y: 102, axes: ["x"], travel: true },
-    idle: 11,
+    spot: { at: 17, x: 168, y: 102, axes: ["x"], travel: true },
+    idle: 18,
     check: inRoom(4),
   },
   {
@@ -363,8 +363,8 @@ const LISTED: readonly Puzzle[] = [
     stage: TOWER,
     milestone: 4,
     name: "room 3: off the ledge into the east pool",
-    spot: { at: 18, x: 400, y: 210, axes: ["x"], travel: true },
-    idle: 19,
+    spot: { at: 25, x: 400, y: 210, axes: ["x"], travel: true },
+    idle: 26,
     check: inRoom(4),
   },
   {

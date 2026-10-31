@@ -79,12 +79,13 @@ export function gridRoom(stage: Pick<AdventureStage, "index" | "cellOf">, room: 
  * way, timer and velocities: how long ago Dolphin's room was entered, and the way it drew at random). Given Dolphin's
  * Links (live.ts), each faces as his does, with his life, and the leader holds his item; given the room's switches
  * (live.ts), they are set (what the Links did before is not carried over: a block pushed stands at its start); a Link
- * swimming (state 74) swims on, carried by the current as much as Dolphin's is (live.ts drift). A place on a GBA screen
+ * swimming (state 74) swims on, carried by the current as much as Dolphin's is (live.ts drift); the leader's clock in a side
+ * view's water runs on from Dolphin's (live.ts air). A place on a GBA screen
  * starts in that area of the room (#room's TV part otherwise), its px the area's own.
  * `record` is that start, for apps/game to replay (compare.ts).
  */
 export function adventureSim(
-  stage: AdventureStage, place: Place, live: readonly LiveActor[] = [], links: readonly (Pick<LiveLink, "facing" | "life" | "item"> & { state?: number; drift?: LiveLink["drift"] })[] = [],
+  stage: AdventureStage, place: Place, live: readonly LiveActor[] = [], links: readonly (Pick<LiveLink, "facing" | "life" | "item"> & { state?: number; drift?: LiveLink["drift"]; air?: number })[] = [],
   switches: number | null = null,
 ): Sim & { adventure: AdventureGame; cell: { cx: number; cy: number }; record: AdventureRecord } {
   const room = gridRoom(stage, place.room);
@@ -108,7 +109,9 @@ export function adventureSim(
     links: local.map((l, i) => {
       const facing = links[i] && FACINGS[links[i]!.facing];
       const swim = links[i]?.state === STATE_SWIM && { x: links[i]!.drift?.x ?? 0, y: links[i]!.drift?.y ?? 0 };
-      return { x: l.x, y: l.y, ...(facing ? { facing } : {}), ...(swim ? { swim } : {}) };
+      // (A tick on, as Shadow Link's entrance: a trace's first frame is the game's frame after the state's RAM.)
+      const air = links[i]?.air !== undefined && links[i]!.air! >= 0 ? Math.max(0, links[i]!.air! - 1) : undefined;
+      return { x: l.x, y: l.y, ...(facing ? { facing } : {}), ...(swim ? { swim } : {}), ...(air !== undefined ? { air } : {}) };
     }),
     inputs: [], checkpoints: [], tick: 0, hash: 0,
   };

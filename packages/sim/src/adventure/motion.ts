@@ -11,6 +11,7 @@ import { firePoseFrame } from "./gear.ts";
 import { lampPoseFrame } from "./lamp.ts";
 import { getFrame } from "./dialogue.ts";
 import { heavyFrame } from "./rocks.ts";
+import { surfacingFrame } from "./waterclock.ts";
 
 export type MotionMode = "walk" | "wade" | "swim" | "ashore" | "jump" | "land" | "cannon" | "shot" | "fall";
 
@@ -87,6 +88,7 @@ export function adventureFrame(game: AdventureGame, i: number): number {
     if (w.tick <= 50) return 962 + Math.min(10, Math.floor(w.tick / 5)); // spinning down (traced 962-972)
     return SIDE_SWIM_FRAMES.down + (Math.floor(w.tick / SWIM_FRAME_TICKS) % 4);
   }
+  if (w?.surface) return surfacingFrame(w);
   if (game.adventure.fourSnap >= 0) return fourSnapFrame(game.adventure.fourSnap);
   const heavy = heavyFrame(game, i);
   if (heavy >= 0) return heavy;

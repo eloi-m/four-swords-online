@@ -35,7 +35,7 @@ import {
   opaqueFrame,
 } from "@fso/render";
 import { fighterFrame, fighterHeight, fighterVisible, HURTBOX, linkDisplayFrame, SUBPX, switchOn, type PixelBox } from "@fso/sim";
-import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FLYING_STATE, FLYING_TILE, GOAL_PAD_EFFECT, goalLightning, goalPads, quotaMet, tileFlying, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area, type AreaActor } from "@fso/sim/adventure";
+import { adventureFrame, airSeconds, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FLYING_STATE, FLYING_TILE, GOAL_PAD_EFFECT, goalLightning, goalPads, quotaMet, tileFlying, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area, type AreaActor } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { CloudShadow, cloudShadowLevel } from "../../battle/src/cloudshadow.ts";
 import { EntityView } from "../../battle/src/entities.ts";
@@ -45,6 +45,7 @@ import { EnemyView } from "./enemies.ts";
 import { GanonView, sceneTint } from "./ganon.ts";
 import type { AdventureHud } from "./hud.ts";
 import type { DialogueBox } from "./dialogue.ts";
+import type { DivingClock } from "./divingclock.ts";
 import type { GbaWindow } from "./gbawindow.ts";
 import type { MessageWindow } from "./messagewindow.ts";
 import { TvCamera } from "./camera.ts";
@@ -106,6 +107,8 @@ export class AdventureView {
   private readonly gbaCamera = new THREE.OrthographicCamera();
   /** The GBA window's frame (main_gba_window.blo), when the screen was found. */
   gbaFrame: GbaWindow | null = null;
+  /** The clock in a side view's water, over the GBA picture (divingclock.ts). */
+  divingClock: DivingClock | null = null;
   /** The HUD (main_adv.blo), when the screen was found. */
   hud: AdventureHud | null = null;
   /** The signs' and people's message boxes (main2D's hukidashi screens), when they and the messages were found. */
@@ -794,6 +797,12 @@ export class AdventureView {
     }
     r.setViewport(tv.x, ch - tv.y - tv.h, tv.w, tv.h);
     r.setScissor(tv.x, ch - tv.y - tv.h, tv.w, tv.h);
+    // The seconds left under water, once the window is open (sim waterclock.ts).
+    const clock = this.divingClock;
+    if (clock && clock.update(a.area !== 0 && open >= 1 ? airSeconds(game) : 0)) {
+      r.clearDepth();
+      r.render(clock.scene, clock.camera);
+    }
   }
 
   private renderLinks(game: AdventureGame): void {

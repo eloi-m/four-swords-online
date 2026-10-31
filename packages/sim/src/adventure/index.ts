@@ -14,6 +14,7 @@ export * from "./swim.ts";
 export * from "./rocks.ts";
 export * from "./gear.ts";
 export * from "./sideview.ts";
+export * from "./waterclock.ts";
 export * from "./drive.ts";
 export * from "./lakehylia.ts";
 export * from "./cannon.ts";

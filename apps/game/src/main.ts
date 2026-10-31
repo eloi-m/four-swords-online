@@ -17,6 +17,7 @@ import { hashState, InputLog, replayFrameSteps, RunCursor, SUBPX, type Adventure
 import { actorStats, AdventureStage, carryOf, messageBook, FORMATION_BUTTONS, GATHER_BUTTON, CAVE_OF_NO_RETURN_MILESTONES, HYRULE_CASTLE_MILESTONES, LAKE_HYLIA_MILESTONES, PHANTOM_GANON_MILESTONES, TINGLE_TOWER_MILESTONES, playedAlone, quotaMet, RoutePlayer, SEPARATE_BUTTON, selectButtons, startAdventure, stepAdventure, type AdventureGame, type Goal } from "@fso/sim/adventure";
 import { openServerStore, type AssetStore } from "@fso/web";
 import { adventureStages, englishMessages, levelName, LEVELS, type StageInfo } from "./stages.ts";
+import { DivingClock } from "./divingclock.ts";
 import { GbaWindow } from "./gbawindow.ts";
 import { AdventureHud } from "./hud.ts";
 import { MessageWindow } from "./messagewindow.ts";
@@ -255,6 +256,8 @@ async function start(store: AssetStore, archive: (path: string) => Promise<RarcA
     const main2D = await archive("main2D.arc"), game2D = await archive("game2D.arc");
     const window = archiveFile(main2D, "scrn/main_gba_window.blo");
     if (window) view.gbaFrame = new GbaWindow(parseBlo(window), screenAssets([main2D]));
+    const diving = archiveFile(main2D, "scrn/main_diving.blo");
+    if (diving) view.divingClock = new DivingClock(parseBlo(diving), screenAssets([main2D]));
     const hud = archiveFile(game2D, "scrn/main_adv.blo");
     if (hud) view.hud = new AdventureHud(parseBlo(hud), screenAssets([game2D, main2D]));
     const fontFile = messageArchive && archiveFile(messageArchive, "font/rock_24_20_4i_e.bfn");
