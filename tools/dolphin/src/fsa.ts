@@ -55,6 +55,7 @@ export const LINK = {
   item: 0xc10, // u32 item: 0 none, 1 lamp?, 2 Roc's Feather, 3 boomerang, 4 bow, 5 hammer, 6 Fire Rod, 7 boots?, 8 bombs, 9 shovel, 10 slingshot
   itemLevel: 0xc14, // u32
   drift: 0x414, // f32 x, y: the water's current carrying him while he swims (px/frame; swim.ts stepCurrent)
+  air: 0xbe4, // s32 ticks left on his clock in a side view's water, then u8 running at +0xbe8 (sim waterclock.ts)
   carried: 0xd64, // u8 1 while lifting/carrying, +0xd68 the carried actor's handle, +0xd6c its type ID ("GRAS"; "NULL" when empty)
 } as const;
 

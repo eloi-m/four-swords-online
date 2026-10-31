@@ -64,7 +64,8 @@ Index of the docs: [README.md](README.md).
   record's `links[i].swim`), the leader holding his item (the Cave's lamp), the room's switches
   set as Dolphin's (`live.ts`: stage data + 0x178, `docs/formats/battle-arenas.md` "Switches"), Shadow Link in
   his entrance's state and its ticks (all read from the state's own RAM), and a shuttling
-  hovering gem (`HNRY`) given the way, timer and speeds of Dolphin's (`live.ts` reads them: `LIVE_FIELDS`; our
+  hovering gem (`HNRY`) given the way, timer and speeds of Dolphin's, the leader's clock in a side view's water
+  (Link +0xBE4, a tick on) (`live.ts` reads them: `LIVE_FIELDS`; our
   frames still start it from the room's entry). The frames replay that start (the adventure record's `carry`, `area`,
   `links`, `switches`, `shadow`, @fso/sim replay.ts), the room's lights settled (the lamp at its full 100 px). Not carried:
   what else the room's things did (a block pushed stands at its start, a chest opened is shut, an enemy at its

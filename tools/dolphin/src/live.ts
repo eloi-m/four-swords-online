@@ -24,6 +24,8 @@ export interface LiveLink {
   item: number;
   /** The water's current carrying him (px/frame), while he swims. */
   drift: { x: number; y: number };
+  /** The ticks left on his clock in a side view's water (Link +0xBE4 while +0xBE8 is set), -1 when it isn't running. */
+  air: number;
 }
 
 export interface LiveActor {
@@ -103,6 +105,7 @@ export function readLive(mem1: Uint8Array, vtables: Map<number, string[]>, all =
       x: f32(a + LINK.x), y: f32(a + LINK.y), z: f32(a + LINK.z), state: u32(a + LINK.state), screen: u32(a + LINK_SCREEN),
       facing: u32(a + LINK.facing), life: u32(a + LINK.life), item: u32(a + LINK.item),
       drift: { x: f32(a + LINK.drift), y: f32(a + LINK.drift + 4) },
+      air: v.getUint8(a + LINK.air + 4 - MEM1_BASE) ? v.getInt32(a + LINK.air - MEM1_BASE) : -1,
     });
   }
   const actors = liveActors(mem1, vtables)

@@ -666,6 +666,8 @@ Read in main.dol and traced (`tingle-room3-passage`, idle 820 frames, Link field
   leader's. Dolphin: 8 two seconds after the place (559 left at its first frame), 9 at frame 90 in Lake Hylia's.
 - The run-out: came in by a whirlpool (state 39 before 75: +0xD28 = 0), back to +0xCB0 (where he left the TV: Tingle's
   room 3 whirlpool, world (1352, 696)); else a table by stage slot and room (Lake Hylia: (1960, 1000), room 6's
-  whirlpool; Tingle's Tower has none: nothing happens). Traced: the clock 0 at frame 559, state 48 frames 560-626 (up
-  0.1 px/frame from (40, 136.6), sprites 556-561, facing up), state 49 frames 627-718 on the TV spot (+0x430 92 down,
-  sprites 856-862, facing down), swimming (74) from 719; the followers came along (74 at 720). No damage.
+  whirlpool; Tingle's Tower has none: nothing happens). Traced: the clock 0 at frame 559, state 48 from 560 (up 0.1
+  px/frame from (40, 136.6) for 66 frames, sprites 556-561, facing up), on the TV spot at its 67th (frame 626), state 49
+  frames 627-718 there (+0x430 92 down, sprites 856-862, facing down), swimming (74) from 719; the followers came along
+  (74 at 720). No damage. The clock's screen is main2D.arc's scrn/main_diving.blo (kk_timer_01, two kk_rupyNum digits
+  with shadows); Dolphin draws its clock's middle at about (279, 172) of the 608×448 frame, 56 px above the file's.

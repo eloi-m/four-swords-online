@@ -8,8 +8,8 @@
 // - run out (0x8028FC2C), he goes back to the TV: when he came into the water by a whirlpool (state 39), to where he left
 //   the TV (+0xCB0: the whirlpool's middle); else to the stage's own spot (a table by stage slot and room; Lake Hylia's
 //   is room 6's whirlpool, (1960, 1000) in the world), or nowhere (Tingle's Tower has none: the clock stays at 0).
-//   Going: 67 ticks floating up 0.1 px/tick facing up (state 48, sprites 556-561, a bubble at its 4th and 8th tick),
-//   then on the TV spot 92 ticks facing down (state 49: two effects, 347 and 348, and sounds 0x20041 and 0x1000F at its
+//   Going: 66 ticks floating up 0.1 px/tick facing up (state 48, sprites 556-561, a bubble at its 4th and 8th tick),
+//   on the TV spot at its 67th, then 92 ticks there facing down (state 49: two effects, 347 and 348, and sounds 0x20041 and 0x1000F at its
 //   start; sprites 856-862), then swimming there (state 74). The others come along with the leader (traced: his
 //   followers' own clocks never ran out; they swam on the TV a tick after him). No damage.
 import { SUBPX } from "../player.ts";
@@ -19,11 +19,11 @@ import type { AdventureStage } from "./stage.ts";
 
 /** The clock's start (ticks: 10 s). */
 export const AIR_TICKS = 600;
-/** The float up: its ticks and its rise per tick (1/256 px: 0.1). */
-export const SURFACE_RISE_TICKS = 67;
+/** The float up: its ticks (the 67th puts him on the TV spot) and its rise per tick (1/256 px: 0.1). */
+export const SURFACE_RISE_TICKS = 66;
 export const SURFACE_RISE = 26;
-/** On the TV spot before swimming on (state 49). */
-export const SURFACE_SPOUT_TICKS = 92;
+/** On the TV spot before swimming on (the float's last tick, then state 49's 92). */
+export const SURFACE_SPOUT_TICKS = 93;
 export const SURFACE_TICKS = SURFACE_RISE_TICKS + SURFACE_SPOUT_TICKS;
 /** A stage's own spot (main.dol's table; the stage's index, AdventureState.stage): its room and that room's TV px. */
 const STAGE_SURFACE: Readonly<Record<number, readonly [number, number, number]>> = { 10: [6, 424, 232] };
@@ -89,7 +89,7 @@ export function stepSurfacing(game: AdventureGame, stage: AdventureStage, w: War
 /** The leader's sprite on the way back (traced: state 48's 556-561 by its walk tick, state 49's 856-862 by its count). */
 export function surfacingFrame(w: WarpTrip): number {
   const t = w.tick;
-  if (t <= SURFACE_RISE_TICKS) return 556 + (t <= 4 ? 0 : t < 19 ? 1 : 2 + (Math.floor((t - 19) / 4) % 4));
+  if (t <= SURFACE_RISE_TICKS + 1) return 556 + (t <= 4 ? 0 : t < 19 ? 1 : 2 + (Math.floor((t - 19) / 4) % 4));
   const left = SURFACE_TICKS - t;
   return left > 84 ? 856 + Math.trunc((90 - left) / 2) : 859 + (Math.floor((84 - left) / 6) % 4);
 }
