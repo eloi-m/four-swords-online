@@ -34,7 +34,7 @@ import {
   opaqueFrame,
 } from "@fso/render";
 import { fighterFrame, fighterHeight, fighterVisible, HURTBOX, linkDisplayFrame, SUBPX, switchOn, type PixelBox } from "@fso/sim";
-import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FLYING_STATE, FLYING_TILE, GOAL_PAD_EFFECT, goalLightning, goalPads, quotaMet, tileFlying, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area } from "@fso/sim/adventure";
+import { adventureFrame, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FLYING_STATE, FLYING_TILE, GOAL_PAD_EFFECT, goalLightning, goalPads, quotaMet, tileFlying, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area, type AreaActor } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { CloudShadow, cloudShadowLevel } from "../../battle/src/cloudshadow.ts";
 import { EntityView } from "../../battle/src/entities.ts";
@@ -59,6 +59,8 @@ const DEPTH_PER_PIXEL = 1 / 1024;
 const SPARKS_LISTED = 60;
 /** Shadow Link's portal (sim shadowlink.ts: his entrance's state 3). */
 const SHADOW_PORTAL = [1043, 1044, 1045] as const;
+/** How far above its pad a goal's aura (JPA 266) sorts, px: its emitter sits 13.5 px up the y axis (x 0.71). */
+const GOAL_AURA_BEHIND = 10;
 /** The letterbox bars' full height (TV px: the overlay's draw 0x8015F9C0, 48 × the amount²). */
 const BARS_H = 48;
 /** Actor types the view doesn't draw as static sprites: the player starts, and what the sim animates (the escort Zoras
@@ -167,6 +169,9 @@ export class AdventureView {
   private areaGroup = new THREE.Group();
   /** The current area's rocks, drawn from the state (rebuilt when one moves). */
   private readonly rockGroup = new THREE.Group();
+  /** The goal's lit pads (gc 602) over its static ones while its lightning is up. */
+  private readonly goalGroup = new THREE.Group();
+  private goalKey = "";
   private rockKey = "";
   /** Tingle (sim tingle.ts) in the area shown, or on the TV behind the GBA window; what he was last drawn as. */
   private readonly tingleGroup = new THREE.Group();
@@ -220,7 +225,7 @@ export class AdventureView {
     this.entities = new EntityView(this.actorSources, data);
     this.enemies = new EnemyView(this.actorSources, data);
     this.ganon = new GanonView(stage.archive ?? null);
-    this.local.add(this.entities.group, this.enemies.group, this.rockGroup, this.tingleGroup, this.ganon.group, this.flyingGroup);
+    this.local.add(this.entities.group, this.enemies.group, this.rockGroup, this.goalGroup, this.tingleGroup, this.ganon.group, this.flyingGroup);
     const tileset = loadTileset(data, stage.layout.tilesetIndex);
     this.tiles = new TilemapTextures(tileset);
     this.riverBed = new RiverBed(data);
@@ -893,8 +898,9 @@ export class AdventureView {
   /**
    * A goal's lightning short of the quota (sim logic.ts goalLightning; GOL2's init makes the effects): JPA 266 on each
    * pad (layer 0), and between them the lightning (270 for layout 2; layer 1, sublayer 1), emitting while the Links are
-   * short of it (assumed: Dolphin seen short of it only). TV areas only. Not like Dolphin's: the pads' aura covers their
-   * sprites here (Dolphin draws the pads over it), the lightning gold where Dolphin's is green and white.
+   * short of it (assumed: Dolphin seen short of it only), the pads drawn lit (gc 602) meanwhile. TV areas only. The
+   * lightning's colors change every frame (270's environment color steps through yellow, red, magenta, blue, cyan and
+   * green: a global color animation that repeats).
    */
   private goal(game: AdventureGame): JpaEffectSpec[] {
     const out: JpaEffectSpec[] = [];
@@ -902,6 +908,7 @@ export class AdventureView {
     if (!room || a.area !== 0 || a.cleared || quotaMet(game)) {
       this.goalSince = -1;
       this.drawnLightning = 0;
+      this.litPads([]);
       return out;
     }
     if (this.goalSince < 0) this.goalSince = game.tick;
@@ -910,11 +917,30 @@ export class AdventureView {
       const spots = [...goalPads(goal).map((p) => ({ ...p, effect: GOAL_PAD_EFFECT, layer: 0 })), ...goalLightning(goal).map((l) => ({ ...l, layer: 1 }))];
       spots.forEach((s, i) => {
         const placement = fsaParticlePlacement(s.effect, room.origin.x + s.x, room.origin.y + s.y, 0, { layer: s.layer, sublayer: s.layer });
-        if (placement) out.push({ key: `gol2:${a.room}:${goal.index}:${i}:${this.goalSince}`, start: this.goalSince, placement });
+        // The pads' aura sorts with the sprites just behind its pad (its particles' y), under the pads and the Links
+        // before them; the lightning is a layer up, over them.
+        const sceneZ = s.layer === 0 ? 2 + (s.y - GOAL_AURA_BEHIND) * DEPTH_PER_PIXEL : undefined;
+        if (placement) out.push({ key: `gol2:${a.room}:${goal.index}:${i}:${this.goalSince}`, start: this.goalSince, placement, sceneZ });
       });
     }
     this.drawnLightning = out.length;
+    this.litPads(this.adventure.area(a.room, 0).actors.filter((g) => g.id === "GOL2"));
     return out;
+  }
+
+  /** Draws `goals`' pads lit (gc 602, as GOL2's draw does while they're lit), just over their static ones. */
+  private litPads(goals: readonly AreaActor[]): void {
+    const key = goals.map((g) => g.index).join(",");
+    if (key === this.goalKey) return;
+    this.goalKey = key;
+    disposeChildren(this.goalGroup);
+    for (const g of goals) {
+      const pieces = actorPieces({ id: g.id, sublayer: 0, x: g.x / 8, y: g.y / 8, params: g.params }).map((p) => (p.kind === "sprite" && p.frame === 603 ? { ...p, frame: 602 } : p));
+      for (const mesh of actorSpriteMeshes(this.actorSources, [{ x: g.x, y: g.y, pieces }], 2, { depthPerPixel: DEPTH_PER_PIXEL })) {
+        mesh.position.z += DEPTH_PER_PIXEL / 4;
+        this.goalGroup.add(mesh);
+      }
+    }
   }
 
   /** The goal's effects synced in the last frame (for tests). */

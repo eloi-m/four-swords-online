@@ -724,9 +724,13 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      (the floor switches below), lift `order` × 60 + 60 ticks later (the second the tick after the first), rise 30 px,
      hover 60, fly at the leader at 4 px/tick and break on him (2), a sword, a wall or another tile; drawn (their tile
      spinning, the holes left, the break's effect 855, the pads' effects 266 and 270). Same ticks as Dolphin from the
-     switch on (ours ~6 ticks early to it: the 4.5 px walk lead and SWTH's offset, below). Left: the pads' aura covers
-     them (Dolphin draws the pads over it) and the lightning is gold (Dolphin's green and white); the tiles' shadows;
-     the pads' eye (gc 602); the rule behind tiles 2+ keeping their own count (0x8033AD7C); ours slides along the
+     switch on (ours ~6 ticks early to it: the 4.5 px walk lead and SWTH's offset, below). **Done (2026-10-31):** the
+     pads' aura (266) sorts with the sprites just behind its pad (JpaEffectSpec `sceneZ`), so the pads and the Links
+     below draw over it; the pads are drawn lit (gc 602, the eye) while the lightning is up (assumed: Dolphin seen only
+     then); the lightning's color was right: 270's environment color steps through yellow, red, magenta, blue, cyan and
+     green every frame (a repeating global color animation), and the gold and the green/white frames were two phases
+     of it (side by side: `out/dolphin-compare/tingle-room10-field-new`, `ours-after-*`). Left: the tiles' shadows;
+     the rule behind tiles 2+ keeping their own count (0x8033AD7C); ours slides along the
      barrier where Dolphin's leader stays wedged between two pads (up-right held).
   2. **Done (2026-10-30):** a stone's strike scatters Force Gems (room 5, idle under the falls: 301 → 293, eight
      green `RUPY` flung as the knockback ends, two taken back): main.dol's rule by hit type (4/7 5-9 gems, 5/8 20-29,

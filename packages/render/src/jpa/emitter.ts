@@ -613,6 +613,8 @@ export class JpaEmitter {
   readonly rotation = m4();
   readonly dynamicsScale = v3(1, 1, 1);
   readonly translation = v3();
+  /** The scene depth every particle is drawn at, in place of the renderer's mapping of its view z (or null). */
+  sceneZ: number | null = null;
   readonly particleScale = [1, 1];
   readonly base: JpaParticle[] = [];
   readonly children: JpaParticle[] = [];
