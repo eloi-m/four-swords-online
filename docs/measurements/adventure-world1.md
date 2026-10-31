@@ -517,6 +517,32 @@ four in the long formation left of the throne), `-room10-pushed` (pushed). Area 
 - **Not reached:** room 11 from room 10's walkway by teleport (the leader held at the room's top edge, y 400 world,
   the followers stuck behind the walkway's wall: the camera keeps the four on screen).
 
+## Who a hit can reach: the group of four (Dolphin, 2026-10-31)
+Read in main.dol and traced from `ref/places/castle-room10-area2.sav` (`5 idle; 24 left; 240 idle`, `--break` on
+0x80238548, 0x802710C8's call and 0x80236468; `--link d60:4 --link 1224:4`).
+- **Groups:** +0xD60 is a Link's group leader (−1 for the leader himself; 0 for the three followers in a game alone),
+  +0x1224 on the leader the group's Link in control (0 at first; the D-pad steps it: 1, then 2, traced). 0x80240808
+  is "follows someone", 0x80240644 his leader, 0x802486A0 the group's size, 0x80248778 a Link's place in it (0 the
+  leader, then the followers by index), 0x8022E438 "in one group".
+- **The touch test** (0x802732C4, an actor's box against a Link's body, as 0x801F2B7C asks it for each Link) and **the
+  hurt** (0x802710C8) both refuse, in a group of four, every Link but the one whose place is the group's +0x1224;
+  then the usual refusals (0x80270ABC: +0x464, +0x468, dying, ...). So only the Link in control is ever touched.
+- **The hurt's spread** (0x80238548(victim, damage, &source, type)): each Link in the victim's group gets 0x802710C8,
+  the source moved by his offset from the victim; the damage comes off only on the victim's own call (0x80236468:
+  the leader's life, every follower's copied from it by 0x80270D34). Then every follower's life is copied again.
+- **Traced:** the Armos's three hits (frames 93, 162, 238) each called 0x80238548 for Link 0 only (2 damage, type 1),
+  though the followers stood stacked on him at 162; the hurt ran for all four Links and the damage once (0x80236468
+  for Link 0); the followers' +0x464 stayed 0 and they never went to state 15.
+- **The enemies' target** (0x801EEC98, the nearest Link and its other modes): each Link is passed over when not in
+  play (+0xCAC), +0x454 set, in state 73, dying (51, 52: 0x80270A8C), on another kind of screen (TV / GBA), or when
+  0x80240670 says so: in a group of four every Link but the one at the group's +0x1224, in another group every
+  follower (+0xD60 ≥ 0). No invincibility nor height check. Traced (`actor-trace.ts --ids AMOS`, the same clip): the
+  Armos aimed each hop (0.5 px/tick, re-aimed every landing) at the leader through his knock-back and his 60 ticks,
+  never stopping, and hit him as soon as its box met him (box ±12 against ±7: 18.6-19 px across). Its hurt came from
+  its box's middle, its height off (0x801F2B7C: y + the box − z), 7 px up its hop at the first hit: the leader was
+  knocked 40° down from level where its feet would have given 24°.
+- Not read: Links apart (X didn't part them from this place).
+
 ## Hyrule Castle room 11: Phantom Ganon
 Traced 2026-10-10 (a copy of `ref/dolphin-user-adventure2`, `ref/dolphin-user-adventure-ganon`, GDB port 55433;
 `actor-trace.ts` scanning 0x81380000-0x81420000 for `FGAN`, `GOLD`, `RUPY`). **The way in:** from

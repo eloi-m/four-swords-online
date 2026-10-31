@@ -28,7 +28,7 @@ import { fallsWaiting, startFallsDrop, stepFallsDrop, stepFallsTop, stepTileFall
 import { BUSH_DEBRIS, dropFromBush, spawnEnemies, stepEnemies, type Enemy, type Score } from "./enemies.ts";
 import { spawnGenerators, stepGenerators, type Generator } from "./generators.ts";
 import { newSlots, type SoldierSlots } from "./soldiers.ts";
-import { FORMATION_BUTTONS, gatherDone, gatherOnLeader, holdFormation, pickApart, pickFormation, recordTrail, resetTrails, shareHearts, stepFollower, stepFormationFollower, SWIM_FOLLOW_SPEED, type FormationKind } from "./formation.ts";
+import { FORMATION_BUTTONS, gatherDone, gatherOnLeader, holdFormation, markTouchable, pickApart, pickFormation, recordTrail, resetTrails, shareHearts, stepFollower, stepFormationFollower, SWIM_FOLLOW_SPEED, type FormationKind } from "./formation.ts";
 import { openChest, stepReveal } from "./chests.ts";
 import { startOwlTalk, startTalk, stepGet, stepTalk, type GetPose, type Talk } from "./dialogue.ts";
 import { arrowWorld, stepArrows } from "./bow.ts";
@@ -568,6 +568,7 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
     if (rigid && !a.away && !snapped && !scene) for (let i = 1; i < game.players.length; i++) stepOther(game, i, view, area.sideView);
     flyLinks(game, view, area.sideView);
     gatherDone(game);
+    markTouchable(game);
     if (a.area === 0) {
       stepFallsTop(game, area);
       stepTileFalls(game, stage, area);

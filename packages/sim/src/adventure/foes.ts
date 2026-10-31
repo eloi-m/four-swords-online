@@ -10,6 +10,7 @@ import { moveAxis, SUBPX, type Facing } from "../player.ts";
 import type { World } from "../world.ts";
 import { nextRandom, type AdventureGame } from "./adventure.ts";
 import type { Enemy, EnemyState } from "./enemies.ts";
+import { targetable } from "./formation.ts";
 
 const random = (game: AdventureGame, n: number) => nextRandom(game.adventure) % n;
 /** A random fraction in [0, 1) in 1/256 steps (the game's [1, 2) float − 1). */
@@ -35,6 +36,21 @@ function nearest(game: AdventureGame, x: number, y: number): number {
   game.players.forEach((p, i) => {
     const f = game.battle.fighters[i]!;
     if (!vulnerable(f) || !onGround(f)) return;
+    const d = Math.hypot((p.x - x) / SUBPX, (p.y - y) / SUBPX);
+    if (d < bestD) [best, bestD] = [i, d];
+  });
+  return best;
+}
+
+/**
+ * The Link an Armos goes for, by 0x801EEC98's own checks (formation.ts targetable: the one in control of a group,
+ * invincible, hurt or in the air alike; traced: Dolphin's Armos aimed each hop at the leader through his knock-back and
+ * grace, never at the followers). The other foes keep `nearest` (moving them over shifts the Cave of No Return's route).
+ */
+function armosTarget(game: AdventureGame, x: number, y: number): number {
+  let best = -1, bestD = Infinity;
+  game.players.forEach((p, i) => {
+    if (!targetable(game.battle.fighters[i]!)) return;
     const d = Math.hypot((p.x - x) / SUBPX, (p.y - y) / SUBPX);
     if (d < bestD) [best, bestD] = [i, d];
   });
@@ -752,7 +768,7 @@ export function initArmos(e: Enemy, params: number): void {
 export function stepArmos(game: AdventureGame, e: Enemy, world: World, switchOn: (n: number) => boolean): void {
   switch (e.state) {
     case "hide": {
-      const i = nearest(game, e.x, e.y), p = game.players[i];
+      const i = armosTarget(game, e.x, e.y), p = game.players[i];
       const reach = e.kind === 3 ? ARMOS.bigWake : ARMOS.wake;
       const woken = e.kind === 2 ? switchOn(e.shot) : !!p && Math.hypot((p.x - e.x) / SUBPX, (p.y - e.y) / SUBPX) < reach;
       if (woken) {
@@ -774,7 +790,7 @@ export function stepArmos(game: AdventureGame, e: Enemy, world: World, switchOn:
       e.vz -= ARMOS.gravity;
       if (e.z > 0) return;
       e.z = 0;
-      const i = nearest(game, e.x, e.y), p = game.players[i];
+      const i = armosTarget(game, e.x, e.y), p = game.players[i];
       // Kind 3 only while the nearest Link turns his back (guessed: his facing the way from it to him).
       if (!p || (e.kind === 3 && p.facing !== facingTo(p.x - e.x, p.y - e.y))) {
         e.vx = e.vy = e.vz = 0;

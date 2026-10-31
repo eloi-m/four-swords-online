@@ -517,8 +517,9 @@ const LISTED: readonly Puzzle[] = [
     stage: CASTLE,
     milestone: 18,
     name: "room 9's area 2: the bombs from their pedestal",
-    spot: { at: 1, x: 164, y: 72, axes: ["y"], travel: true },
-    idle: 2,
+    // (Goals 0-2 take the four past the blade traps: hyrulecastle.ts pastBladeTraps.)
+    spot: { at: 3, x: 164, y: 72, axes: ["y"], travel: true },
+    idle: 4,
     check: (g) => g.adventure.gear === "bombs" && inRoom(9, 3)(g),
   },
   {

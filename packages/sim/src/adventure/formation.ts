@@ -5,7 +5,7 @@
 // Link steps before the leader moves (19.5 px behind him while walking, 18.5 once he stopped), the third and fourth
 // after the Link ahead (18 px). A room change or a door stacks them onto the leader.
 // The four share one heart meter (the single-player HUD has one): damage to any is taken off all.
-import type { Fighter } from "../combat.ts";
+import { AWAY, type Fighter } from "../combat.ts";
 import { isqrt } from "../entities.ts";
 import { HITBOX, HITBOX_CORNER, moveAxis, SUBPX, wallAhead, WALK_SPEED, type Facing, type PlayerState } from "../player.ts";
 import { isSolidAt, type World } from "../world.ts";
@@ -367,3 +367,22 @@ export function shareHearts(fighters: Fighter[], before: number, max: number): v
   const shared = Math.max(0, Math.min(max, before + lost + gained));
   for (const f of fighters) f.hearts = shared;
 }
+
+/**
+ * Who can be touched or hurt (main.dol, traced): the four Links together in a formation are one group (+0xD60, each
+ * follower's leader), and in a group of four only the one in control is (the group's position +0x1224, which the
+ * D-pad steps on): the hurt (0x802710C8) and the touch test (0x802732C4) refuse the others, so an enemy that meets
+ * the formation hurts the leader alone, once a grace (measurements/adventure-world1.md "Who a hit can reach"). Assumed:
+ * apart or being called back, each Link is his own. (Enemies still go for the followers: who they pick isn't read.)
+ */
+export function markTouchable(game: AdventureGame): void {
+  const a = game.adventure, together = game.players.length === 4 && !a.away && a.formation !== "apart" && a.formation !== "gather";
+  game.battle.fighters.forEach((f, i) => (f.untouchable = together && i > 0));
+}
+
+/**
+ * A Link the enemies may go for (0x801EEC98, the nearest Link, its checks on each: in play, not dying, not +0x454's,
+ * not state 73, and 0x80240670: no follower of a group, only the one in control): invincible or hurt alike.
+ */
+export const targetable = (f: Fighter): boolean =>
+  f.hearts > 0 && !f.untouchable && f.mode !== "dying" && f.mode !== "dead" && f.move !== "held" && f.move !== "thrown" && !AWAY.has(f.move);
