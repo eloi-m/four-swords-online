@@ -718,16 +718,16 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   late, see below), a stone's strike and knock-back (room 1: same tick, 0.75 px/tick up), room 2's blade trap (`TRAP`:
   out and back at 0.5 px/tick, the same cycle, our phase only offset by the place's), the ladder's jump out of
   room 10's pool (state 56, landing within 0.04 px). Different:
-  1. Room 10's goal and flying tiles: **mostly done.** Short of the quota the goal's pads are solid (±10 px: the
-     leader pushing, state 13, stops at y 74.1 in ours, 73.1 in Dolphin), and the flying tiles (`FLYO`, sim traps.ts)
-     wake on switch 16 (the floor switches below), lift `order` × 60 + 60 ticks later (the second the tick after the
-     first), rise 30 px, hover 60, fly at the leader at 4 px/tick and break on him (2), a sword, a wall or another tile
-     (the first two meet 16 ticks into their flight). Clipped (`out/traces/flyo-room10.json`): the same flight ticks,
-     strike 23 ticks into tile 1's flight in both; ours runs ~6 ticks early from the floor switch on (switch 16 at
-     frame ~113, Dolphin's 119: the 4.5 px walk lead and SWTH's offset, below). Left: the pads' lightning knocks a Link
-     standing in a gap between two pads back 10 px down (state 15, no damage, 60 invincible ticks: Dolphin frame 352)
-     — not simulated; apps/game draws neither the tiles in the air (`floor1_smp.bin`) nor the lightning; the rule
-     behind tiles 2+ keeping their own count (0x8033AD7C) isn't read through.
+  1. Room 10's goal and flying tiles: **done** (docs/measurements/adventure-world1.md "Room 10's flying tiles and
+     goal"). Short of the quota the goal's pads and the lightning between them are solid and the lightning strikes a
+     Link against it (no damage, 10 px back; logic.ts), and the flying tiles (`FLYO`, sim traps.ts) wake on switch 16
+     (the floor switches below), lift `order` × 60 + 60 ticks later (the second the tick after the first), rise 30 px,
+     hover 60, fly at the leader at 4 px/tick and break on him (2), a sword, a wall or another tile; drawn (their tile
+     spinning, the holes left, the break's effect 855, the pads' effects 266 and 270). Same ticks as Dolphin from the
+     switch on (ours ~6 ticks early to it: the 4.5 px walk lead and SWTH's offset, below). Left: the pads' aura covers
+     them (Dolphin draws the pads over it) and the lightning is gold (Dolphin's green and white); the tiles' shadows;
+     the pads' eye (gc 602); the rule behind tiles 2+ keeping their own count (0x8033AD7C); ours slides along the
+     barrier where Dolphin's leader stays wedged between two pads (up-right held).
   2. A stone's strike scatters Force Gems in Dolphin (room 5, idle under the falls: 301 → 295, six `RUPY` round the
      Link, `tingle-room5` t5); ours loses none.
   3. Room 11: ours shows the owl (`KEPO`) on his perch from the start; Dolphin's perch is empty until he flies in.

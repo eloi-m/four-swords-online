@@ -10,6 +10,8 @@ import { RoutePlayer } from "./drive.ts";
 import { GEM_QUOTA } from "./pickups.ts";
 import { actorStats, AdventureStage } from "./stage.ts";
 import { TINGLE_TOWER_MILESTONES } from "./tingletower.ts";
+import { FLYING_STATE } from "./traps.ts";
+import { Button, SUBPX } from "../player.ts";
 
 const root = new URL("../../../../extracted/", import.meta.url);
 const load = (path: string) => parseRarc(decompressYaz0(readFileSync(new URL(`files/GC4Sword_usa/${path}`, root))));
@@ -67,4 +69,33 @@ describe.skipIf(!existsSync(root))("Tingle's Tower by its route", () => {
     expect(again.tick).toBe(game.tick);
     expect(hashGame(again)).toBe(hashGame(game));
   }, 90_000); // ~17 s alone; past 30 s when the whole suite runs in parallel
+});
+
+describe.skipIf(!existsSync(root))("Tingle's Tower room 10's flying tiles (FLYO)", () => {
+  if (!existsSync(root)) return void it.skip("needs extracted/", () => {});
+  const tileTypes = readTileTypes(new Dol(readFileSync(new URL("sys/main.dol", root))));
+  const stage = new AdventureStage(new Stage(load("Boss/boss012.arc")), tileTypes, actorStats(loadActorTypes(load("data.arc"))!));
+
+  it("lift on switch 16 one after the other, rise, hover and strike the leader held by the pads (traced)", () => {
+    // The leader pushing up at the right pad short of the quota (Dolphin: (259.1, 73.1)), the floor switches' 16 on.
+    const game = createAdventure(stage, { room: 10, x: 259, y: 74, facing: "up" });
+    game.battle.switches |= 1 << 16;
+    const tile = (order: number) => game.adventure.enemies.find((e) => e.type === "FLYO" && e.frame === order);
+    const lifted: (number | undefined)[] = [];
+    const hearts = game.battle.fighters[0]!.hearts;
+    let struck = -1;
+    for (let t = 1; t <= 330 && struck < 0; t++) {
+      stepAdventure(game, [Button.Up], stage);
+      for (const order of [0, 1]) if (lifted[order] === undefined && tile(order)?.shot === FLYING_STATE.lift) lifted[order] = t;
+      if (game.battle.fighters[0]!.hearts < hearts) struck = t;
+      // (Pushing up at the pad all along: its box holds him below it.)
+      expect(game.players[0]!.y).toBeGreaterThanOrEqual(73 * SUBPX);
+    }
+    // Dolphin: counting from frame 118 (switch 16 on), lifts at 179 and 180; the second tile strikes 23 ticks into its flight
+    // (291; the first broke on it at 285).
+    expect(lifted).toEqual([62, 63]); // (the switch seen on tick 1, counting from it)
+    expect(struck - lifted[1]! - 90).toBeGreaterThanOrEqual(20);
+    expect(struck - lifted[1]! - 90).toBeLessThanOrEqual(25);
+    expect(game.battle.fighters[0]!.hearts).toBe(hearts - 2);
+  });
 });

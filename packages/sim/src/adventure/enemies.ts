@@ -35,7 +35,7 @@ import { FIREBALL_KIND, hurtZora, initPuku, initZora, PUKU, pukuHalf, stepFireba
 import { initRaisedStalfos, initWizzrobe, isCaster, RAISED_STALFOS, raisedStalfosHit, raisedStalfosHurtable, raisedStalfosHurts, stepRaisedStalfos, stepWizzrobe, wizzrobeDies, wizzrobeHurt, wizzrobeHurts, wizzrobeSolid, WIZZROBE, WIZZROBE_BOLTS, type WizzrobeHooks } from "./wizzrobe.ts";
 import { initShadowLink, shadowAfterKnock, shadowBeaten, shadowForm, shadowHurtable, shadowMatches, shadowParries, shadowStruck, SHADOW, stepShadowLink } from "./shadowlink.ts";
 import { initJumpingShadow, initMinorShadow, stepJumpingShadow, stepMinorShadow } from "./minorshadow.ts";
-import { bladeClanks, bladeHalf, FIRE_TRAP, FIRE_TRAP_KIND, FLYING_TILE, initBladeTrap, initFireTrap, initFlyingTile, stepBladeTrap, stepFireTrap, stepFlyingTile, tileFlying } from "./traps.ts";
+import { bladeClanks, bladeHalf, FIRE_TRAP, FIRE_TRAP_KIND, breakTile, FLYING_TILE, initBladeTrap, initFireTrap, initFlyingTile, stepBladeTrap, stepFireTrap, stepFlyingTile, tileFlying } from "./traps.ts";
 import { dropHinoxRock, HINOX, HINOX_ROCK, hinoxBox, hinoxContact, initHinox, rockHurts, ROCK_KIND, stepHinox, stepHinoxRock, strikeHinox } from "./hinox.ts";
 
 export type EnemyState = "walk" | "spit" | "fly" | "rest" | "stop" | "chase" | "hide" | "knock" | "die" | "patrol" | "turn" | "look" | "notice" | "rise" | "dive" | "change";
@@ -1110,7 +1110,8 @@ function contact(game: AdventureGame): void {
       if (hit && e.type === "NZMI") e.grace = 1; // (a bite: the rat runs off)
       if (e.type === "PAME") e.grace |= 1 << i; // (a sliding one bounces off him)
       if (hit && e.type === "PUKU") e.vz = 1; // (a big one's charge ends on a bite)
-      if (e.type === "OKTM" || (hit && e.type === "FLYO")) e.life = -1;
+      if (e.type === "OKTM") e.life = -1;
+      if (hit && e.type === "FLYO") breakTile(game, e);
     });
   }
 }

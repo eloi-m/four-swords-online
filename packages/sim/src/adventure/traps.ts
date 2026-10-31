@@ -42,6 +42,7 @@ import { SUBPX, type Facing } from "../player.ts";
 import { isSolidAt, type World } from "../world.ts";
 import type { AdventureGame } from "./adventure.ts";
 import type { Enemy } from "./enemies.ts";
+import { dropGem } from "./pickups.ts";
 
 /** The fireball trap and its shot (1/256 px, ticks). */
 export const FIRE_TRAP = {
@@ -311,10 +312,12 @@ export function bladeClanks(game: AdventureGame, i: number, meets: (box: { left:
 //   0x801F71A4); 10 ticks more before a wall can stop it when he's below it.
 // While lifting or flying, a sword meeting it (0x801F2B7C), another flying tile met or a wall (0x801F2618, once it flew
 // long enough: traced, the first two, a tick apart, meet 16 ticks into their flight and the first breaks) or the Link
-// its box (±7 round where it's seen, 0x801F285C) meets breaks it (state 3), as does going 16 px off the area; that Link
-// is hurt by its atcp (kind 1's init sets 2; 0x801F37AC). In Dolphin it struck the leader, flying past a follower
-// within 7 px: here it aims at and hurts the leader only. Assumed: the wall test at its ground point, the break's look
-// (not drawn), the Link's hit type (the enemies' default).
+// its box (±7 round where it's seen, 0x801F285C) meets breaks it (state 3: kind 1's 0x8033B1B4 makes JPA effect 855 at
+// its spot, plays JA_SE 0x30002 and goes; one with (p >> 20) & 15 = 1, room 10's last, also drops a Force Gem, RUPY
+// params 4, 3 px/tick up); going 16 px off the area it's just gone. That Link is hurt by its atcp (kind 1's init sets
+// 2; 0x801F37AC). In Dolphin it struck the leader, flying past a follower within 7 px: here it aims at and hurts the
+// leader only. Assumed: the wall test at its ground point, the Link's hit type (the enemies' default), the gem's rise
+// (dropped as a gem falls: pickups.ts dropGem).
 export const FLYING_TILE = {
   /** The tile type it lifts (on another it's gone) and the tile it leaves. */
   liftType: 0x21,
@@ -339,10 +342,15 @@ export const FLYING_TILE = {
   spin: 0x1000,
   /** Gone this many px off the area. */
   off: 16,
+  /** Its break's effect (JPA), and how long the sim keeps a broken one listed (for its effect; it's gone meanwhile). */
+  breakEffect: 855,
+  brokenTicks: 30,
+  /** The gem a tile with (p >> 20) & 15 = 1 drops (RUPY params). */
+  gem: 4,
 } as const;
 
 /** Its states (+0x230). */
-export const FLYING_STATE = { count: 0, lift: 1, fly: 2, wait: 4 } as const;
+export const FLYING_STATE = { count: 0, lift: 1, fly: 2, broken: 3, wait: 4 } as const;
 
 // Its fields in the sim's enemy record: `shot` its state, `timer` its count (+0x238), `frame` its order, `speed` the
 // count it lifts at (+0x270), `flags` its switch (+0x250), `grace` its least flight before a wall stops it (+0x264),
@@ -422,11 +430,25 @@ export function stepFlyingTile(game: AdventureGame, e: Enemy, world: World, area
       wall = e.timer >= e.grace && (isSolidAt(world, px, py) || game.adventure.enemies.some((o) => o !== e && o.type === "FLYO" && o.life >= 0 && tileFlying(o) && Math.abs(o.x - e.x) <= 2 * T.half * SUBPX && Math.abs(o.y - o.z - (e.y - e.z)) <= 2 * T.half * SUBPX));
       break;
   }
-  if (tileFlying(e) && (px < -T.off || py < -T.off || px > area.w + T.off || py > area.h + T.off || wall || struck())) {
+  if (e.shot === S.broken) {
+    if (++e.timer >= T.brokenTicks) e.life = -1;
+    return;
+  }
+  if (tileFlying(e) && (px < -T.off || py < -T.off || px > area.w + T.off || py > area.h + T.off)) {
     e.life = -1;
     return;
   }
+  if (tileFlying(e) && (wall || struck())) return breakTile(game, e);
   e.timer++;
+}
+
+/** Breaks a flying tile (state 3): its effect from here, the last one's gem. */
+export function breakTile(game: AdventureGame, e: Enemy): void {
+  e.shot = FLYING_STATE.broken;
+  e.state = "hide";
+  e.timer = 0;
+  e.vx = e.vy = e.vz = e.tvx = e.tvy = 0;
+  if (((e.params >>> 20) & 15) === 1) dropGem(game, e.x, e.y, Math.floor(e.z / SUBPX), FLYING_TILE.gem);
 }
 
 /** Aims its flight at the leader from where it's seen (y − z); returns the velocity's y (> 0: he's below). */

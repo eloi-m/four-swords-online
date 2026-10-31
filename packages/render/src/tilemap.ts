@@ -144,19 +144,35 @@ export class TilemapTextures {
  */
 export function roomQuad(layer: Uint16Array, textures: TilemapTextures, filter: THREE.Texture | null, origin: Point, z: number, rows = ROOM_H / 16): THREE.Mesh {
   const height = rows * 16;
-  const material = new THREE.ShaderMaterial({
+  const material = layerMaterial(integerTexture(new Uint16Array(layer), LAYER_TILES, LAYER_TILES), textures, filter, origin, ROOM_W, height);
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, height), material);
+  mesh.position.set(origin.x + ROOM_W / 2, -(origin.y + height / 2), z);
+  return mesh;
+}
+
+/**
+ * One tile on its own (a 16×16 quad centered on the mesh's position, which the caller sets): a tile lifted off the
+ * floor, drawn as the layers draw it (no ground overlay).
+ */
+export function tileQuad(tile: number, textures: TilemapTextures): THREE.Mesh {
+  const material = layerMaterial(integerTexture(new Uint16Array([tile]), 1, 1), textures, null, { x: 0, y: 0 }, 16, 16);
+  return new THREE.Mesh(new THREE.PlaneGeometry(16, 16), material);
+}
+
+function layerMaterial(layer: THREE.DataTexture, textures: TilemapTextures, filter: THREE.Texture | null, origin: Point, width: number, height: number): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
     glslVersion: THREE.GLSL3,
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
     uniforms: {
-      uLayer: { value: integerTexture(new Uint16Array(layer), LAYER_TILES, LAYER_TILES) },
+      uLayer: { value: layer },
       uParts: { value: textures.parts },
       uChars: { value: textures.chars },
       uPalette: { value: textures.palette },
       uFilter: { value: filter ?? NO_FILTER },
       uFilterOn: { value: filter ? 1 : 0 },
       uOrigin: { value: new THREE.Vector2(origin.x, origin.y) },
-      uSize: { value: new THREE.Vector2(ROOM_W, height) },
+      uSize: { value: new THREE.Vector2(width, height) },
       uBlend: { value: new THREE.Vector2(-1, 0) },
     },
     // Opaque colors replace what's under them, as before; the river bed's half-transparent water blends over it. The
@@ -167,9 +183,6 @@ export function roomQuad(layer: Uint16Array, textures: TilemapTextures, filter: 
     blendSrcAlpha: THREE.OneFactor,
     blendDstAlpha: THREE.OneFactor,
   });
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, height), material);
-  mesh.position.set(origin.x + ROOM_W / 2, -(origin.y + height / 2), z);
-  return mesh;
 }
 
 /**
