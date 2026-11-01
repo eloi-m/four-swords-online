@@ -289,6 +289,8 @@ function pickupLook(p: Pickup): Look | null {
 const OWL_FRAME = 604;
 const OWL_BODY = 633;
 const OWL_HEAD = 634;
+/** Flying in, landing and off, over the top layer (3): Dolphin's frames show him over the trees' canopy. */
+const OWL_FLYING_DEPTH = 3.3;
 
 /**
  * A hovering gem's (HNRY) glint: its frame + 0 for 61 frames, then + 1, 2, 3 two frames each (HNRY's update: a counter
@@ -549,13 +551,14 @@ export class EnemyView {
    */
   /**
    * The owl flying in, landing, on his perch while he talks, and flying off (sim owl.ts; KEPO's draw 0x8021AF28: drawn
-   * 6 px lower than he stands). TODO(measure): his shadow (0x801EF830, the same frame), mirrored owls' flip.
+   * 6 px lower than he stands), matched to Dolphin's frames (docs/measurements/adventure-world1.md "The owl as drawn").
+   * TODO(measure): his shadow (0x801EF830, the same frame), mirrored owls' flip.
    */
   private owl(game: AdventureGame, things: { look: Look | null; x: number; y: number; z: number; type: string; hidden: boolean; depth?: number }[]): void {
     const a = game.adventure, owl = a.owl, look = owl && owl.room === a.room && a.area === 0 ? owlLook(owl) : null;
     if (!look) return;
     const x = Math.round(look.x * SUBPX), y = Math.round((look.y + 6) * SUBPX), z = Math.round(look.z * SUBPX);
-    if (look.pose !== "perched") return void things.push({ look: { sob: "gc", frame: OWL_FRAME + look.pose }, x, y, z, type: "KEPO", hidden: false });
+    if (look.pose !== "perched") return void things.push({ look: { sob: "gc", frame: OWL_FRAME + look.pose }, x, y, z, type: "KEPO", hidden: false, depth: OWL_FLYING_DEPTH });
     const depth = 2 + Math.floor(y / SUBPX) * DEPTH_PER_PIXEL;
     things.push({ look: { sob: "gc", frame: OWL_BODY }, x, y, z, type: "KEPO", hidden: false, depth });
     things.push({ look: { sob: "gc", frame: OWL_HEAD }, x, y, z: z + 21 * SUBPX, type: "KEPO", hidden: false, depth: depth + DEPTH_PER_PIXEL / 2 });
