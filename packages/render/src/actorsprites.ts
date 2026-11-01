@@ -84,6 +84,8 @@ export interface ActorSpriteOptions {
    * z + y × depthPerPixel (apps/battle draws its Links at 2 + y / 1024). Default 0: every piece at `z`.
    */
   depthPerPixel?: number;
+  /** Depth of the textures drawn over the sprites (`over` pieces). Default `z` + 0.5. */
+  overZ?: number;
 }
 
 /**
@@ -108,11 +110,11 @@ export function actorSpriteMeshes(src: ActorSpriteSources, placed: readonly Plac
     return slot;
   };
   const sprites: { x: number; y: number; slot: number; size: number }[] = [];
-  const textures: { x: number; y: number; file: string; archive?: "data" }[] = [];
+  const textures: { x: number; y: number; file: string; archive?: "data"; over?: boolean }[] = [];
   for (const p of placed) {
     for (const piece of p.pieces) {
       if (piece.kind === "bti") {
-        textures.push({ x: p.x + piece.dx, y: p.y + piece.dy, file: piece.file, ...(piece.archive ? { archive: piece.archive } : {}) });
+        textures.push({ x: p.x + piece.dx, y: p.y + piece.dy, file: piece.file, ...(piece.archive ? { archive: piece.archive } : {}), ...(piece.over ? { over: true } : {}) });
         continue;
       }
       const slot = frameOf(piece);
@@ -149,7 +151,8 @@ export function actorSpriteMeshes(src: ActorSpriteSources, placed: readonly Plac
     const { width: w, height: h } = tex.image;
     const x0 = Math.round(t.x - w / 2), y0 = Math.round(t.y - h / 2);
     const mesh = new THREE.Mesh(quadGeometry([{ x0, y0, x1: x0 + w, y1: y0 + h, uv: [0, 0, 1, 1] }]), material(tex));
-    mesh.position.z = z - 0.01; // under the sprites
+    // Under the sprites from its top edge down (by the same depth per pixel), unless drawn over them.
+    mesh.position.z = t.over ? (options.overZ ?? z + 0.5) : z + y0 * perPixel - 0.01;
     mesh.name = `actor texture ${t.file}`;
     meshes.push(mesh);
   }

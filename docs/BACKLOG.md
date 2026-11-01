@@ -697,9 +697,13 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      messagewindow.ts); its sounds (the portal's, his jump's, his BGM from the challenge), the HUD's fade (0.1 a tick
      while the bars are asked for), his tumble out of the portal (player_sob 241-272), and his state carried in a
      replay record (compare.ts's frames on Dolphin's).
-  2. Room 12 (the stage's first screen): beside the cave door, outside the torches at (216, 88) and (296, 88), Dolphin
-     draws two stone gargoyles on a mossy base (2 × 2 tiles each); ours plain grey blocks. No live actor there: a stage
-     model or a tile drawn differently.
+  2. **Done (2026-11-01):** room 12's gargoyles: the room's `SIBT` (picture 7, kind 2: so far only the door's
+     behaviour) also draws the stage textures `ana.bti` (the rock face, the gargoyles, the torches' bases) over the
+     solid block tiles, `ana_tobira.bti` (the door, raised with the sim's rise) and `ana_ue.bti` (the arch, over the
+     Links); read in main.dol (formats/sprites-and-actors.md "SIBT"). `compare.ts` (`cave-room12-gargoyles`, t0.5 and
+     t2): the gargoyles on Dolphin's to the pixel. Lake Hylia room 10's view of the cave (picture 7, kind 0) is drawn
+     too. Left: the draw's priority byte (front, door, arch) not followed, so the arch over the Links and the door's
+     order as it rises past 24 px are assumed; the walk-in not clipped against Dolphin.
   3. Unsure: room 4's old man (`JIJI`, (56, 200)) is a dark crouched mound with blue sweat drops rising during the
      fight in Dolphin, standing in ours (the darkening may be the unsimulated `VWMD`, not the drops); a lit bomb
      (`HBMB`) at Shadow Link's feet in Dolphin that doesn't explode in 3.5 s, seen only after RAM pokes moved him.
