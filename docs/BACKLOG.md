@@ -745,7 +745,8 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      kill streaks' and enemies' gems (likely the same RUPY code; the routes gather some later than that), the GBA
      screens' GOLD kind 4 and the side view's kind 6 flights, a rained gem's take height; compare.ts carries no gem
      count into ours (its frames show 0), so the spill was checked in the sim (spill.realdisc.test.ts).
-  3. Room 11: ours shows the owl (`KEPO`) on his perch from the start; Dolphin's perch is empty until he flies in.
+  3. Done: room 11's owl (`KEPO`) is hidden until a Link comes within reach, then flies in, lands and talks as traced
+     (sim owl.ts). Left: his shadow, a mirrored owl's flip, the camera's pan to the house and the letterbox bars.
   4. Small: a stone's knock-back lasts 34 ticks in ours, 32 in Dolphin, and the next strike comes 55 ticks after the
      first in ours, 61 in Dolphin (room 1, `tingle-room1-swim`); the walk on from the ladder's top starts 3 ticks
      later in Dolphin (states 0, 2, 13 twice: 4.5 px behind ours, room 10); swimming into room 10's pool edge ours

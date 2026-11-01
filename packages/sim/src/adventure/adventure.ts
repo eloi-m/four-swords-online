@@ -30,7 +30,7 @@ import { spawnGenerators, stepGenerators, type Generator } from "./generators.ts
 import { newSlots, type SoldierSlots } from "./soldiers.ts";
 import { FORMATION_BUTTONS, gatherDone, gatherOnLeader, holdFormation, markTouchable, pickApart, pickFormation, recordTrail, resetTrails, shareHearts, stepFollower, stepFormationFollower, SWIM_FOLLOW_SPEED, type FormationKind } from "./formation.ts";
 import { openChest, stepReveal } from "./chests.ts";
-import { startOwlTalk, startTalk, stepGet, stepTalk, type GetPose, type Talk } from "./dialogue.ts";
+import { startOwlTalk, startTalk, stepGet, stepTalk, TALK_CLOSE_TICKS, type GetPose, type Talk } from "./dialogue.ts";
 import { arrowWorld, stepArrows } from "./bow.ts";
 import { stepLampPose, useLamp } from "./lamp.ts";
 import { gateWorld, startStairs, stepGates, stepStairs, type StairsTrip } from "./stairs.ts";
@@ -42,6 +42,7 @@ import { stepTingle, tingleHolds, type Tingle } from "./tingle.ts";
 import { carryingKey, doorWorld, keyThrowHolds, knockKeyOut, liftKey, shutDoors, stepDoors, stepKeyLift, stepKeyThrow, throwKey, type CarriedKey, type KeyThrow } from "./doors.ts";
 import { goalWorld, rewriteWorld, rewrittenTiles, savedSwitches, saveSwitches, stepFourSwitch, stepLogic } from "./logic.ts";
 import { barrierWorld, stepZoras, type Escort } from "./zoras.ts";
+import { stepOwl, type OwlFlight } from "./owl.ts";
 import { spawnPickups, spillGems, spillOf, stepPickups, stepRains, type Pickup, type Rain } from "./pickups.ts";
 import { boomerangFetch, flyingWorld, giveGear, swordOnCrystals, friendlyFire, stepFire, stepFirePose, takeFromPedestal, useFireRod, type FireBolt, type GearKind } from "./gear.ts";
 import { followHop, noteLadder, noteLedge, startJump, startLadderClimb, stepJump } from "./ledge.ts";
@@ -230,6 +231,8 @@ export interface AdventureState {
   broken: number[];
   /** The escort Zora following the Links (zoras.ts), and the ticks every arrival point of the room has waited. */
   escort: Escort | null;
+  /** The owl flying in, on its perch talking, or flying off (owl.ts). */
+  owl: OwlFlight | null;
   fairy: number;
   /** The followers' formation (formation.ts): the trail, one picked with the C stick, apart or being called back. */
   formation: FormationKind;
@@ -397,6 +400,7 @@ export function createAdventure(stage: AdventureStage, opts: AdventureStart = {}
     pedestals: [],
     broken: [],
     escort: null,
+    owl: null,
     fairy: 0,
     formation: "trail",
     crossSpin: null,
@@ -473,7 +477,8 @@ export function stepAdventure(game: AdventureGame, inputs: readonly number[], st
   // A Shadow Link's entrance holds them as they stand: not a step or a frame of theirs moves (shadowlink.ts, traced).
   const scene = shadowHolds(game);
   if (a.cleared || a.ganon?.lock || scene || (tingleHolds(game) && !a.talk)) inputs = inputs.map(() => 0);
-  // The owl talks by itself when the Links come up to it (dialogue.ts).
+  // The owl talks by itself when the Links come up to it, flying in first (dialogue.ts, owl.ts).
+  stepOwl(game, !!a.talk && a.talk.actor === a.owl?.actor && a.talk.close === TALK_CLOSE_TICKS);
   startOwlTalk(game, stage);
   // A message on show: the leader stands while it types and turns its pages; an item got: the pose first (dialogue.ts).
   if (a.talk) inputs = [stepTalk(game, stage, inputs[0] ?? 0), ...inputs.slice(1)];
@@ -1236,6 +1241,7 @@ export function cloneAdventure(game: AdventureGame): AdventureGame {
       pedestals: [...a.pedestals],
       broken: [...a.broken],
       escort: a.escort ? { ...a.escort } : null,
+      owl: a.owl ? { ...a.owl } : null,
       crossSpin: a.crossSpin ? { ...a.crossSpin, at: [...a.crossSpin.at] } : null,
       links: a.links.map((m) => ({ ...m })),
       hops: a.hops.map((h) => ({ ...h })),

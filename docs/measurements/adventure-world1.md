@@ -303,6 +303,19 @@ Traced with a copy of the adventure user folder (`ref/dolphin-user-adventure-tin
   from it (the step before 24.21: main.dol's reach (p >> 20 & 31, at least 1.5) × 16); the camera panned to the house
   under letterbox bars, the owl flew in, the box's first character came 239 ticks after the stop (message 0x147, one
   page); A closed it and he walked within 3 ticks.
+- **The owl's flight** (actor-trace of KEPO +0x0-0x3FC from `ref/places/tingle-room11.sav`, `120 left; 330 idle; 2 A`;
+  and from `ref/adv/w1-boss013-start.sav`, `120 up`, its actor at 0x813B3F60): the owl sits in state 2 drawing nothing
+  (+0x248; its draw 0x8021AF28 draws states 4-5 and 11-12 as enemy_gc_sob 604 + pose, 6-10 as 633 with the head 634).
+  The tick the leader stopped (Tingle's frame 77, x 302 at y 96) it was put at (48.36, -30.05) z 35 (state 4): the
+  line from its perch at main.dol angle -0x5556 out of the room's top, 60 px on. It flew to the perch 0.1 px/tick
+  faster each tick up to 1.5 (+0x254), on it 186 ticks on (state 5), sank 0.5 px a tick to z 16, and 47 ticks on
+  asked for its message (state 8; the box's first character 6 ticks later: the 239 above). Poses: flying 2 (7 ticks),
+  3 (4), 4 (4), 5 (7) three times then 0 and 1 (15 each), from the tick after the start; landing 6, 7, 8, 9, 10, 11,
+  12, 13 from 0, 4, 8, 15, 20, 24, 29, 33 ticks, 14 from 37. A pressed (frame 450): state 11 at 454, the landing
+  backwards (47 ticks), rising 0.8 px a tick from its 24th; state 12 at 501, flying to (563.9, 267.4) (angle 0x2AAA
+  out of the right side, 60 px on). Hyrule Castle's (params 0xA0500190, bit 30 clear) did the same: put at (9.07,
+  -30.05) on the stop (frame 94), on its perch 228 ticks on (0.02 px short: Tingle's went on from 0.63), state 8 at
+  275: its box 281 ticks after the stop (derived, not seen). Params bit 30 sets +0x230 0x8000 (use not read).
 - **Room 0:** the villager (`JIJI` (416, 144)) stopped the leader walking left at x 431.4. The ladder's foot (0x3C/0x3D):
   he stopped at y 184.73, moved 1 px on the 20th blocked tick, then was at (x, 216) with z 32.27 (the drop + 2), z
   +2.0, +1.83, … (−0.17 a tick) to 43.05 and down 34 ticks later (state 56), stood a tick, swam. Swimming west: 1.2,

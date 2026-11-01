@@ -556,6 +556,9 @@ and crashes), with its names poked over the Cave's (same lengths) and the CSV's 
 **Traced and applied to the sim** (each against Dolphin frame by frame):
 - **The owl talks** (room 11, `KEPO` 0xC000001C): within 24 px of any Link it flies in and shows message 0x147,
   holding them until read (dialogue.ts `startOwlTalk`, now by its params' reach from main.dol; the route reads it).
+  Its flight (owl.ts, traced): hidden until then, it comes from 60 px out of the room's top along its line, lands,
+  talks, and flies off down and right once read; drawn by apps/game's enemies view. Left: its shadow, the camera's
+  pan to the house and the letterbox bars.
 - **Villagers block** (`JIJI`'s ±8 px box: room 0's stopped the leader at x 431.4, as the sim now does; stage.ts).
 - **The ladder's foot into the river** (tile types 0x3C/0x3D): a southward ledge whose jump is a drop (ledge.ts).
 - **Currents** (main.dol 0x80242DAC; swim.ts `CURRENT_TILES`): tiles 0xB4-0xB7 push 0.05 px/tick² up to 0.5,
@@ -805,9 +808,9 @@ Dolphin script; the probes replayed in the sim from the same spot.
 - **The owl** (room 0; `startOwlTalk`, dialogue.ts): talks by itself, once, when the leader comes up to room y 204.5
   facing up; the Links stand until its five pages are read (the route reads them: `readOn`). Re-traced in Dolphin on
   2026-10-10 from `w1-boss013-start` (measurements/adventure-world1.md "Hyrule Castle room 0"): the Links stopped at
-  y 204.5, not the y 72 of the older note. Assumed: the box opens on the stop tick (the owl's flight in isn't simulated),
-  in the balloon style (the dark box's screen not identified). Only Hyrule Castle's KEPO does this (Lake Hylia's and
-  Tingle's Tower's don't talk: not read). Room 1's gate shut, its bow soldiers on the walls (as measured).
+  y 204.5, not the y 72 of the older note. The owl flies in first as Tingle's Tower's (owl.ts, traced 2026-11-01): its
+  box 281 ticks after the stop (derived from its states), in the balloon style (the dark box's screen not identified).
+  Owls without params bit 19 (Lake Hylia room 0's too) draw nothing until they fly in; bit 19's sit on their perch. Room 1's gate shut, its bow soldiers on the walls (as measured).
 - **The escort Zora's greeting** (`ESCORT_GREETING` in zoras.ts; the talk queue `Talk.after`): on meeting the Link (46-48 px),
   each escort opens messages 0x2B4 ("Who... Who is it?") then 0x2B3 ("The world is in turmoil...") (msgus `_e.bmg`; the
   order and the ids are assumed: the FAZR params don't map to them, and the flows carry no tags). It holds the Links, and

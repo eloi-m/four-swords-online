@@ -16,9 +16,9 @@
 //   (hukidashi.blo). Kinds (params >> 12) & 3 other than 0 talk by themselves when a Link touches them (not done).
 // - SNPC and NAVI (TODO(measure) their boxes): the same message rule as JIJI / KNBN. A message that's empty in the US
 //   file isn't talked (some villagers'), unless its flow leads to one with text (below).
-// - KEPO, the owl (Hyrule Castle room 0, Tingle's Tower room 11): it talks by itself, once, when a Link comes within
-//   its reach (startOwlTalk, below); an
-//   escort Zora greets the Link who meets it the same way (zoras.ts ESCORT_GREETING, through `Talk.after`).
+// - KEPO, the owl (Hyrule Castle room 0, Tingle's Tower room 11): it flies in and talks by itself, once, when a Link
+//   comes within its reach (startOwlTalk, below; owl.ts); an escort Zora greets the Link who meets it the same way
+//   (zoras.ts ESCORT_GREETING, through `Talk.after`).
 // - A message with no text of its own that is only flow tags (branch, branch4, ifFlag: docs/formats/j2d-and-bmg.md
 //   "Messages (BMG)") shows the message it leads to (`MessageBook.resolve`); setFlag tags set the game's flags when a
 //   message opens. Lake Hylia's old man (room 1: 1278 → 1303 → 1280 → 1277, one controller), cave villager (room 58:
@@ -35,6 +35,7 @@ import { actorKey, currentArea, type AdventureGame } from "./adventure.ts";
 import type { GearKind } from "./gear.ts";
 import type { AdventureStage, AreaActor } from "./stage.ts";
 import { switchOn } from "../switches.ts";
+import { owlTalkTicks, setOwlOff } from "./owl.ts";
 
 /** Message ids are a speaker's params plus this (main.dol: `addi r, r, 299`). */
 export const MESSAGE_BASE = 0x12b;
@@ -359,22 +360,22 @@ export function openScripted(game: AdventureGame, stage: AdventureStage, actor: 
 /**
  * The owl (KEPO; main.dol: init 0x80219E4C, its talk 0x8021936C, the reach test 0x801D05F8) talks by itself, once, when
  * any Link comes within OWL_REACH × max((params >> 20) & 31, 1.5) px of it (inclusive: Hyrule Castle's 5, 80 px;
- * Tingle's Tower's 0, 24 px); the message is (params & 0xFFFF) + 0x12B. It doesn't (another state) with params bit 19
- * set, or once its switch (params >> 25) & 31, when not 0, is on. Measured in Dolphin: Hyrule Castle room 0 (walking up
- * x 256, the Links stopped at y 204.5, 79.3 px from the owl's (296, 136); its box at once, assumed) and Tingle's Tower
- * room 11 (the leader stopped 23.95 px from (280, 104), the step before 24.21; params bit 30 set: the camera pans to the
- * house and the owl flies in, the box's first character OWL_FLIGHT_TICKS after the stop). The Links stand from the next
- * tick until the message's last page is closed (in Dolphin they walked again within 3 ticks of the press; the sim's
- * close takes TALK_CLOSE_TICKS). OWL_STAGES: where it was measured; Lake Hylia's (room 0's would talk at once) wait for
- * its start's story intro, which isn't simulated.
+ * Tingle's Tower's 0, 24 px); the message is (params & 0xFFFF) + 0x12B. It doesn't (another state, on its perch from
+ * the start) with params bit 19 set, or once its switch (params >> 25) & 31, when not 0, is on. It flies in first
+ * (owl.ts): its message opens 47 ticks after it reaches its perch, the box's first character TALK_OPEN_TICKS later.
+ * Measured in Dolphin: Tingle's Tower room 11 (the leader stopped 23.95 px from (280, 104), the step before 24.21; the
+ * first character 239 ticks after the stop) and Hyrule Castle room 0 (walking up x 256, the Links stopped at y 204.5,
+ * 79.3 px from the owl's (296, 136); it flew in the same way, 281 ticks to its box by its states). The Links stand from
+ * the next tick until the message's last page is closed (in Dolphin they walked again within 3 ticks of the press; the
+ * sim's close takes TALK_CLOSE_TICKS). Params bit 30 (Tingle's Tower's) sets a flag (+0x230 0x8000) not read (the
+ * camera's pan to the house there, likely). OWL_STAGES: where it was measured; Lake Hylia's (room 0's would talk at
+ * once) wait for its start's story intro, which isn't simulated.
  */
 export const OWL_REACH = 16;
-/** Ticks from the stop to the box's first character when the owl flies in (params bit 30): Tingle's Tower's, measured. */
-export const OWL_FLIGHT_TICKS = 239;
 /** Tingle's Tower (boss012) and Hyrule Castle (boss013). */
 export const OWL_STAGES: ReadonlySet<number> = new Set([12, 13]);
 
-/** The owl's talk: its message opens when a Link comes within its reach, held until it's read. */
+/** The owl's talk: when a Link comes within its reach it flies in (owl.ts) and its message opens, held until it's read. */
 export function startOwlTalk(game: AdventureGame, stage: AdventureStage): void {
   const a = game.adventure;
   if (!OWL_STAGES.has(stage.index) || a.talk || a.area !== 0) return;
@@ -386,8 +387,8 @@ export function startOwlTalk(game: AdventureGame, stage: AdventureStage): void {
   if (!(stage.messages?.pages(message)?.length)) return;
   a.talked.push(actorKey(a.room, owl.index));
   openScripted(game, stage, owl.index, message, "balloon");
-  // Flying in: the first character OWL_FLIGHT_TICKS after the stop (this tick; stepTalk counts it, typing from TALK_OPEN_TICKS).
-  if ((owl.params >>> 30) & 1) a.talk!.tick = TALK_OPEN_TICKS - 1 - OWL_FLIGHT_TICKS;
+  // Its message opens once it has landed (this tick counts as its first: stepTalk types from TALK_OPEN_TICKS).
+  a.talk!.tick = -1 - owlTalkTicks(setOwlOff(game, owl.index, owl.x, owl.y));
 }
 
 // --- an item got: the pose, then its message ---
