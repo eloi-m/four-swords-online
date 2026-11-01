@@ -229,6 +229,20 @@ at the frames of the block the code draws from; for ZASL, ZSLH and KEPO the pick
     (data.arc, 64 × 40: the wall mount, a stem, the red 64 px bar the four hold), k = +0x23C set at the end of its
     update (under 3, 8, 11, 14 px out → 0-3, else 4), at its position; TV only. Its grab box moves down with k by the
     floats at 0x80474F98 (0, 0, 5, 8, 11). **Assumed:** the texture centred on the position (0x802F745C's anchor not read).
+  - **confirmed** `SIBT` ("shrine picture", draw 0x801042D0): a dungeon's front drawn over the tiles under it, which
+    are plain solid blocks (the Cave of No Return's room 12: tile 0x20 over 12 × 7 tiles, so without it the rock face,
+    the door and the two gargoyles beside the torches showed as grey blocks). Picture p & 0xF picks three stage
+    textures from tables 0x8049CA98 (front), 0x8049CABC (arch: `_ue`, `_kabuse` for 2 and 5) and 0x8049CAE0 (door:
+    `_tobira`): 0 `bg_tenkuu`, 1 `tenkuunotou`, 2 `koorinoshinden`, 3 `yaminosinden`, 4 `honounotou`, 5 `pyramid`,
+    6 `sabaku_sinden_l`, 7 `ana` (192 × 128: rock face, gargoyles, the torches' bases), 8 `higasi_sinden`. Each is
+    centred on x; the front at the actor's place, the door 16 × the s32 table 0x80463E50 px down (−4, −3, 4, −2, −1, 3,
+    0, −1, −6) plus its rise (+0x240, up negative), the arch 16 × the f32 table 0x80463E74 px down (−5, 0, 2, −3, 0, 2,
+    −3.5, −2, −6). The door is drawn unless kind (p >> 8) & 0xF is 1; kind 2's rises (sim stairs.ts). The draw call's
+    byte +0x1D: front 0xFF, door 0 (1 once risen past 24 px), arch 2 (0 for picture 5 kind 0). **Assumed** (that
+    byte not followed): the front and the door under the sprites, the arch over them (apps/game: the Links walk under
+    it into the stairs). Placed: Lake Hylia room 10 (7 kind 0), the Cave room 12 (7 kind 2), and pictures 0-8 at
+    the other worlds' fronts and ends (boss021-083). Room 12 checked against Dolphin (`cave-room12`): the gargoyles
+    and the torches' bases land on Dolphin's to the pixel at the frames' scale.
   - **confirmed** `STBL` (class vtable 0x804AC2D8, shared by kinds (p >> 12) & 15; the throne's p 0x3000 is kind 3):
     init 0x8033E188 adds 16 to y (its live spot, (256, 80) for the placement (256, 64), as traced) and gives kinds 2, 3, 6
     a box -31..31 × -47..15; its draw 0x8033CD44 for kind 3 draws enemy_both2 449 through a 2× scale matrix (and on the
@@ -250,7 +264,8 @@ at the frames of the block the code draws from; for ZASL, ZSLH and KEPO the pick
     the base frame; draw 0x80123F9C: base + its animation frame +0x240). **Assumed:** its animations are FZRA's (its own
     table not read); apps/game walks it the way the sim moves it, standing facing the leader.
 - `ActorSpritePiece.size` scales a piece about its anchor (STBL's 2×); `ActorBtiPiece.archive: "data"` takes the
-  texture from data.arc's `timg/` (PSWB).
+  texture from data.arc's `timg/` (PSWB); `over` draws it over the sprites, `gate` marks a door the sim moves (SIBT
+  kind 2: apps/game draws it per tick, static drawings leave it shut).
 - Not mapped yet (markers in the viewer): BLDF (covers the Tower of Flames' one-tile holes with `black.bti` 16×16,
   fading while a Link stands inside), and every type outside boss010/boss500.
 - Rendering: `packages/render/src/actorsprites.ts` `actorSpriteMeshes` batches pieces into one atlas (`SpriteAtlas`) and

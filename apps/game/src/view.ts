@@ -35,7 +35,7 @@ import {
   opaqueFrame,
 } from "@fso/render";
 import { fighterFrame, fighterHeight, fighterVisible, HURTBOX, linkDisplayFrame, SUBPX, switchOn, type PixelBox } from "@fso/sim";
-import { adventureFrame, airSeconds, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FLYING_STATE, FLYING_TILE, GOAL_PAD_EFFECT, goalLightning, goalPads, quotaMet, tileFlying, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area, type AreaActor } from "@fso/sim/adventure";
+import { adventureFrame, airSeconds, arrowBurning, BLADE_TRAP, bladeSparks, barrierUp, FLYING_STATE, FLYING_TILE, GOAL_PAD_EFFECT, goalLightning, goalPads, quotaMet, tileFlying, FIRE_TRAP_EFFECT, FIRE_TRAP_KIND, colorBlocks, isFireRing, doorLookTiles, drawnRewrites, ENEMY_TYPES, gateRise, launchHidden, linkAttack, minorShadowEffects, pedestalTiles, tingleShown, PICKUP_TYPES, pushFrame, ROCK_TYPES, savedSwitches, SHADOW_INTRO, SHADOW_STATE, TOP_MODE_BLEND, topModeOf, WARP_IN_TICKS, type AdventureGame, type AdventureStage, type Area, type AreaActor } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { CloudShadow, cloudShadowLevel } from "../../battle/src/cloudshadow.ts";
 import { EntityView } from "../../battle/src/entities.ts";
@@ -57,6 +57,8 @@ export const TV_H = 448;
 const ROOM_W = 512, ROOM_H = 384;
 // Depths: base layer (1) < floor decals (1.5) < actors and Links (2 + y / 1024) < top layer (3) < debug (3.5+).
 const DEPTH_PER_PIXEL = 1 / 1024;
+/** Over every sprite, under the top layer (3). */
+const OVER_SPRITES_Z = 2.45;
 /** Ticks a blade trap's sparks stay listed (one-shot: they play out meanwhile). */
 const SPARKS_LISTED = 60;
 /** Shadow Link's portal (sim shadowlink.ts: his entrance's state 3). */
@@ -180,6 +182,8 @@ export class AdventureView {
   private readonly goalGroup = new THREE.Group();
   private goalKey = "";
   private rockKey = "";
+  private readonly gateGroup = new THREE.Group();
+  private gateKey = "";
   /** Tingle (sim tingle.ts) in the area shown, or on the TV behind the GBA window; what he was last drawn as. */
   private readonly tingleGroup = new THREE.Group();
   /** Room 10's flying floor tiles in the air (by enemy id) and the goal's lightning. */
@@ -232,7 +236,7 @@ export class AdventureView {
     this.entities = new EntityView(this.actorSources, data);
     this.enemies = new EnemyView(this.actorSources, data);
     this.ganon = new GanonView(stage.archive ?? null);
-    this.local.add(this.entities.group, this.enemies.group, this.rockGroup, this.goalGroup, this.tingleGroup, this.ganon.group, this.flyingGroup);
+    this.local.add(this.entities.group, this.enemies.group, this.rockGroup, this.gateGroup, this.goalGroup, this.tingleGroup, this.ganon.group, this.flyingGroup);
     const tileset = loadTileset(data, stage.layout.tilesetIndex);
     this.tiles = new TilemapTextures(tileset);
     this.riverBed = new RiverBed(data);
@@ -289,7 +293,7 @@ export class AdventureView {
   private effectZ(p: EffectPlacement): number {
     if (p.layer === "filter") return 3.3;
     if (p.layer === "aboveTop") return 3.2;
-    if (p.translation[2] > 0) return 2.45;
+    if (p.translation[2] > 0) return OVER_SPRITES_Z;
     const cell = this.adventure.cellOf(p.room);
     return 2 + (p.translation[1] - (cell ? cell.cy * ROOM_H : 0)) * DEPTH_PER_PIXEL;
   }
@@ -304,14 +308,15 @@ export class AdventureView {
     let count = 0;
     for (const a of area.actors) {
       if (NOT_STATIC.has(a.id) || isHiddenUnsimulated(this.adventure.index, a.id) || hidden.has(a.index)) continue;
-      const pieces = actorPieces({ id: a.id, sublayer: area.sublayer, x: a.x / 8, y: a.y / 8, params: a.params });
+      // A rising door (SIBT kind 2) is drawn where the sim has it (renderGates).
+      const pieces = actorPieces({ id: a.id, sublayer: area.sublayer, x: a.x / 8, y: a.y / 8, params: a.params }).filter((p) => !(p.kind === "bti" && p.gate));
       if (!pieces.length) continue;
       (FLAT_ACTORS.has(a.id) ? flat : placed).push({ x: origin.x + a.x, y: origin.y + a.y, pieces });
       count += pieces.length;
     }
     if (area.sublayer === 0) this.drawnActors[area.room] = count;
     // Sorted by their y in the room, as the Links and the entities are (2 + y / 1024): the pieces are placed at world y.
-    for (const mesh of actorSpriteMeshes(this.actorSources, placed, staticsZ(origin), { depthPerPixel: DEPTH_PER_PIXEL })) meshes.statics.add(mesh);
+    for (const mesh of actorSpriteMeshes(this.actorSources, placed, staticsZ(origin), { depthPerPixel: DEPTH_PER_PIXEL, overZ: OVER_SPRITES_Z })) meshes.statics.add(mesh);
     for (const mesh of actorSpriteMeshes(this.actorSources, flat, 1.5)) meshes.statics.add(mesh);
   }
 
@@ -647,6 +652,7 @@ export class AdventureView {
     if (game.adventure.area === 0) this.fillRoomStatics(game, game.adventure.room);
     this.renderLinks(game);
     this.renderRocks(game);
+    this.renderGates(game);
     this.renderTingle(game);
     this.renderFlyingTiles(game);
     this.entities.update(game);
@@ -875,6 +881,25 @@ export class AdventureView {
     for (const b of colored) {
       const pieces = actorPieces({ id: "BCK2", sublayer: area.sublayer, x: (b.x + 8) / 8, y: (b.y + 8) / 8, params: b.done ? 0 : b.actor.params });
       for (const mesh of actorSpriteMeshes(this.actorSources, [{ x: b.x + 8, y: b.y + 8, pieces }], 2, { depthPerPixel: DEPTH_PER_PIXEL })) this.rockGroup.add(mesh);
+    }
+  }
+
+  // The rising doors (SIBT kind 2, sim stairs.ts) of the TV room the Links are in: over the dungeon's front, under the
+  // sprites, raised as far as the sim has them.
+  private renderGates(game: AdventureGame): void {
+    const a = game.adventure, area = a.area === 0 ? this.adventure.area(a.room, 0) : null;
+    const doors = (area?.actors ?? []).flatMap((actor) =>
+      actorPieces({ id: actor.id, sublayer: 0, x: actor.x / 8, y: actor.y / 8, params: actor.params })
+        .filter((p) => p.kind === "bti" && p.gate)
+        .map((p) => ({ actor, piece: p, rise: Math.floor(gateRise(game, actor)) })),
+    );
+    const key = `${a.room}/${a.area}:` + doors.map((d) => `${d.actor.index}:${d.rise}`).join(",");
+    if (key === this.gateKey) return;
+    this.gateKey = key;
+    disposeChildren(this.gateGroup);
+    for (const { actor, piece, rise } of doors) {
+      const placed = [{ x: actor.x, y: actor.y - rise, pieces: [piece] }];
+      for (const mesh of actorSpriteMeshes(this.actorSources, placed, 2.005)) this.gateGroup.add(mesh);
     }
   }
 
