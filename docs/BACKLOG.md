@@ -20,7 +20,7 @@ table: `docs/formats.md`; Dolphin measurements: `docs/measurements.md`; also `do
   - Input: keyboard, gamepads and on-screen touch controls (`packages/input`), remappable.
 - **One site (`apps/site`):**
   - `pnpm site:dev` → http://localhost:5191, with its lobby on :5185.
-  - Pages: `/` (Shadow Battle's title screen), `/battle/`, `/online/`, `/adventure/` (Lake Hylia slice, linked from
+  - Pages: `/` (Shadow Battle's title screen), `/battle/`, `/online/`, `/adventure/` (World 1 as one run, linked from
     About). The dev tools (viewer, screens, sound test) left the site; they run from their own dev servers.
   - No disc import any more: every page loads its game files over HTTP from `<base>data/` (dev and preview serve the
     repo's `extracted/`; a deployment serves `pnpm bundle`'s `out/fso-data/`).
@@ -466,10 +466,10 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
   (`cavenoreturn.ts`) from its start to the stage clear (2,091 Force Gems, quota 2000: a thin margin): lamp, candles, movable tiles and points, `BLCK` blocks, pots,
   color blocks (the Links apart), locked doors, chests from below (traced); then the bow (`bow.ts`, from room 0's
   pedestal: assumed) and room 3 crossed with it, arrows lit at its torches (main.dol, untraced); then room 11's four-Link
-  lever (`lever.ts`, main.dol), room 4's Shadow Link (`shadowlink.ts`: his first form, walk and swing traced; what beats his second form not) and room 5's goal. **Tingle's Tower** (boss012) is played by its route
+  lever (`lever.ts`, main.dol), room 4's Shadow Link (`shadowlink.ts`: his first form, walk and swing traced; his second form traced too) and room 5's goal. **Tingle's Tower** (boss012) is played by its route
   (`tingletower.ts`) to the stage clear (2,020 Force Gems; loaded in Dolphin by pokes, traced up to room 4 and for the
   rules its route leans on: currents, falls, river stones, ladders). **Hyrule Castle** (boss013) is played by its route (`hyrulecastle.ts`, 39 milestones) to the stage clear (2,535 Force Gems: room 6's gem rain, room 10's throne room and cannon columns), through Phantom Ganon (main.dol, untraced) and room 11's staircase (`RASN` kind 5: its destination is in its params, stairs.ts); the Links still die often in its fights (revived).
-- **World 1 (the showcase), what's left per stage** — what beats the Cave's Shadow Link (his second form) and room 3's arrows checked in Dolphin, Hyrule Castle's untraced rooms and Phantom Ganon checked in Dolphin — with what's known,
+- **World 1 (the showcase), what's left per stage** — room 3's arrows checked in Dolphin, Hyrule Castle's untraced rooms and Phantom Ganon checked in Dolphin — with what's known,
   measured, the savestates and the next steps: `docs/ADVENTURE.md` "World 1: what's left".
 - **Left:** the Links pushing each other, a key pushed on the floor, and C-stick formations held back by
   a blocked follower and the blocked dash's 0.3 slide (traced, not applied: the routes need rescripting for them;
