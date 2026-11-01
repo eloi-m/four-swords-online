@@ -746,7 +746,10 @@ Status per milestone and what's left: `docs/ADVENTURE.md` "Status". In short:
      screens' GOLD kind 4 and the side view's kind 6 flights, a rained gem's take height; compare.ts carries no gem
      count into ours (its frames show 0), so the spill was checked in the sim (spill.realdisc.test.ts).
   3. Done: room 11's owl (`KEPO`) is hidden until a Link comes within reach, then flies in, lands and talks as traced
-     (sim owl.ts). Left: his shadow, a mirrored owl's flip, the camera's pan to the house and the letterbox bars.
+     (sim owl.ts), drawn as Dolphin's frames show him (over the trees' canopy while off his perch; flying, landing
+     and perched within ~2 px; his box says "Only 30 seconds until time-up Tingle!" in Dolphin too: message 0x147 is
+     what his params give). Left: his shadow, a mirrored owl's flip, the camera's pan to the house and the letterbox
+     bars; a few landing poses show 2-4 ticks apart from Dolphin's frame dumps (186, 214 ticks after the stop).
   4. Small: a stone's knock-back lasts 34 ticks in ours, 32 in Dolphin, and the next strike comes 55 ticks after the
      first in ours, 61 in Dolphin (room 1, `tingle-room1-swim`); the walk on from the ladder's top starts 3 ticks
      later in Dolphin (states 0, 2, 13 twice: 4.5 px behind ours, room 10); swimming into room 10's pool edge ours

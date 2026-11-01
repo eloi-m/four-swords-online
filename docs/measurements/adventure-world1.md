@@ -316,6 +316,14 @@ Traced with a copy of the adventure user folder (`ref/dolphin-user-adventure-tin
   out of the right side, 60 px on). Hyrule Castle's (params 0xA0500190, bit 30 clear) did the same: put at (9.07,
   -30.05) on the stop (frame 94), on its perch 228 ticks on (0.02 px short: Tingle's went on from 0.63), state 8 at
   275: its box 281 ticks after the stop (derived, not seen). Params bit 30 sets +0x230 0x8000 (use not read).
+- **The owl as drawn** (frame dumps of the same run, `120 left; 330 idle; 2 A; 60 idle`, against apps/game at the same
+  ticks after the stop, cropped round the sim's spot at one scale): off his perch (flying in, landing) he is drawn
+  over the top layer (the trees' canopy, the house's roof); perched by his y among the others (nothing of the top
+  layer over him there). Flying, landing and perched he lands within ~2 px of ours (x + the frame's own offsets,
+  y + 6 − z; the head 634 21 px over the body 633; Tingle's isn't mirrored). Two landing moments (186, 214
+  ticks after the stop) show a pose 2-4 ticks apart from ours (the dumps' own lag, likely). His box, the one page:
+  "Only 30 seconds until time-up Tingle!" (msgus `_e.bmg` id 0x147, params 0x1C + 0x12B, as ours); Hyrule
+  Castle's 0x2BB is his "Link! There's a terrible fiend in Hyrule Castle…" by the same rule.
 - **Room 0:** the villager (`JIJI` (416, 144)) stopped the leader walking left at x 431.4. The ladder's foot (0x3C/0x3D):
   he stopped at y 184.73, moved 1 px on the 20th blocked tick, then was at (x, 216) with z 32.27 (the drop + 2), z
   +2.0, +1.83, … (−0.17 a tick) to 43.05 and down 34 ticks later (state 56), stood a tick, swam. Swimming west: 1.2,
