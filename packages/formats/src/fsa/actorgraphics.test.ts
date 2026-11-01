@@ -17,6 +17,17 @@ describe("actor graphics", () => {
     ]);
   });
 
+  it("draws a SIBT's front, door and arch (the Cave of No Return's way in: picture 7, kind 2)", () => {
+    expect(actorPieces(actor("SIBT", 0x207))).toEqual([
+      { kind: "bti", file: "ana.bti", dx: 0, dy: 0 },
+      { kind: "bti", file: "ana_tobira.bti", dx: 0, dy: -16, gate: true },
+      { kind: "bti", file: "ana_ue.bti", dx: 0, dy: -32, over: true },
+    ]);
+    // Kind 0 (Lake Hylia's view of it) has a door that stays; kind 1 none.
+    expect(actorPieces(actor("SIBT", 0x7)).map((p) => p.kind === "bti" && !!p.gate)).toEqual([false, false, false]);
+    expect(actorPieces(actor("SIBT", 0x100)).map((p) => p.kind === "bti" && p.file)).toEqual(["bg_tenkuu.bti", "bg_tenkuu_ue.bti"]);
+  });
+
   it("picks JIJI variants from params byte 2", () => {
     const look = (params: number) => sprites(actor("JIJI", params)).map((p) => `${p.sob}:${p.frame}`);
     expect(JIJI_VARIANTS).toHaveLength(54);

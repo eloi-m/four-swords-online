@@ -79,6 +79,6 @@ describe.skipIf(!present)("real disc: actor graphics", () => {
       }
     }
     expect(counts.actors).toBeGreaterThan(300);
-    expect(counts.textures).toBe(2); // RCK3, PSWB
+    expect(counts.textures).toBe(5); // RCK3, PSWB, Lake Hylia room 10's SIBT (the cave's front, door and arch)
   });
 });

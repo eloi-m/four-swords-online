@@ -40,6 +40,10 @@ export interface ActorBtiPiece {
   dx: number;
   dy: number;
   archive?: "data";
+  /** Drawn over the sprites (under the top layer). */
+  over?: boolean;
+  /** A door that rises (SIBT kind 2): moved by the sim's state, so a static drawing leaves it out. */
+  gate?: boolean;
 }
 
 export type ActorPiece = ActorSpritePiece | ActorBtiPiece;
@@ -85,6 +89,38 @@ export const pullHandleClass = (out: number): number => (out < 1 ? 0 : out < 3 ?
  *  class from how far it's out (its update's end 0x80373844: under 3, 8, 11, 14 px → 0-3; 14 → 4). */
 export const BIG_HANDLE_TEXTURES = [0, 1, 2, 3, 4].map((k) => `4hippari_switch_${k}.bti`);
 export const bigHandleClass = (out: number): number => (out < 3 ? 0 : out < 8 ? 1 : out < 11 ? 2 : out < 14 ? 3 : 4);
+/**
+ * SIBT ("shrine picture": a dungeon's front, door and arch over the tiles under it; draw 0x801042D0): picture p & 0xF
+ * names three stage textures (tables 0x8049CA98, 0x8049CABC, 0x8049CAE0), all centered on x: the front at the actor's
+ * place, the arch (`_ue`/`_kabuse`) 16 × the f32 table 0x80463E74 px down, drawn over the sprites (its draw's byte
+ * +0x1D = 2), and the door 16 × the s32 table 0x80463E50 px down plus its rise (+0x240, up negative), drawn unless
+ * the kind (p >> 8) & 0xF is 1. Kind 2's door rises as the Links come (sim stairs.ts).
+ */
+export const SHRINE_PICTURES: readonly (readonly [front: string, arch: string, door: string])[] = [
+  ["bg_tenkuu", "bg_tenkuu_ue", "bg_tenkuu_tobira"],
+  ["tenkuunotou", "tenkuunotou_ue", "tenkuunotou_tobira"],
+  ["koorinoshinden", "koorinoshinden_kabuse", "koorinoshinden_tobira"],
+  ["yaminosinden", "yaminosinden_ue", "yaminosinden_tobira"],
+  ["honounotou", "honounotou_ue", "honounotou_tobira"],
+  ["pyramid", "pyramid_kabuse", "pyramid_tobira"],
+  ["sabaku_sinden_l", "sabaku_sinden_l_ue", "sabaku_sinden_l_tobira"],
+  ["ana", "ana_ue", "ana_tobira"],
+  ["higasi_sinden", "higasi_sinden_ue", "higasi_sinden_tobira"],
+];
+const SHRINE_DOOR_ROWS = [-4, -3, 4, -2, -1, 3, 0, -1, -6];
+const SHRINE_ARCH_ROWS = [-5, 0, 2, -3, 0, 2, -3.5, -2, -6];
+
+/** A SIBT's pieces (front, door unless kind 1, arch); the door marked `gate` where it rises (kind 2). */
+export function shrinePieces(params: number): ActorBtiPiece[] {
+  const picture = params & 15, kind = (params >>> 8) & 15, names = SHRINE_PICTURES[picture];
+  if (!names) return [];
+  const [front, arch, door] = names;
+  const pieces: ActorBtiPiece[] = [{ kind: "bti", file: `${front}.bti`, dx: 0, dy: 0 }];
+  if (kind !== 1) pieces.push({ kind: "bti", file: `${door}.bti`, dx: 0, dy: 16 * SHRINE_DOOR_ROWS[picture]!, ...(kind === 2 ? { gate: true } : {}) });
+  pieces.push({ kind: "bti", file: `${arch}.bti`, dx: 0, dy: 16 * SHRINE_ARCH_ROWS[picture]!, over: true });
+  return pieces;
+}
+
 /** The escort Zoras (FAZR, FZRA): enemy_both2 578 + their animation's frame. */
 export const ESCORT_ZORA_FRAME = 578;
 /**
@@ -240,6 +276,21 @@ export const ACTOR_LOOKS: Readonly<Record<string, ActorLook>> = {
     confidence: "matched",
     note: "1-1 rock pushed into the river: the stage texture timg/yy_1_1_iwa1.bti (iwa2 when broken); placement guessed (centered)",
     pieces: () => [{ kind: "bti", file: "yy_1_1_iwa1.bti", dx: 0, dy: 0 }],
+  },
+  SIBT: {
+    draw: "sprite",
+    confidence: "confirmed",
+    note: "shrine picture: a dungeon's front over its tiles (the Cave of No Return's ana.bti: rock face and gargoyles), its door and arch (SHRINE_PICTURES)",
+    facts: [
+      { at: 0x80463c30, ascii: "bg_tenkuu.bti" },
+      { at: 0x80463d54, ascii: "ana_ue.bti" },
+      { at: 0x80463e24, ascii: "ana_tobira.bti" },
+      { at: 0x8049cab4, u32: [0x8053c1f0] },
+      { at: 0x8053c1f0, ascii: "ana.bti" },
+      { at: 0x80463e50, u32: SHRINE_DOOR_ROWS.map((v) => v >>> 0) },
+      { at: 0x80463e74, f32: SHRINE_ARCH_ROWS },
+    ],
+    pieces: (a) => shrinePieces(a.params),
   },
   CNON: {
     draw: "sprite",
@@ -524,7 +575,7 @@ export const ACTOR_LOOKS: Readonly<Record<string, ActorLook>> = {
   RAIL: hidden("a rail's point: actors walk a rail's points in their index order ((params >> 16) & 0xFF, the rail (params >> 8) & 0xFF: 0x800FE3EC); draws nothing"),
   ...Object.fromEntries(
     [
-      "BGMN", "FOCS", "GENE", "GFBS", "TINB", "OFFS", "ONOF", "PONT", "PRTC", "PTMI", "RYRN", "SENP", "SEV2", "SIBT",
+      "BGMN", "FOCS", "GENE", "GFBS", "TINB", "OFFS", "ONOF", "PONT", "PRTC", "PTMI", "RYRN", "SENP", "SEV2",
       "SKIL", "SWEV", "SWNP", "SWT4", "VWMD", "WARP", "WPWL", "WTSW", "ZNSW", "ZOOM", "BFIN", "LTEV", "GEN3", "RNSW",
       "SWOR", "TOMI", "CKSW", "CHSW", "GLWP",
     ].map((id) => [id, hidden(NO_DRAW)]),
