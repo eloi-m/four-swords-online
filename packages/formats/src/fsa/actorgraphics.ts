@@ -351,10 +351,12 @@ export const ACTOR_LOOKS: Readonly<Record<string, ActorLook>> = {
   },
   KEPO: {
     draw: "sprite",
-    confidence: "guessed",
-    note: "Kaepora Gaebora: gc 604 + pose while flying, 633/634 in other states; 618 (perched, facing the camera) picked",
-    facts: [{ at: 0x8021b140, imm: 604 }],
-    pieces: one("gc", 618),
+    confidence: "confirmed",
+    note:
+      "Kaepora Gaebora: gc 604 + pose flying and landing, 633 with the head 634 21 px over it on his perch (16 px up, drawn 6 px " +
+      "lower). Only params bit 19's sits there from the start; the others draw nothing until they fly in (sim owl.ts)",
+    facts: [{ at: 0x8021b140, imm: 604 }, { at: 0x8021b2e4, imm: 633 }, { at: 0x8021b468, imm: 634 }],
+    pieces: (a) => ((a.params >>> 19) & 1 ? [sprite("gc", 633, 0, -10), sprite("gc", 634, 0, -31)] : []),
   },
   ZSLH: {
     draw: "sprite",

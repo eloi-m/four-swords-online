@@ -4,7 +4,7 @@
 import { BIG_HANDLE_TEXTURES, bigHandleClass, decodeBti, ESCORT_ZORA_FRAME, ESCORT_ZORA_WALK, ESCORT_ZORA_WALK_TICKS, PULL_HANDLE_FRAME, pullHandleClass, type ActorSob, type RarcArchive, type SpriteFrame } from "@fso/formats";
 import { SpriteAtlas, SpriteMesh, type ActorSpriteSources } from "@fso/render";
 import { PLAYER_ANIMATIONS, SUBPX, SWING, switchOn, WALK_FRAME_TICKS, type Facing } from "@fso/sim";
-import { armosStatue, ARROW_KIND, BLADE_TRAP, bladeFrame, FIRE_TRAP_KIND, BALL_FRAME, BALL_SCALE, BALL_SOLDIER, BALL_SOLDIER_FRAME, BALL_TURN, BONE_KIND, CHAIN_FRAME, CHAIN_SCALE, ironBallHand, ironBallOf, BOWMAN_LOOK, BOWMAN_SHOOT, BOWMAN_WALK, CAPTAIN_LUNGE, CAPTAIN_MARCH, BUZZ_SHOCK_STEPS, BUZZ_STEPS, enemyShown, MOZO_FRAMES, GEM_FRAMES, GEAR_BY_NUMBER, getFrame, keyHeight, MINOR_SHADOW_AFTERIMAGE, minorShadowFrame, FIREBALL_KIND, hinoxFrame, isCaster, PAME, pameBig, pickupShown, POE_FRAMES, soldierPose, STALFOS_JUMP, STALFOS_WALK, WIZZROBE_BOLTS, ZOL_PALETTES, ZORA_SHOT, actorKey, currentArea, pullOut, SHADOW_STATE, shadowShownColor, type AdventureGame, type AdventureStage, type Enemy, type Lever, type Pickup } from "@fso/sim/adventure";
+import { armosStatue, ARROW_KIND, BLADE_TRAP, bladeFrame, FIRE_TRAP_KIND, BALL_FRAME, BALL_SCALE, BALL_SOLDIER, BALL_SOLDIER_FRAME, BALL_TURN, BONE_KIND, CHAIN_FRAME, CHAIN_SCALE, ironBallHand, ironBallOf, BOWMAN_LOOK, BOWMAN_SHOOT, BOWMAN_WALK, CAPTAIN_LUNGE, CAPTAIN_MARCH, BUZZ_SHOCK_STEPS, BUZZ_STEPS, enemyShown, MOZO_FRAMES, GEM_FRAMES, GEAR_BY_NUMBER, getFrame, keyHeight, MINOR_SHADOW_AFTERIMAGE, minorShadowFrame, FIREBALL_KIND, hinoxFrame, isCaster, PAME, pameBig, pickupShown, POE_FRAMES, soldierPose, STALFOS_JUMP, STALFOS_WALK, WIZZROBE_BOLTS, ZOL_PALETTES, ZORA_SHOT, actorKey, currentArea, owlLook, pullOut, SHADOW_STATE, shadowShownColor, type AdventureGame, type AdventureStage, type Enemy, type Lever, type Pickup } from "@fso/sim/adventure";
 import * as THREE from "three";
 import { actorShadowOpacity, heightScale, LINK_SHADOW, linkShadow, ShadowSprite } from "../../battle/src/shadows.ts";
 
@@ -285,6 +285,11 @@ function pickupLook(p: Pickup): Look | null {
   }
 }
 
+/** The owl's frames in enemy_gc_sob: 604 + his pose flying and landing; on his perch his body and his head (main.dol). */
+const OWL_FRAME = 604;
+const OWL_BODY = 633;
+const OWL_HEAD = 634;
+
 /**
  * A hovering gem's (HNRY) glint: its frame + 0 for 61 frames, then + 1, 2, 3 two frames each (HNRY's update: a counter
  * against 60, 62, 64, 66, table 0x804716A8). Which frame of the cycle a gem starts on: from when it appeared here.
@@ -427,6 +432,8 @@ export class EnemyView {
     for (let f = ESCORT_ZORA_FRAME; f <= ESCORT_ZORA_FRAME + 12; f++) wanted.push({ sob: "both2", frame: f });
     // Blade traps (sim traps.ts: both2 340, gc 378-381).
     wanted.push({ sob: "both2", frame: BLADE_TRAP.frame });
+    for (let f = OWL_FRAME; f <= OWL_FRAME + 14; f++) wanted.push({ sob: "gc", frame: f });
+    for (const f of [OWL_BODY, OWL_HEAD]) wanted.push({ sob: "gc", frame: f });
     for (let f = BLADE_TRAP.stepFrame; f < BLADE_TRAP.stepFrame + 4; f++) wanted.push({ sob: "gc", frame: f });
     for (const look of wanted) this.slot(look);
     this.atlas = this.frames.length ? new SpriteAtlas(sources.sheet, this.frames) : null;
@@ -468,6 +475,7 @@ export class EnemyView {
     if (stage) {
       this.pullHandles(game, stage, things);
       this.escortZoras(game, stage, things);
+      this.owl(game, things);
     }
     for (const p of game.adventure.pickups) {
       const z = p.from === "HNRY" ? p.z + Math.round(hoverBob(p.tick) * SUBPX) : p.z;
@@ -539,6 +547,20 @@ export class EnemyView {
    * (FZRA) standing facing down once its Zora has come (its switch on; FZRA's animation 6) until the great fairy's
    * switch sends it away (assumed: gone at once; the game fades it over its state 13, 120 ticks).
    */
+  /**
+   * The owl flying in, landing, on his perch while he talks, and flying off (sim owl.ts; KEPO's draw 0x8021AF28: drawn
+   * 6 px lower than he stands). TODO(measure): his shadow (0x801EF830, the same frame), mirrored owls' flip.
+   */
+  private owl(game: AdventureGame, things: { look: Look | null; x: number; y: number; z: number; type: string; hidden: boolean; depth?: number }[]): void {
+    const a = game.adventure, owl = a.owl, look = owl && owl.room === a.room && a.area === 0 ? owlLook(owl) : null;
+    if (!look) return;
+    const x = Math.round(look.x * SUBPX), y = Math.round((look.y + 6) * SUBPX), z = Math.round(look.z * SUBPX);
+    if (look.pose !== "perched") return void things.push({ look: { sob: "gc", frame: OWL_FRAME + look.pose }, x, y, z, type: "KEPO", hidden: false });
+    const depth = 2 + Math.floor(y / SUBPX) * DEPTH_PER_PIXEL;
+    things.push({ look: { sob: "gc", frame: OWL_BODY }, x, y, z, type: "KEPO", hidden: false, depth });
+    things.push({ look: { sob: "gc", frame: OWL_HEAD }, x, y, z: z + 21 * SUBPX, type: "KEPO", hidden: false, depth: depth + DEPTH_PER_PIXEL / 2 });
+  }
+
   private escortZoras(game: AdventureGame, stage: AdventureStage, things: { look: Look | null; x: number; y: number; z: number; type: string; hidden: boolean }[]): void {
     const a = game.adventure, b = game.battle, down = zoraLook("down", false, 0);
     for (const z of currentArea(game, stage).actors) {

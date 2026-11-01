@@ -27,6 +27,7 @@ export * from "./waterfoes.ts";
 export * from "./hinox.ts";
 export * from "./wizzrobe.ts";
 export * from "./dialogue.ts";
+export { OWL_FLYING_Z, OWL_LANDING_TICKS, OWL_PERCHED_Z, owlLook, type OwlFlight, type OwlLook } from "./owl.ts";
 export * from "./lamp.ts";
 export * from "./stairs.ts";
 export * from "./cavenoreturn.ts";
